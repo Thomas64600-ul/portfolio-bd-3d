@@ -1,19 +1,20 @@
-export default function InteractiveItem({ children, onPick, cursor = "pointer" }) {
+export default function InteractiveItem({ children, onPick }) {
   return (
     <group
-      onPointerOver={(e) => {
+      onPointerDown={(e) => {
         e.stopPropagation();
-        document.body.style.cursor = cursor;
-      }}
-      onPointerOut={() => {
-        document.body.style.cursor = "default";
+        // évite que le navigateur interprète ça comme un "click normal"
+        // et évite aussi les handlers parent qui unlock
+        if (e.nativeEvent?.preventDefault) e.nativeEvent.preventDefault();
+        onPick?.();
       }}
       onClick={(e) => {
+        // on neutralise le click classique (qui peut unlock / bubble)
         e.stopPropagation();
-        onPick?.();
       }}
     >
       {children}
     </group>
   );
 }
+
