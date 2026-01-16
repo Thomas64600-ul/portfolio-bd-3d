@@ -18,12 +18,13 @@ export const SECTIONS = {
     ],
   },
   about: {
-    title: "À propos",
-    description:
-      "Développeur web full stack junior + passion BD. Je construis des apps propres, utiles, et je soigne l’UX.",
-    tags: ["JS", "React", "API", "Sécurité", "UI/UX"],
-    items: [],
-  },
+  title: "À propos de moi",
+  description:
+    "Développeur web full stack junior, je construis des projets web structurés et orientés utilisateur.\n\nAprès 12 années d’expérience en logistique, j’ai choisi de mettre mon sens du terrain et de l’organisation au service du développement.\n\nCurieux et créatif, j’aime concevoir des expériences claires, utiles et humaines.",
+  tags: ["Développement web", "Expérience terrain", "Créativité"],
+  items: [],
+},
+
   cv: {
     title: "CV",
     description:

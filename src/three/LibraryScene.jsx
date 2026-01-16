@@ -1,10 +1,11 @@
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Environment } from "@react-three/drei";
 import * as THREE from "three";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef } from "react";
 import { easing } from "maath";
 import FPSController from "./FPSController";
 import InteractiveItem from "./InteractiveItem";
+import AboutPanel from "./AboutPanel"; // ✅ AJOUT
 
 function SceneInner({ onOpenSection, focus, setFocus, controlsEnabled, setIsLocked }) {
   const cameraTarget = useRef(new THREE.Vector3());
@@ -97,6 +98,19 @@ function SceneInner({ onOpenSection, focus, setFocus, controlsEnabled, setIsLock
         <primitive object={inkMat} attach="material" />
       </mesh>
 
+      {/* ✅ MUR “À propos de moi” (panneau au mur du fond) */}
+      <AboutPanel
+        paperMat={paperMat}
+        inkMat={inkMat}
+        onPick={() =>
+          pick(
+            "about",
+            [0, 2.2, -6.2], // position caméra focus (devant le panneau)
+            [0, 2.2, -8]    // point regard (centre du panneau)
+          )
+        }
+      />
+
       {/* Étagères (3 zones : BD, Comics, Manga) */}
       <group position={[-6.5, 0, -4]}>
         <mesh position={[0, 1.2, 0]}>
@@ -121,7 +135,7 @@ function SceneInner({ onOpenSection, focus, setFocus, controlsEnabled, setIsLock
           <primitive object={inkMat} attach="material" />
         </mesh>
 
-        {/* Poster cliquable -> À propos */}
+        {/* Poster cliquable -> À propos (tu peux le garder ou le supprimer) */}
         <InteractiveItem
           onPick={() => pick("about", [0, 1.8, -2.7], [0, 1.5, -4])}
         >
@@ -188,3 +202,4 @@ export default function LibraryScene({
     </Canvas>
   );
 }
+
