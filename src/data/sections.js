@@ -28,8 +28,7 @@ export const SECTIONS = {
 
   diplomas: {
     title: "Diplômes & certifications",
-    description:
-      "Mes diplômes et certifications obtenus au fil de mon parcours.",
+    description: "Mes diplômes et certifications obtenus au fil de mon parcours.",
     tags: ["RNCP", "Certifications", "Formation"],
     items: [
       {
@@ -55,10 +54,54 @@ export const SECTIONS = {
     ],
   },
 
+  // ✅ AJOUT : Mur Voyages
+  travels: {
+    title: "Voyages",
+    description:
+      "Quelques lieux marquants : travail, découvertes et aventures (clique un pin sur la carte).",
+    tags: ["Voyage", "Terrain", "Curiosité"],
+    items: [
+      {
+        name: "Pays de Galles",
+        desc: "Emploi dans la restauration",
+        year: "2005",
+      },
+      {
+        name: "Inde (Sud)",
+        desc: "Visite du sud + petits documentaires",
+        year: "2006",
+      },
+      {
+        name: "Nouvelle-Calédonie",
+        desc: "Emploi logistique",
+        year: "2017",
+      },
+      {
+        name: "Vietnam",
+        desc: "Traversée du Vietnam en scooter",
+        year: "2018",
+      },
+      {
+        name: "Cambodge",
+        desc: "Découverte du pays",
+        year: "",
+      },
+      {
+        name: "Tenerife",
+        desc: "Vacances",
+        year: "",
+      },
+      {
+        name: "Minorque",
+        desc: "Vacances",
+        year: "",
+      },
+    ],
+  },
+
   cv: {
     title: "CV",
-    description:
-      "Télécharge mon CV et retrouve mon stack + expériences clés.",
+    description: "Télécharge mon CV et retrouve mon stack + expériences clés.",
     tags: ["Téléchargement", "Profil hybride"],
     items: [
       { name: "Télécharger le CV", desc: "PDF", href: "#" },
@@ -68,8 +111,7 @@ export const SECTIONS = {
 
   contact: {
     title: "Contact",
-    description:
-      "Un projet ? Une mission ? Tu peux me contacter ici.",
+    description: "Un projet ? Une mission ? Tu peux me contacter ici.",
     tags: ["Email", "Réseaux"],
     items: [
       { name: "Email", desc: "thomas@…", href: "mailto:thomas@example.com" },
@@ -77,3 +119,4 @@ export const SECTIONS = {
     ],
   },
 };
+

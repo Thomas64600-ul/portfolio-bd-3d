@@ -7,6 +7,7 @@ import FPSController from "./FPSController";
 import InteractiveItem from "./InteractiveItem";
 import AboutPanel from "./AboutPanel";
 import DiplomaWall from "./DiplomaWall";
+import TravelWall from "./TravelWall"; // ✅ AJOUT
 
 function SceneInner({
   onOpenSection,
@@ -112,11 +113,19 @@ function SceneInner({
       <DiplomaWall
         activeIndex={focus?.sectionId === "diplomas" ? focus?.itemId : null}
         onPickDiplomas={(i) =>
+          pick("diplomas", [-8.3, 2.4, -1.5], [-10.7, 2.6, -0.2], i)
+        }
+      />
+
+      {/* ✅ Mur Voyages (carte du monde sur mur droit) */}
+      <TravelWall
+        activeIndex={focus?.sectionId === "travels" ? focus?.itemId : null}
+        onPickPin={(itemIndex) =>
           pick(
-            "diplomas",
-            [-8.3, 2.4, -1.5],
-            [-10.7, 2.6, -0.2],
-            i
+            "travels",
+            [7.8, 2.35, -1.0], // caméra devant la carte
+            [10.85, 2.35, -1.0], // centre de la carte
+            itemIndex
           )
         }
       />
@@ -129,9 +138,7 @@ function SceneInner({
         </mesh>
 
         <InteractiveItem
-          onPick={() =>
-            pick("projects", [-4.8, 1.6, -3.2], [-6.5, 1.3, -4])
-          }
+          onPick={() => pick("projects", [-4.8, 1.6, -3.2], [-6.5, 1.3, -4])}
         >
           <mesh position={[0.7, 1.1, 0.35]}>
             <boxGeometry args={[0.25, 0.4, 0.06]} />
@@ -164,9 +171,7 @@ function SceneInner({
         </InteractiveItem>
 
         <InteractiveItem
-          onPick={() =>
-            pick("contact", [6.8, 1.25, -2.9], [6.5, 1.2, -4])
-          }
+          onPick={() => pick("contact", [6.8, 1.25, -2.9], [6.5, 1.2, -4])}
         >
           <mesh position={[0.8, 0.75, 0.35]}>
             <boxGeometry args={[0.35, 0.35, 0.35]} />
