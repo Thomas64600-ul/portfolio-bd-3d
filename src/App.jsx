@@ -1,35 +1,63 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useEffect, useState } from "react";
+import LibraryScene from "./three/LibraryScene";
+import Overlay from "./ui/Overlay";
 
-function App() {
-  const [count, setCount] = useState(0)
+export default function App() {
+  const [isLocked, setIsLocked] = useState(false);
+  const [controlsEnabled, setControlsEnabled] = useState(true);
+
+  const [openSectionId, setOpenSectionId] = useState(null);
+  const [focus, setFocus] = useState({ active: false });
+
+  const requestLock = () => {
+    // pointer lock s’active au clic dans le canvas
+    setControlsEnabled(true);
+  };
+
+  const releaseLock = () => {
+    // simple UX : on désactive les controls => l’utilisateur peut cliquer l’UI
+    setControlsEnabled(false);
+    setIsLocked(false);
+  };
+
+  const closePanel = () => {
+    setOpenSectionId(null);
+    // retour "normal": on annule focus
+    setFocus({ active: false });
+    // réactiver FPS
+    setControlsEnabled(true);
+  };
+
+  // ESC pour libérer / fermer
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") {
+        if (openSectionId) closePanel();
+        else releaseLock();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openSectionId]);
 
   return (
     <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
+      <LibraryScene
+        controlsEnabled={controlsEnabled}
+        setIsLocked={setIsLocked}
+        focus={focus}
+        setFocus={setFocus}
+        onOpenSection={(id) => setOpenSectionId(id)}
+      />
 
-export default App
+      <Overlay
+        isLocked={isLocked}
+        onRequestLock={requestLock}
+        onReleaseLock={releaseLock}
+        openSectionId={openSectionId}
+        onClosePanel={closePanel}
+      />
+    </>
+  );
+}
