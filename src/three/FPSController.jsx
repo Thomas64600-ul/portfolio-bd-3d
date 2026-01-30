@@ -1,8 +1,9 @@
-// src/three/FPSController.jsx
 import { useEffect, useRef, useState, useCallback } from "react";
 import { PointerLockControls } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
+
+const DEBUG_FPS_PICK = false;
 
 export default function FPSController({
   enabled,
@@ -26,25 +27,35 @@ export default function FPSController({
   const velocity = useRef(new THREE.Vector3());
   const [locked, setLocked] = useState(false);
 
-  const resetKeys = () => {
-    Object.keys(keys.current).forEach((k) => (keys.current[k] = false));
-  };
+  // Raycaster / Vector2 réutilisés (évite de recréer des objets à chaque clic)
+  const raycasterRef = useRef(new THREE.Raycaster());
+  const ndcCenterRef = useRef(new THREE.Vector2(0, 0));
 
-  // ✅ Raycast FPS au centre de l'écran (utile en PointerLock)
+  const resetKeys = useCallback(() => {
+    Object.keys(keys.current).forEach((k) => (keys.current[k] = false));
+  }, []);
+
+  // Raycast FPS au centre de l'écran (utile en PointerLock)
   const pickCenter = useCallback(() => {
-    const raycaster = new THREE.Raycaster();
-    const ndc = new THREE.Vector2(0, 0); // centre écran
+    const raycaster = raycasterRef.current;
+    const ndc = ndcCenterRef.current;
+
     raycaster.setFromCamera(ndc, camera);
 
     const hits = raycaster.intersectObjects(scene.children, true);
     if (!hits.length) return false;
 
-    // On cherche le 1er objet cliquable (userData.pick)
     for (const hit of hits) {
       const obj = hit.object;
       if (obj?.userData?.pick) {
-        // debug
-        console.log("🎯 FPS PICK:", obj.userData.type, obj.userData.label, obj.userData.itemIndex);
+        if (DEBUG_FPS_PICK) {
+          console.log(
+            "🎯 FPS PICK:",
+            obj.userData.type,
+            obj.userData.label,
+            obj.userData.itemIndex
+          );
+        }
         obj.userData.pick();
         return true;
       }
@@ -52,7 +63,7 @@ export default function FPSController({
     return false;
   }, [camera, scene]);
 
-  // ✅ Si enabled passe à false : on unlock + stop net
+  // Si enabled passe à false : on unlock + stop net
   useEffect(() => {
     if (enabled) return;
 
@@ -65,9 +76,9 @@ export default function FPSController({
     velocity.current.set(0, 0, 0);
     setLocked(false);
     onLockChange?.(false);
-  }, [enabled, onLockChange]);
+  }, [enabled, onLockChange, resetKeys]);
 
-  // ✅ Mouvement clavier
+  // Mouvement clavier
   useEffect(() => {
     const onKeyDown = (e) => {
       if (!enabled) return;
@@ -101,7 +112,7 @@ export default function FPSController({
     };
   }, [enabled]);
 
-  // ✅ Lock/unlock events
+  // Lock/unlock events
   useEffect(() => {
     const controls = controlsRef.current;
     if (!controls) return;
@@ -126,30 +137,24 @@ export default function FPSController({
       controls.removeEventListener("lock", onLock);
       controls.removeEventListener("unlock", onUnlock);
     };
-  }, [onLockChange]);
+  }, [onLockChange, resetKeys]);
 
-  // ✅ CLIC SOURIS en FPS (pointer lock) => raycast centre écran
+  // Clic souris en FPS => raycast centre écran
   useEffect(() => {
     if (!enabled || !locked) return;
 
     const onMouseDown = (e) => {
-      // clic gauche seulement
       if (e.button !== 0) return;
 
-      // tente pick au centre
       const picked = pickCenter();
-
-      // si un pin est pické, on évite des effets de bord
-      if (picked) {
-        e.preventDefault();
-      }
+      if (picked) e.preventDefault();
     };
 
     window.addEventListener("mousedown", onMouseDown, { passive: false });
     return () => window.removeEventListener("mousedown", onMouseDown);
   }, [enabled, locked, pickCenter]);
 
-  // ✅ Déplacement
+  // Déplacement
   useFrame((_, dt) => {
     if (!enabled || !locked) return;
 
