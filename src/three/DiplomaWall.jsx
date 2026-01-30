@@ -21,8 +21,8 @@ function DiplomaFrameContent({ size = SIZE, textureUrl }) {
   useEffect(() => {
     if (!diplomaTex) return;
 
-    if ("colorSpace" in diplomaTex) diplomaTex.colorSpace = THREE.SRGBColorSpace;
-    else diplomaTex.encoding = THREE.sRGBEncoding;
+    
+    diplomaTex.colorSpace = THREE.SRGBColorSpace;
 
     diplomaTex.anisotropy = 8;
     diplomaTex.wrapS = THREE.ClampToEdgeWrapping;
