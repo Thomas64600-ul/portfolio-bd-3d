@@ -1,10 +1,26 @@
-// src/ui/TravelCard.jsx
+import { useMemo, useEffect } from "react";
 import { SECTIONS } from "../data/sections";
 
 export default function TravelCard({ itemId, onClose }) {
-  const travel = SECTIONS?.travels?.items?.[itemId];
+  const index = useMemo(() => {
+    if (itemId == null) return null;
+    const n = Number(itemId);
+    return Number.isFinite(n) ? n : null;
+  }, [itemId]);
 
-  if (itemId == null || !travel) return null;
+  const travel = index == null ? null : SECTIONS?.travels?.items?.[index];
+
+  useEffect(() => {
+    if (!travel) return;
+
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") onClose?.();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [travel, onClose]);
+
+  if (index == null || !travel) return null;
 
   const title = travel.title || "Voyage";
   const desc = travel.description || "";
@@ -16,10 +32,10 @@ export default function TravelCard({ itemId, onClose }) {
       <div className="travelCard__top">
         <div>
           <div className="travelCard__title">{title}</div>
-          {desc && <div className="travelCard__desc">{desc}</div>}
+          {desc ? <div className="travelCard__desc">{desc}</div> : null}
         </div>
 
-        <button className="btn" onClick={onClose} aria-label="Fermer">
+        <button className="btn" onClick={() => onClose?.()} aria-label="Fermer">
           ✖
         </button>
       </div>
@@ -39,7 +55,12 @@ export default function TravelCard({ itemId, onClose }) {
       {photos.length ? (
         <div className="travelCard__grid">
           {photos.map((src, i) => (
-            <img key={i} className="travelCard__photo" src={src} alt={`${title} ${i + 1}`} />
+            <img
+              key={i}
+              className="travelCard__photo"
+              src={src}
+              alt={`${title} ${i + 1}`}
+            />
           ))}
         </div>
       ) : (
