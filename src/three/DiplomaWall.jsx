@@ -1,15 +1,29 @@
-// src/three/DiplomaWall.jsx
 import { useMemo, useEffect } from "react";
 import { useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import FrameInteractive from "./FrameInteractive";
 
-function DiplomaFrameContent({ size = [1.8, 1.25], textureUrl }) {
+const SIZE = [1.8, 1.25];
+const X = -10.75;
+const Y = 2.85;
+const Z_LIST = [3.8, 1.1, -1.6, -4.3];
+
+const DIPLOMA_TEXTURES = [
+  "/textures/diplomas/diplome-rncp.jpg",
+  "/textures/diplomas/certif-ia.jpg",
+  "/textures/diplomas/diplome-bts.jpg",
+  "/textures/diplomas/bac.jpg",
+];
+
+function DiplomaFrameContent({ size = SIZE, textureUrl }) {
   const diplomaTex = useTexture(textureUrl);
 
   useEffect(() => {
     if (!diplomaTex) return;
-    diplomaTex.colorSpace = THREE.SRGBColorSpace;
+
+    if ("colorSpace" in diplomaTex) diplomaTex.colorSpace = THREE.SRGBColorSpace;
+    else diplomaTex.encoding = THREE.sRGBEncoding;
+
     diplomaTex.anisotropy = 8;
     diplomaTex.wrapS = THREE.ClampToEdgeWrapping;
     diplomaTex.wrapT = THREE.ClampToEdgeWrapping;
@@ -49,7 +63,6 @@ function DiplomaFrameContent({ size = [1.8, 1.25], textureUrl }) {
 
   return (
     <group>
-      {/* ✅ Déco : raycast OFF (ne vole pas les clics) */}
       <mesh raycast={() => null}>
         <boxGeometry args={[size[0] + 0.12, size[1] + 0.12, 0.05]} />
         <primitive object={inkMat} attach="material" />
@@ -69,52 +82,39 @@ function DiplomaFrameContent({ size = [1.8, 1.25], textureUrl }) {
 }
 
 export default function DiplomaWall({ onPickDiplomas, activeIndex }) {
-  const x = -10.75;
-  const zList = [3.8, 1.1, -1.6, -4.3];
-  const y = 2.85;
+  const separators = useMemo(
+    () => [
+      (Z_LIST[0] + Z_LIST[1]) / 2,
+      (Z_LIST[1] + Z_LIST[2]) / 2,
+      (Z_LIST[2] + Z_LIST[3]) / 2,
+    ],
+    []
+  );
 
-  const size = [1.8, 1.25];
-
-  const diplomaTextures = [
-    "/textures/diplomas/diplome-rncp.jpg",
-    "/textures/diplomas/certif-ia.jpg",
-    "/textures/diplomas/diplome-bts.jpg",
-    "/textures/diplomas/bac.jpg",
-  ];
-
-  const separators = [
-    (zList[0] + zList[1]) / 2,
-    (zList[1] + zList[2]) / 2,
-    (zList[2] + zList[3]) / 2,
-  ];
-
-  const selectedId =
-    activeIndex == null ? null : `diploma-${activeIndex}`;
+  const selectedId = activeIndex == null ? null : `diploma-${activeIndex}`;
 
   return (
     <group>
-      {/* ✅ Cadres interactifs */}
-      {zList.map((z, i) => (
+      {Z_LIST.map((z, i) => (
         <FrameInteractive
           key={i}
           id={`diploma-${i}`}
           selectedId={selectedId}
           onPick={() => onPickDiplomas?.(i)}
-          position={[x, y, z]}
+          position={[X, Y, z]}
           rotation={[0, Math.PI / 2, 0]}
-          pop={0.55} // avance (effet “zoom”)
-          hitbox={[size[0] + 0.35, size[1] + 0.35, 0.35]}
+          pop={0.55}
+          hitbox={[SIZE[0] + 0.35, SIZE[1] + 0.35, 0.35]}
           hitboxZ={0.12}
         >
-          <DiplomaFrameContent size={size} textureUrl={diplomaTextures[i]} />
+          <DiplomaFrameContent size={SIZE} textureUrl={DIPLOMA_TEXTURES[i]} />
         </FrameInteractive>
       ))}
 
-      {/* ✅ Séparateurs : déco => raycast OFF */}
       {separators.map((zMid, idx) => (
         <mesh
           key={`sep-${idx}`}
-          position={[x, y, zMid]}
+          position={[X, Y, zMid]}
           rotation={[0, Math.PI / 2, 0]}
           raycast={() => null}
         >
