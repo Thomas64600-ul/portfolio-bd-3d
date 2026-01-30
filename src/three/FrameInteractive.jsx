@@ -5,15 +5,15 @@ import { easing } from "maath";
 import InteractiveItem from "./InteractiveItem";
 
 export default function FrameInteractive({
-  id,                 // string unique: "diploma-0"
-  selectedId,         // id actuellement ouvert
-  onPick,             // (id) => void
-  position = [0,0,0],
-  rotation = [0,0,0],
-  pop = 0.28,         // distance d’avance
+  id,
+  selectedId,
+  onPick,
+  position = [0, 0, 0],
+  rotation = [0, 0, 0],
+  pop = 0.28,
   children,
-  hitbox = [2.2, 1.6, 0.25], // taille hitbox par défaut
-  hitboxZ = 0.10,     // hitbox un peu devant
+  hitbox = [2.2, 1.6, 0.25],
+  hitboxZ = 0.1,
   enableHitbox = true,
 }) {
   const ref = useRef();
@@ -22,35 +22,34 @@ export default function FrameInteractive({
   const baseRot = useMemo(() => new THREE.Euler(...rotation), [rotation]);
 
   const forward = useMemo(() => {
-    // vecteur avant local (0,0,1) transformé par rotation
     return new THREE.Vector3(0, 0, 1).applyEuler(baseRot).normalize();
   }, [baseRot]);
 
   const isOpen = selectedId === id;
 
+  const tmpTarget = useMemo(() => new THREE.Vector3(), []);
+
   useFrame((_, dt) => {
     if (!ref.current) return;
 
-    const targetPos = isOpen
-      ? basePos.clone().add(forward.clone().multiplyScalar(pop))
-      : basePos;
+    if (isOpen) {
+      tmpTarget.copy(basePos).addScaledVector(forward, pop);
+    } else {
+      tmpTarget.copy(basePos);
+    }
 
-    // Smooth move
-    easing.damp3(ref.current.position, targetPos, 0.18, dt);
+    easing.damp3(ref.current.position, tmpTarget, 0.18, dt);
 
-    // Petite respiration quand ouvert (facultatif)
     const s = isOpen ? 1.015 : 1.0;
     easing.damp3(ref.current.scale, [s, s, 1], 0.18, dt);
   });
 
   return (
     <group ref={ref} position={position} rotation={rotation}>
-      {/* contenu du cadre (image + frame + deco) */}
       {children}
 
-     {/* ✅ Hitbox optionnelle */}
       {enableHitbox && (
-        <InteractiveItem onPick={() => onPick(id)}>
+        <InteractiveItem onPick={() => onPick?.(id)}>
           <mesh position={[0, 0, hitboxZ]}>
             <boxGeometry args={hitbox} />
             <meshBasicMaterial transparent opacity={0} depthWrite={false} />
@@ -60,4 +59,3 @@ export default function FrameInteractive({
     </group>
   );
 }
-
