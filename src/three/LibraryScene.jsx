@@ -1,4 +1,3 @@
-// src/three/LibraryScene.jsx
 import { Canvas, useFrame, useLoader } from "@react-three/fiber";
 import { Environment, Text } from "@react-three/drei";
 import * as THREE from "three";
@@ -13,27 +12,18 @@ import TravelWall from "./TravelWall";
 import MovieWall from "./MovieWall";
 import StylizedCeiling from "./StylizedCeiling";
 
-import { SECTIONS } from "../data/sections";
-
-/**
- * =========================
- * ✅ BOOKCASE UNIT
- * =========================
- */
 function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
-  const palette =
-    theme === "comics"
-      ? ["#ffd166", "#ef476f", "#06d6a0", "#118ab2"]
-      : theme === "manga"
-      ? ["#f4f4f4", "#d9d9d9", "#a8a8a8", "#1f1f1f"]
-      : ["#78d6ff", "#ff7a9a", "#e9d36b", "#7CFF8D"];
+  const palette = useMemo(() => {
+    if (theme === "comics") return ["#ffd166", "#ef476f", "#06d6a0", "#118ab2"];
+    if (theme === "manga") return ["#f4f4f4", "#d9d9d9", "#a8a8a8", "#1f1f1f"];
+    return ["#78d6ff", "#ff7a9a", "#e9d36b", "#7CFF8D"]; // BD
+  }, [theme]);
 
-  const label =
-    theme === "comics" ? "COMICS" : theme === "manga" ? "MANGA" : "BD";
-
+  const label = theme === "comics" ? "COMICS" : theme === "manga" ? "MANGA" : "BD";
   const labelAccent =
     theme === "comics" ? "#ef476f" : theme === "manga" ? "#f4f4f4" : "#ff7a9a";
 
+  // Dimensions unit
   const W = 4.6;
   const H = 2.9;
   const D = 0.78;
@@ -57,7 +47,7 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
     []
   );
 
-  // ✅ MANGA TEXTURES
+  // Dossiers en minuscules: important sous Linux
   const mangaTextures = useLoader(THREE.TextureLoader, [
     "/textures/manga/dragonball.jpg",
     "/textures/manga/aot.jpg",
@@ -66,7 +56,6 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
     "/textures/manga/gunnm.jpg",
   ]);
 
-  // ✅ COMICS TEXTURES
   const comicsTextures = useLoader(THREE.TextureLoader, [
     "/textures/comics/300.jpg",
     "/textures/comics/dc.jpg",
@@ -75,7 +64,6 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
     "/textures/comics/walkingdead.jpg",
   ]);
 
-  // ✅ BD TEXTURES (⚠️ dossier bd en minuscule = OK Linux)
   const bdTextures = useLoader(THREE.TextureLoader, [
     "/textures/bd/signe.jpg",
     "/textures/bd/complainte.jpg",
@@ -86,8 +74,8 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
     "/textures/bd/murena.jpg",
   ]);
 
-  // ✅ réglages textures (sRGB + mipmaps)
-  useMemo(() => {
+  // Réglages textures (sRGB + mipmaps + anisotropy)
+  useEffect(() => {
     const apply = (texList) => {
       const list = Array.isArray(texList) ? texList : [texList];
       list.forEach((t) => {
@@ -112,10 +100,7 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
     apply(bdTextures);
   }, [mangaTextures, comicsTextures, bdTextures]);
 
-  /**
-   * ✅ Découpe une image "panorama de tranches" en N morceaux horizontaux
-   * + uStart/uEnd pour ignorer les marges blanches
-   */
+  // Slice “panorama tranches” en N morceaux (uStart/uEnd pour couper marges blanches)
   const sliceTexture = useCallback((baseTex, i, count, uStart = 0, uEnd = 1) => {
     if (!baseTex || !count) return null;
 
@@ -124,9 +109,7 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
 
     const span = Math.max(0.0001, uEnd - uStart);
     const w = span / count;
-
-    // ✅ petit padding anti-bleeding entre slices
-    const pad = 0.0015 * span;
+    const pad = 0.0015 * span; // anti-bleeding
 
     t.repeat.set(Math.max(0.0001, w - pad), 1);
     t.offset.set(uStart + i * w + pad * 0.5, 0);
@@ -145,15 +128,14 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
     return t;
   }, []);
 
-  // ✅ densité (plus rempli)
   const ROW_COUNTS = useMemo(() => [20, 18, 24], []);
 
-  const rand01 = (n) => {
+  const rand01 = useCallback((n) => {
     const x = Math.sin(n * 999) * 10000;
     return x - Math.floor(x);
-  };
+  }, []);
 
-  const Book = ({ itemId, x, y, h, w, c, tilt = 0, variant = 0, spineTex }) => {
+  function Book({ itemId, x, y, h, w, c, tilt = 0, variant = 0, spineTex }) {
     const isManga = theme === "manga";
     const isComics = theme === "comics";
     const isBD = theme === "bd";
@@ -171,35 +153,19 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
 
     return (
       <InteractiveItem onPick={() => onPickItem?.(itemId)}>
-        <group
-          position={[x + xNudge, y + yNudge, bookZ + zNudge]}
-          rotation={[0, 0, tilt]}
-        >
-          {/* Corps */}
+        <group position={[x + xNudge, y + yNudge, bookZ + zNudge]} rotation={[0, 0, tilt]}>
           <mesh castShadow receiveShadow>
             <boxGeometry args={[w, h, 0.07]} />
             <meshStandardMaterial
-              color={
-                isManga ? "#eaeaea" : isComics ? "#101010" : isBD ? "#e8e1d8" : c
-              }
+              color={isManga ? "#eaeaea" : isComics ? "#101010" : isBD ? "#e8e1d8" : c}
               roughness={isComics ? 0.9 : isBD ? 0.85 : 0.72}
               metalness={isComics ? 0.04 : 0.02}
             />
           </mesh>
 
-          {/* ✅ Tranche texture (BD = un poil plus devant + plus "petite" pour bordure) */}
           {hasSpine && (
-            <mesh
-              castShadow
-              receiveShadow
-              position={[0, 0, isBD ? 0.043 : 0.041]}
-            >
-              <planeGeometry
-                args={[
-                  w * (isBD ? 0.96 : 0.92), // ✅ avant: 0.985
-                  h * (isBD ? 0.96 : 0.92), // ✅ avant: 0.985
-                ]}
-              />
+            <mesh castShadow receiveShadow position={[0, 0, isBD ? 0.043 : 0.041]}>
+              <planeGeometry args={[w * (isBD ? 0.96 : 0.92), h * (isBD ? 0.96 : 0.92)]} />
               {isComics ? (
                 <meshPhysicalMaterial
                   map={spineTex}
@@ -214,9 +180,9 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
               ) : (
                 <meshStandardMaterial
                   map={spineTex}
-                  roughness={isBD ? 0.65 : 0.86} // ✅ avant: 0.75
-                  metalness={isBD ? 0.05 : 0.0} // ✅ avant: 0.0
-                  emissive={isBD ? new THREE.Color("#000000") : undefined} // ✅ contraste/relief
+                  roughness={isBD ? 0.65 : 0.86}
+                  metalness={isBD ? 0.05 : 0.0}
+                  emissive={isBD ? new THREE.Color("#000000") : undefined}
                   emissiveIntensity={0.15}
                   polygonOffset
                   polygonOffsetFactor={-1}
@@ -226,19 +192,13 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
             </mesh>
           )}
 
-          {/* Bande déco (BD uniquement si PAS de texture) */}
           {!isManga && !isComics && !hasSpine && (
             <mesh position={[0, h * 0.28, 0.045]}>
               <boxGeometry args={[w * 0.86, h * 0.14, 0.012]} />
-              <meshStandardMaterial
-                color={band}
-                roughness={0.55}
-                metalness={0.01}
-              />
+              <meshStandardMaterial color={band} roughness={0.55} metalness={0.01} />
             </mesh>
           )}
 
-          {/* Plaque blanche BD (uniquement si PAS de texture) */}
           {theme === "bd" && !hasSpine && (
             <mesh position={[0, -h * 0.32, 0.045]}>
               <boxGeometry args={[w * 0.7, h * 0.12, 0.012]} />
@@ -248,27 +208,13 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
         </group>
       </InteractiveItem>
     );
-  };
+  }
 
-  const Row = ({
-    rowIndex,
-    y,
-    count,
-    leftPad = 0.72,
-    rightPad = 0.72,
-    offset = 0,
-  }) => {
+  function Row({ rowIndex, y, count, leftPad = 0.72, rightPad = 0.72, offset = 0 }) {
     const usable = W - leftPad - rightPad;
     const step = usable / count;
 
-    const pickSlice = (
-      baseTex,
-      iInBlock,
-      displayBlockCount,
-      realCount,
-      uStart = 0,
-      uEnd = 1
-    ) => {
+    const pickSlice = (baseTex, iInBlock, displayBlockCount, realCount, uStart = 0, uEnd = 1) => {
       const localIndex = Math.floor((iInBlock * realCount) / displayBlockCount);
       return sliceTexture(baseTex, localIndex, realCount, uStart, uEnd);
     };
@@ -279,15 +225,8 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
           const globalIndex = offset + i;
           const x = -W / 2 + leftPad + i * step + step * 0.5;
 
-          const h =
-            theme === "manga" ? 0.545 : theme === "comics" ? 0.59 : 0.62;
-
-          const w =
-            theme === "manga"
-              ? step * 0.9
-              : theme === "comics"
-              ? step * 0.86
-              : step * 0.88;
+          const h = theme === "manga" ? 0.545 : theme === "comics" ? 0.59 : 0.62;
+          const w = theme === "manga" ? step * 0.9 : theme === "comics" ? step * 0.86 : step * 0.88;
 
           const baseColor =
             theme === "manga"
@@ -309,104 +248,52 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
 
           let spineTex = null;
 
-          // ✅ MANGA
           if (theme === "manga") {
             const SERIES = { db: 34, aot: 11, sommet: 5, lastman: 12, gunnm: 9 };
 
-            if (rowIndex === 2) {
-              spineTex = pickSlice(mangaTextures[0], i, count, SERIES.db);
-            }
+            if (rowIndex === 2) spineTex = pickSlice(mangaTextures[0], i, count, SERIES.db);
 
             if (rowIndex === 1) {
               const total = SERIES.aot + SERIES.sommet;
-              const aotBlock = Math.max(
-                1,
-                Math.round((count * SERIES.aot) / total)
-              );
+              const aotBlock = Math.max(1, Math.round((count * SERIES.aot) / total));
               const sommetBlock = Math.max(1, count - aotBlock);
 
-              if (i < aotBlock) {
-                spineTex = pickSlice(mangaTextures[1], i, aotBlock, SERIES.aot);
-              } else {
-                const j = i - aotBlock;
-                spineTex = pickSlice(
-                  mangaTextures[2],
-                  j,
-                  sommetBlock,
-                  SERIES.sommet
-                );
-              }
+              if (i < aotBlock) spineTex = pickSlice(mangaTextures[1], i, aotBlock, SERIES.aot);
+              else spineTex = pickSlice(mangaTextures[2], i - aotBlock, sommetBlock, SERIES.sommet);
             }
 
             if (rowIndex === 0) {
               const total = SERIES.lastman + SERIES.gunnm;
-              const lastBlock = Math.max(
-                1,
-                Math.round((count * SERIES.lastman) / total)
-              );
+              const lastBlock = Math.max(1, Math.round((count * SERIES.lastman) / total));
               const gunnmBlock = Math.max(1, count - lastBlock);
 
-              if (i < lastBlock) {
-                spineTex = pickSlice(
-                  mangaTextures[3],
-                  i,
-                  lastBlock,
-                  SERIES.lastman
-                );
-              } else {
-                const j = i - lastBlock;
-                spineTex = pickSlice(
-                  mangaTextures[4],
-                  j,
-                  gunnmBlock,
-                  SERIES.gunnm
-                );
-              }
+              if (i < lastBlock) spineTex = pickSlice(mangaTextures[3], i, lastBlock, SERIES.lastman);
+              else spineTex = pickSlice(mangaTextures[4], i - lastBlock, gunnmBlock, SERIES.gunnm);
             }
           }
 
-          // ✅ COMICS
           if (theme === "comics") {
             const SERIES = { t300: 1, dc: 10, preacher: 4, sincity: 7, walkingdead: 16 };
 
-            if (rowIndex === 2) {
-              spineTex = pickSlice(comicsTextures[4], i, count, SERIES.walkingdead);
-            }
-
-            if (rowIndex === 1) {
-              spineTex = pickSlice(comicsTextures[1], i, count, SERIES.dc);
-            }
+            if (rowIndex === 2) spineTex = pickSlice(comicsTextures[4], i, count, SERIES.walkingdead);
+            if (rowIndex === 1) spineTex = pickSlice(comicsTextures[1], i, count, SERIES.dc);
 
             if (rowIndex === 0) {
               const preacherPart = 0.35;
               const sincityPart = 0.55;
+
               const preacherBlock = Math.max(1, Math.round(count * preacherPart));
               const sincityBlock = Math.max(1, Math.round(count * sincityPart));
               const used = preacherBlock + sincityBlock;
               const lastBlock = Math.max(1, count - used);
 
-              if (i < preacherBlock) {
-                spineTex = pickSlice(
-                  comicsTextures[2],
-                  i,
-                  preacherBlock,
-                  SERIES.preacher
-                );
-              } else if (i < preacherBlock + sincityBlock) {
-                const j = i - preacherBlock;
-                spineTex = pickSlice(
-                  comicsTextures[3],
-                  j,
-                  sincityBlock,
-                  SERIES.sincity
-                );
-              } else {
-                spineTex = pickSlice(comicsTextures[0], 0, lastBlock, SERIES.t300);
-              }
+              if (i < preacherBlock) spineTex = pickSlice(comicsTextures[2], i, preacherBlock, SERIES.preacher);
+              else if (i < preacherBlock + sincityBlock)
+                spineTex = pickSlice(comicsTextures[3], i - preacherBlock, sincityBlock, SERIES.sincity);
+              else spineTex = pickSlice(comicsTextures[0], 0, lastBlock, SERIES.t300);
             }
           }
 
-          // ✅ BD (organisation logique collections)
           if (theme === "bd") {
             const SERIES = {
               signe: 32,
@@ -418,7 +305,7 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
               murena: 13,
             };
 
-            // 👉 TRIM gardé (même si tu as recadré, ça évite encore le "bleed")
+            // Trim conservé: évite encore le bleeding si recadrage pas parfait
             const TRIM = {
               signe: [0.02, 0.98],
               complainte: [0.06, 0.94],
@@ -429,108 +316,46 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
               murena: [0.06, 0.94],
             };
 
-            /* 🔝 HAUT : Largo + Signé */
             if (rowIndex === 2) {
               const total = SERIES.largo + SERIES.signe;
-              const largoBlock = Math.max(
-                1,
-                Math.round((count * SERIES.largo) / total)
-              );
+              const largoBlock = Math.max(1, Math.round((count * SERIES.largo) / total));
               const signeBlock = Math.max(1, count - largoBlock);
 
-              if (i < largoBlock) {
-                spineTex = pickSlice(
-                  bdTextures[3],
-                  i,
-                  largoBlock,
-                  SERIES.largo,
-                  ...TRIM.largo
-                );
-              } else {
-                const j = i - largoBlock;
-                spineTex = pickSlice(
-                  bdTextures[0],
-                  j,
-                  signeBlock,
-                  SERIES.signe,
-                  ...TRIM.signe
-                );
-              }
+              if (i < largoBlock)
+                spineTex = pickSlice(bdTextures[3], i, largoBlock, SERIES.largo, ...TRIM.largo);
+              else spineTex = pickSlice(bdTextures[0], i - largoBlock, signeBlock, SERIES.signe, ...TRIM.signe);
             }
 
-            /* 🟡 MILIEU : Murena + Aigles */
             if (rowIndex === 1) {
               const total = SERIES.murena + SERIES.aigles;
-              const murenaBlock = Math.max(
-                1,
-                Math.round((count * SERIES.murena) / total)
-              );
+              const murenaBlock = Math.max(1, Math.round((count * SERIES.murena) / total));
               const aiglesBlock = Math.max(1, count - murenaBlock);
 
-              if (i < murenaBlock) {
-                spineTex = pickSlice(
-                  bdTextures[6],
-                  i,
-                  murenaBlock,
-                  SERIES.murena,
-                  ...TRIM.murena
-                );
-              } else {
-                const j = i - murenaBlock;
-                spineTex = pickSlice(
-                  bdTextures[4],
-                  j,
-                  aiglesBlock,
-                  SERIES.aigles,
-                  ...TRIM.aigles
-                );
-              }
+              if (i < murenaBlock)
+                spineTex = pickSlice(bdTextures[6], i, murenaBlock, SERIES.murena, ...TRIM.murena);
+              else spineTex = pickSlice(bdTextures[4], i - murenaBlock, aiglesBlock, SERIES.aigles, ...TRIM.aigles);
             }
 
-            /* 🔻 BAS : Complainte + Vieux + Jeremiah */
             if (rowIndex === 0) {
-              const total =
-                SERIES.complainte + SERIES.vieux + SERIES.jeremiah;
+              const total = SERIES.complainte + SERIES.vieux + SERIES.jeremiah;
 
-              const complainteBlock = Math.max(
-                1,
-                Math.round((count * SERIES.complainte) / total)
-              );
-              const vieuxBlock = Math.max(
-                1,
-                Math.round((count * SERIES.vieux) / total)
-              );
-
+              const complainteBlock = Math.max(1, Math.round((count * SERIES.complainte) / total));
+              const vieuxBlock = Math.max(1, Math.round((count * SERIES.vieux) / total));
               const used = complainteBlock + vieuxBlock;
               const jeremiahBlock = Math.max(1, count - used);
 
-              if (i < complainteBlock) {
-                spineTex = pickSlice(
-                  bdTextures[1],
-                  i,
-                  complainteBlock,
-                  SERIES.complainte,
-                  ...TRIM.complainte
-                );
-              } else if (i < complainteBlock + vieuxBlock) {
-                const j = i - complainteBlock;
-                spineTex = pickSlice(
-                  bdTextures[5],
-                  j,
-                  vieuxBlock,
-                  SERIES.vieux,
-                  ...TRIM.vieux
-                );
-              } else {
-                const j = i - (complainteBlock + vieuxBlock);
+              if (i < complainteBlock)
+                spineTex = pickSlice(bdTextures[1], i, complainteBlock, SERIES.complainte, ...TRIM.complainte);
+              else if (i < complainteBlock + vieuxBlock)
+                spineTex = pickSlice(bdTextures[5], i - complainteBlock, vieuxBlock, SERIES.vieux, ...TRIM.vieux);
+              else
                 spineTex = pickSlice(
                   bdTextures[2],
-                  j,
+                  i - (complainteBlock + vieuxBlock),
                   jeremiahBlock,
                   SERIES.jeremiah,
                   ...TRIM.jeremiah
                 );
-              }
             }
           }
 
@@ -551,15 +376,12 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
         })}
       </group>
     );
-  };
+  }
 
-  const bottomCount = ROW_COUNTS[0];
-  const midCount = ROW_COUNTS[1];
-  const topCount = ROW_COUNTS[2];
+  const [bottomCount, midCount, topCount] = ROW_COUNTS;
 
   return (
     <group>
-      {/* hitbox shelf */}
       {onPickShelf && (
         <InteractiveItem onPick={onPickShelf}>
           <mesh position={[0, H / 2, frontZ - 0.02]}>
@@ -569,13 +391,11 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
         </InteractiveItem>
       )}
 
-      {/* back panel */}
       <mesh position={[0, H / 2, backZ]} receiveShadow>
         <boxGeometry args={[W - frameT * 1.2, H - frameT * 1.2, 0.06]} />
         <primitive object={innerBackMat} attach="material" />
       </mesh>
 
-      {/* frame */}
       <mesh position={[-W / 2 + frameT / 2, H / 2, 0]} castShadow receiveShadow>
         <boxGeometry args={[frameT, H, D]} />
         <primitive object={walnutMat} attach="material" />
@@ -593,7 +413,6 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
         <primitive object={walnutMat} attach="material" />
       </mesh>
 
-      {/* shelves */}
       {[0.95, 1.55, 2.15].map((yy, idx) => (
         <mesh key={idx} position={[0, yy, shelfZ]} castShadow receiveShadow>
           <boxGeometry args={[W - frameT * 1.2, shelfT, D - 0.1]} />
@@ -601,28 +420,17 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
         </mesh>
       ))}
 
-      {/* rows (bas / milieu / haut) */}
       <Row rowIndex={0} y={0.62} count={bottomCount} offset={0} />
       <Row rowIndex={1} y={1.22} count={midCount} offset={bottomCount} />
-      <Row
-        rowIndex={2}
-        y={1.82}
-        count={topCount}
-        offset={bottomCount + midCount}
-      />
+      <Row rowIndex={2} y={1.82} count={topCount} offset={bottomCount + midCount} />
 
-      {/* label plate */}
       <mesh position={[0, H - 0.24, frontZ]}>
         <boxGeometry args={[W * 0.58, 0.22, 0.05]} />
         <meshStandardMaterial transparent opacity={0} />
       </mesh>
       <mesh position={[0, H - 0.24, frontZ + 0.03]} castShadow receiveShadow>
         <boxGeometry args={[W * 0.52, 0.16, 0.01]} />
-        <meshStandardMaterial
-          color={labelAccent}
-          roughness={0.5}
-          metalness={0.02}
-        />
+        <meshStandardMaterial color={labelAccent} roughness={0.5} metalness={0.02} />
       </mesh>
       <Text
         position={[0, H - 0.24, frontZ + 0.05]}
@@ -639,11 +447,6 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
   );
 }
 
-/**
- * =========================
- * ✅ SCENE INNER
- * =========================
- */
 function SceneInner({
   onOpenSection,
   focus,
@@ -666,7 +469,7 @@ function SceneInner({
       try {
         document.exitPointerLock();
       } catch {
-        // ignore
+        // no-op
       }
     }
     setIsLocked?.(false);
@@ -744,10 +547,13 @@ function SceneInner({
 
   const SHELF_Z = -6.55;
 
-  const focusForShelf = (x) => ({
-    pos: [x, 1.55, -4.95],
-    look: [x, 1.35, SHELF_Z - 0.25],
-  });
+  const focusForShelf = useCallback(
+    (x) => ({
+      pos: [x, 1.55, -4.95],
+      look: [x, 1.35, SHELF_Z - 0.25],
+    }),
+    []
+  );
 
   useFrame((state, dt) => {
     if (!focus?.active) return;
@@ -757,8 +563,7 @@ function SceneInner({
 
     easing.damp3(state.camera.position, cameraTarget.current, 0.25, dt);
 
-    if (!state.camera.userData._look)
-      state.camera.userData._look = new THREE.Vector3();
+    if (!state.camera.userData._look) state.camera.userData._look = new THREE.Vector3();
     easing.damp3(state.camera.userData._look, lookTarget.current, 0.25, dt);
     state.camera.lookAt(state.camera.userData._look);
 
@@ -769,11 +574,14 @@ function SceneInner({
     }
   });
 
-  const pick = (sectionId, pos, look, itemId = null) => {
-    unlockPointer();
-    setMapEditMode(false);
-    setFocus({ active: true, opened: false, sectionId, itemId, pos, look });
-  };
+  const pick = useCallback(
+    (sectionId, pos, look, itemId = null) => {
+      unlockPointer();
+      setMapEditMode(false);
+      setFocus({ active: true, opened: false, sectionId, itemId, pos, look });
+    },
+    [unlockPointer, setMapEditMode, setFocus]
+  );
 
   return (
     <>
@@ -816,36 +624,20 @@ function SceneInner({
 
       <MovieWall position={[0, 2.35, 7.78]} />
 
-      <mesh
-        position={[-10.98, 2.3, 0]}
-        rotation={[0, Math.PI / 2, 0]}
-        receiveShadow
-      >
+      <mesh position={[-10.98, 2.3, 0]} rotation={[0, Math.PI / 2, 0]} receiveShadow>
         <planeGeometry args={[18, 4.6]} />
         {stoneMat ? <primitive object={stoneMat} attach="material" /> : null}
       </mesh>
-      <mesh
-        position={[10.98, 2.3, 0]}
-        rotation={[0, -Math.PI / 2, 0]}
-        receiveShadow
-      >
+      <mesh position={[10.98, 2.3, 0]} rotation={[0, -Math.PI / 2, 0]} receiveShadow>
         <planeGeometry args={[18, 4.6]} />
         {stoneMat ? <primitive object={stoneMat} attach="material" /> : null}
       </mesh>
 
-      <mesh
-        position={[-10.92, 0.65, 0]}
-        rotation={[0, Math.PI / 2, 0]}
-        receiveShadow
-      >
+      <mesh position={[-10.92, 0.65, 0]} rotation={[0, Math.PI / 2, 0]} receiveShadow>
         <boxGeometry args={[18, 1.3, 0.08]} />
         <primitive object={walnutMat} attach="material" />
       </mesh>
-      <mesh
-        position={[10.92, 0.65, 0]}
-        rotation={[0, -Math.PI / 2, 0]}
-        receiveShadow
-      >
+      <mesh position={[10.92, 0.65, 0]} rotation={[0, -Math.PI / 2, 0]} receiveShadow>
         <boxGeometry args={[18, 1.3, 0.08]} />
         <primitive object={walnutMat} attach="material" />
       </mesh>
@@ -930,13 +722,7 @@ function SceneInner({
   );
 }
 
-export default function LibraryScene({
-  controlsEnabled,
-  setIsLocked,
-  onOpenSection,
-  focus,
-  setFocus,
-}) {
+export default function LibraryScene({ controlsEnabled, setIsLocked, onOpenSection, focus, setFocus }) {
   const [mapEditMode, setMapEditMode] = useState(false);
 
   return (
