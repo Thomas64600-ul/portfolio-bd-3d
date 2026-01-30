@@ -23,7 +23,6 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
   const labelAccent =
     theme === "comics" ? "#ef476f" : theme === "manga" ? "#f4f4f4" : "#ff7a9a";
 
-  // Dimensions unit
   const W = 4.6;
   const H = 2.9;
   const D = 0.78;
@@ -47,7 +46,7 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
     []
   );
 
-  // Dossiers en minuscules: important sous Linux
+ 
   const mangaTextures = useLoader(THREE.TextureLoader, [
     "/textures/manga/dragonball.jpg",
     "/textures/manga/aot.jpg",
@@ -74,15 +73,15 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
     "/textures/bd/murena.jpg",
   ]);
 
-  // Réglages textures (sRGB + mipmaps + anisotropy)
+ 
   useEffect(() => {
     const apply = (texList) => {
       const list = Array.isArray(texList) ? texList : [texList];
       list.forEach((t) => {
         if (!t) return;
 
-        if ("colorSpace" in t) t.colorSpace = THREE.SRGBColorSpace;
-        else t.encoding = THREE.sRGBEncoding;
+        
+        t.colorSpace = THREE.SRGBColorSpace;
 
         t.anisotropy = 12;
         t.minFilter = THREE.LinearMipmapLinearFilter;
@@ -100,7 +99,7 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
     apply(bdTextures);
   }, [mangaTextures, comicsTextures, bdTextures]);
 
-  // Slice “panorama tranches” en N morceaux (uStart/uEnd pour couper marges blanches)
+ 
   const sliceTexture = useCallback((baseTex, i, count, uStart = 0, uEnd = 1) => {
     if (!baseTex || !count) return null;
 
@@ -109,16 +108,14 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
 
     const span = Math.max(0.0001, uEnd - uStart);
     const w = span / count;
-    const pad = 0.0015 * span; // anti-bleeding
-
+    const pad = 0.0015 * span; 
     t.repeat.set(Math.max(0.0001, w - pad), 1);
     t.offset.set(uStart + i * w + pad * 0.5, 0);
 
     t.wrapS = THREE.RepeatWrapping;
     t.wrapT = THREE.ClampToEdgeWrapping;
 
-    if ("colorSpace" in t) t.colorSpace = THREE.SRGBColorSpace;
-    else t.encoding = THREE.sRGBEncoding;
+    t.colorSpace = THREE.SRGBColorSpace;
 
     t.anisotropy = 12;
     t.minFilter = THREE.LinearMipmapLinearFilter;
@@ -305,7 +302,6 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
               murena: 13,
             };
 
-            // Trim conservé: évite encore le bleeding si recadrage pas parfait
             const TRIM = {
               signe: [0.02, 0.98],
               complainte: [0.06, 0.94],
@@ -506,8 +502,8 @@ function SceneInner({
     woodMap.repeat.set(5, 4);
     woodMap.anisotropy = 8;
 
-    if ("colorSpace" in woodMap) woodMap.colorSpace = THREE.SRGBColorSpace;
-    else woodMap.encoding = THREE.sRGBEncoding;
+   
+    woodMap.colorSpace = THREE.SRGBColorSpace;
 
     return new THREE.MeshStandardMaterial({
       map: woodMap,
@@ -525,8 +521,8 @@ function SceneInner({
     base.repeat.set(7, 3.2);
     base.anisotropy = 8;
 
-    if ("colorSpace" in base) base.colorSpace = THREE.SRGBColorSpace;
-    else base.encoding = THREE.sRGBEncoding;
+   
+    base.colorSpace = THREE.SRGBColorSpace;
 
     return new THREE.MeshStandardMaterial({
       map: base,
