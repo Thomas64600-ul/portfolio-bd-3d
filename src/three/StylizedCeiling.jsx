@@ -28,8 +28,8 @@ export default function StylizedCeiling({
     ceilingMap.minFilter = THREE.LinearMipmapLinearFilter;
     ceilingMap.magFilter = THREE.LinearFilter;
 
-    if ("colorSpace" in ceilingMap) ceilingMap.colorSpace = THREE.SRGBColorSpace;
-    else ceilingMap.encoding = THREE.sRGBEncoding;
+   
+    ceilingMap.colorSpace = THREE.SRGBColorSpace;
 
     ceilingMap.needsUpdate = true;
   }, [ceilingMap, repeatX, repeatZ]);
@@ -69,7 +69,11 @@ export default function StylizedCeiling({
       </mesh>
 
       {beams.map((x, i) => (
-        <mesh key={i} position={[x, -(beamHeight / 2) - 0.06, 0]} material={beamMat}>
+        <mesh
+          key={i}
+          position={[x, -(beamHeight / 2) - 0.06, 0]}
+          material={beamMat}
+        >
           <boxGeometry args={[beamThickness, beamHeight, depth - 0.2]} />
         </mesh>
       ))}
