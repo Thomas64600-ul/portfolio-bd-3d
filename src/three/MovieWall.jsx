@@ -1,6 +1,5 @@
-// src/three/MovieWall.jsx
 import * as THREE from "three";
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { useTexture } from "@react-three/drei";
 
 function Poster({ texture, position, w = 1.15, h = 1.7 }) {
@@ -44,30 +43,25 @@ export default function MovieWall({
   middleGap = 0.8,
   outerGap = 1.2,
 
-  // ✅ NOUVEAU : micro-ajustement pour tomber entre les poutres
   // + => pousse vers l’extérieur ; - => ramène vers le centre
   beamNudge = 0.8,
 }) {
   const posters = useTexture([
-    // LEFT proche logo (4)
     "/textures/posters/cite-de-dieu.jpg",
     "/textures/posters/pulp-fiction.jpg",
     "/textures/posters/godfather.jpg",
     "/textures/posters/big-lebowski.jpg",
 
-    // LEFT extérieur (4)
     "/textures/posters/alien.jpg",
     "/textures/posters/apocalypsenow.jpg",
     "/textures/posters/exorcist.jpg",
     "/textures/posters/fightclub.jpg",
 
-    // RIGHT proche logo (4)
     "/textures/posters/terminator-2.jpg",
     "/textures/posters/platoon.jpg",
     "/textures/posters/back-to-the-future-2.jpg",
     "/textures/posters/gladiator.jpg",
 
-    // RIGHT extérieur (4)
     "/textures/posters/jaws.jpg",
     "/textures/posters/onceuponatimeinwest.jpg",
     "/textures/posters/orangemecanique.jpg",
@@ -76,10 +70,12 @@ export default function MovieWall({
 
   const logoTex = useTexture(logoPath);
 
-  useMemo(() => {
-    [...posters, logoTex].forEach((t) => {
-      if (!t) return;
-      t.colorSpace = THREE.SRGBColorSpace;
+  useEffect(() => {
+    const all = [...(posters || []), logoTex].filter(Boolean);
+    all.forEach((t) => {
+      if ("colorSpace" in t) t.colorSpace = THREE.SRGBColorSpace;
+      else t.encoding = THREE.sRGBEncoding;
+
       t.anisotropy = 8;
       t.minFilter = THREE.LinearMipmapLinearFilter;
       t.magFilter = THREE.LinearFilter;
@@ -100,7 +96,6 @@ export default function MovieWall({
     ];
   }, [posterW, posterH, gapX, gapY, zOffset]);
 
-  // LOGO +10%
   const galleryHeight = useMemo(() => posterH * 2 + gapY, [posterH, gapY]);
   const bigLogoH = useMemo(() => galleryHeight * 1.1, [galleryHeight]);
   const bigLogoW = bigLogoH;
@@ -112,17 +107,12 @@ export default function MovieWall({
     [blockWidth, bigLogoW, middleGap]
   );
 
-  // ✅ On garde un farOffsetX logique (propre visuellement)
   const farOffsetX = useMemo(
     () => nearOffsetX + blockWidth + outerGap,
     [nearOffsetX, blockWidth, outerGap]
   );
 
-  // ✅ Ajustement final "entre poutres"
-  const farAlignedX = useMemo(
-    () => farOffsetX + beamNudge,
-    [farOffsetX, beamNudge]
-  );
+  const farAlignedX = useMemo(() => farOffsetX + beamNudge, [farOffsetX, beamNudge]);
 
   const leftNear = posters.slice(0, 4);
   const leftFar = posters.slice(4, 8);
@@ -131,48 +121,59 @@ export default function MovieWall({
 
   return (
     <group position={position} rotation={[0, Math.PI, 0]}>
-      {/* LEFT - proche logo */}
       {leftNear.map((tex, i) => (
         <Poster
           key={`LN-${i}`}
           texture={tex}
-          position={[block2x2[i][0] - nearOffsetX, block2x2[i][1], block2x2[i][2]]}
+          position={[
+            block2x2[i][0] - nearOffsetX,
+            block2x2[i][1],
+            block2x2[i][2],
+          ]}
           w={posterW}
           h={posterH}
         />
       ))}
 
-      {/* LEFT - extérieur (✅ aligné proprement) */}
       {leftFar.map((tex, i) => (
         <Poster
           key={`LF-${i}`}
           texture={tex}
-          position={[block2x2[i][0] - farAlignedX, block2x2[i][1], block2x2[i][2]]}
+          position={[
+            block2x2[i][0] - farAlignedX,
+            block2x2[i][1],
+            block2x2[i][2],
+          ]}
           w={posterW}
           h={posterH}
         />
       ))}
 
-      {/* LOGO */}
       <Logo texture={logoTex} position={[0, 0, logoZ]} w={bigLogoW} h={bigLogoH} />
 
-      {/* RIGHT - proche logo */}
       {rightNear.map((tex, i) => (
         <Poster
           key={`RN-${i}`}
           texture={tex}
-          position={[block2x2[i][0] + nearOffsetX, block2x2[i][1], block2x2[i][2]]}
+          position={[
+            block2x2[i][0] + nearOffsetX,
+            block2x2[i][1],
+            block2x2[i][2],
+          ]}
           w={posterW}
           h={posterH}
         />
       ))}
 
-      {/* RIGHT - extérieur (✅ aligné proprement) */}
       {rightFar.map((tex, i) => (
         <Poster
           key={`RF-${i}`}
           texture={tex}
-          position={[block2x2[i][0] + farAlignedX, block2x2[i][1], block2x2[i][2]]}
+          position={[
+            block2x2[i][0] + farAlignedX,
+            block2x2[i][1],
+            block2x2[i][2],
+          ]}
           w={posterW}
           h={posterH}
         />
@@ -189,4 +190,5 @@ export default function MovieWall({
     </group>
   );
 }
+
 
