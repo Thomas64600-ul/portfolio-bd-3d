@@ -13,8 +13,8 @@ const FLIP_V = true;
 
 const PINS = [
   { label: "Inde", itemIndex: 0, uv: [0.6436, 0.5154] },
-  { label: "Vietnam", itemIndex: 1, uv: [0.7250, 0.5350] },
-  { label: "Cambodge", itemIndex: 2, uv: [0.7150, 0.5450] },
+  { label: "Vietnam", itemIndex: 1, uv: [0.7250, 0.535] },
+  { label: "Cambodge", itemIndex: 2, uv: [0.715, 0.545] },
   { label: "Nouvelle-Calédonie", itemIndex: 3, uv: [0.8905, 0.6894] },
   { label: "Sud du Portugal", itemIndex: 4, uv: [0.429, 0.4045] },
   { label: "Tenerife", itemIndex: 5, uv: [0.4029, 0.4626] },
@@ -41,8 +41,8 @@ export default function TravelWall({
   useEffect(() => {
     if (!mapTex) return;
 
-    if ("colorSpace" in mapTex) mapTex.colorSpace = THREE.SRGBColorSpace;
-    else mapTex.encoding = THREE.sRGBEncoding;
+    
+    mapTex.colorSpace = THREE.SRGBColorSpace;
 
     mapTex.anisotropy = 8;
     mapTex.wrapS = THREE.ClampToEdgeWrapping;
@@ -55,14 +55,16 @@ export default function TravelWall({
     if (document.pointerLockElement) document.exitPointerLock();
   }, []);
 
-  const mapMat = useMemo(() => {
-    return new THREE.MeshStandardMaterial({
-      map: mapTex,
-      roughness: 0.9,
-      metalness: 0,
-      side: THREE.DoubleSide,
-    });
-  }, [mapTex]);
+  const mapMat = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        map: mapTex,
+        roughness: 0.9,
+        metalness: 0,
+        side: THREE.DoubleSide,
+      }),
+    [mapTex]
+  );
 
   const MAP_Z = 0;
   const PIN_Z = 0.15;
@@ -111,7 +113,7 @@ export default function TravelWall({
 
       console.log("🧭 UV STABLE A COLLER :", [u, v]);
     },
-    [camera, gl, uvToXY] 
+    [camera, gl]
   );
 
   const handlePickWall = useCallback(
@@ -172,3 +174,4 @@ export default function TravelWall({
     </group>
   );
 }
+
