@@ -1,14 +1,11 @@
 import { useEffect, useState, useCallback } from "react";
 import LibraryScene from "./three/LibraryScene";
 import Overlay from "./ui/Overlay";
-import TravelCard from "./ui/TravelCard"; // ✅ AJOUT
+import TravelCard from "./ui/TravelCard";
 
 export default function App() {
   const [isLocked, setIsLocked] = useState(false);
-
-  // ✅ Autorisation globale FPS (le focus gère le reste)
   const [controlsEnabled, setControlsEnabled] = useState(true);
-
   const [openSectionId, setOpenSectionId] = useState(null);
 
   const [focus, setFocus] = useState({
@@ -20,7 +17,6 @@ export default function App() {
     look: [0, 1.6, 0],
   });
 
-  // ✅ helper: annuler le focus (important pour ne pas rester bloqué devant la carte)
   const cancelFocus = useCallback(() => {
     setFocus((f) => ({
       ...f,
@@ -34,7 +30,6 @@ export default function App() {
   const requestLock = useCallback(() => {
     setControlsEnabled(true);
 
-    // ✅ Bonus UX : lock direct depuis le bouton (gestuel utilisateur → autorisé)
     const canvas = document.querySelector("canvas");
     if (canvas && !document.pointerLockElement) {
       canvas.requestPointerLock?.();
@@ -42,28 +37,33 @@ export default function App() {
   }, []);
 
   const releaseLock = useCallback(() => {
-    // ✅ MODE UI : on sort du pointer lock + on désactive le FPS
-    if (document.pointerLockElement) {
-      document.exitPointerLock();
-    }
+    if (document.pointerLockElement) document.exitPointerLock();
     setControlsEnabled(false);
   }, []);
 
   const closePanel = useCallback(() => {
     setOpenSectionId(null);
-
-    // ✅ sortir du focus (retour à la liberté caméra)
     cancelFocus();
-
-    // ✅ on repasse en FPS autorisé (l'utilisateur relock quand il veut)
     setControlsEnabled(true);
   }, [cancelFocus]);
 
+  const handleOpenSection = useCallback((id, itemId = null) => {
+    setOpenSectionId(id);
+
+    if (document.pointerLockElement) document.exitPointerLock();
+    setControlsEnabled(false);
+
+    setFocus((f) => ({
+      ...f,
+      sectionId: id,
+      itemId: itemId ?? f?.itemId ?? null,
+    }));
+  }, []);
+
   useEffect(() => {
-    const onKey = (e) => {
+    const onKeyDown = (e) => {
       if (e.key !== "Escape") return;
 
-      // ✅ SI on est en focus (ex: carte/pin cliqué) → on annule le focus d’abord
       if (focus.active) {
         if (document.pointerLockElement) document.exitPointerLock();
         setOpenSectionId(null);
@@ -72,16 +72,12 @@ export default function App() {
         return;
       }
 
-      // sinon logique normale
-      if (openSectionId) {
-        closePanel();
-      } else {
-        releaseLock();
-      }
+      if (openSectionId) closePanel();
+      else releaseLock();
     };
 
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
   }, [openSectionId, closePanel, releaseLock, focus.active, cancelFocus]);
 
   return (
@@ -91,22 +87,7 @@ export default function App() {
         setIsLocked={setIsLocked}
         focus={focus}
         setFocus={setFocus}
-        // ✅ IMPORTANT : on récupère aussi itemId (pins, livres, etc.)
-        onOpenSection={(id, itemId = null) => {
-          // 🧠 ouverture panneau
-          setOpenSectionId(id);
-
-          // ✅ UI mode : souris libre + pas de FPS pendant lecture (photos/liens)
-          if (document.pointerLockElement) document.exitPointerLock();
-          setControlsEnabled(false);
-
-          // ✅ on stocke l'itemId (utile pour travels/pins, livres, etc.)
-          setFocus((f) => ({
-            ...f,
-            sectionId: id,
-            itemId: itemId ?? f?.itemId ?? null,
-          }));
-        }}
+        onOpenSection={handleOpenSection}
       />
 
       <Overlay
@@ -118,7 +99,6 @@ export default function App() {
         onClosePanel={closePanel}
       />
 
-      {/* ✅ NOUVELLE UX VOYAGES : card dédiée */}
       {openSectionId === "travels" && (
         <TravelCard itemId={focus?.itemId ?? null} onClose={closePanel} />
       )}
