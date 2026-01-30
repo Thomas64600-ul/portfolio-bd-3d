@@ -43,7 +43,7 @@ export default function MovieWall({
   middleGap = 0.8,
   outerGap = 1.2,
 
-  // + => pousse vers l’extérieur ; - => ramène vers le centre
+
   beamNudge = 0.8,
 }) {
   const posters = useTexture([
@@ -72,9 +72,10 @@ export default function MovieWall({
 
   useEffect(() => {
     const all = [...(posters || []), logoTex].filter(Boolean);
+
     all.forEach((t) => {
-      if ("colorSpace" in t) t.colorSpace = THREE.SRGBColorSpace;
-      else t.encoding = THREE.sRGBEncoding;
+      
+      t.colorSpace = THREE.SRGBColorSpace;
 
       t.anisotropy = 8;
       t.minFilter = THREE.LinearMipmapLinearFilter;
@@ -112,7 +113,10 @@ export default function MovieWall({
     [nearOffsetX, blockWidth, outerGap]
   );
 
-  const farAlignedX = useMemo(() => farOffsetX + beamNudge, [farOffsetX, beamNudge]);
+  const farAlignedX = useMemo(
+    () => farOffsetX + beamNudge,
+    [farOffsetX, beamNudge]
+  );
 
   const leftNear = posters.slice(0, 4);
   const leftFar = posters.slice(4, 8);
@@ -149,7 +153,12 @@ export default function MovieWall({
         />
       ))}
 
-      <Logo texture={logoTex} position={[0, 0, logoZ]} w={bigLogoW} h={bigLogoH} />
+      <Logo
+        texture={logoTex}
+        position={[0, 0, logoZ]}
+        w={bigLogoW}
+        h={bigLogoH}
+      />
 
       {rightNear.map((tex, i) => (
         <Poster
@@ -190,5 +199,4 @@ export default function MovieWall({
     </group>
   );
 }
-
 
