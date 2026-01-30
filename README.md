@@ -1,16 +1,89 @@
-# React + Vite
+# 🎮 Portfolio 3D – Bibliothèque Interactive
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Portfolio personnel immersif en 3D développé avec **React Three Fiber**, proposant une navigation en vue FPS dans une bibliothèque virtuelle.
 
-Currently, two official plugins are available:
+Chaque espace permet d’explorer :
+- mes projets web,
+- mon parcours professionnel,
+- mes compétences,
+- mes voyages,
+- mes diplômes.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Ce projet vise à proposer une expérience originale, interactive et professionnelle pour présenter mon profil.
 
-## React Compiler
+---
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 🚀 Démo
 
-## Expanding the ESLint configuration
+👉 En ligne : *(à compléter avec ton lien Vercel/Netlify si déployé)*  
+👉 Local : `npm run dev`
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+---
+
+## ✨ Fonctionnalités
+
+- 🎮 Navigation FPS (clavier + souris)
+- 📚 Bibliothèques interactives (BD / Manga / Comics)
+- 🗺️ Carte de voyages avec pins cliquables
+- 🖼️ Mur cinéma & posters
+- 🎓 Mur des diplômes interactif
+- 📄 CV intégré
+- 🧭 Panneaux dynamiques d’information
+- 💡 UX optimisée pour portfolio
+
+---
+
+## 🛠️ Stack technique
+
+### Frontend
+- React
+- Vite
+- React Three Fiber
+- Drei
+- Three.js
+
+### UI / UX
+- CSS custom
+- Overlay dynamique
+- Pointer Lock API
+
+### Outils
+- Git / GitHub
+- Linux (Pop!_OS)
+- VS Code
+
+---
+
+## 📁 Architecture du projet
+
+src/
+├─ three/ → Scène 3D & composants Three.js
+├─ ui/ → Interface utilisateur
+├─ data/ → Données centralisées
+├─ App.jsx → Logique principale
+public/
+├─ textures/ → Textures & images
+├─ travels/ → Contenus voyages
+├─ fonts/ → Polices
+
+
+---
+
+## ⚙️ Installation
+
+### Prérequis
+- Node.js ≥ 18
+- npm
+
+### Installation
+
+```bash
+git clone https://github.com/Thomas64600-ul/portfolio-bd-3d.git
+cd portfolio-bd-3d
+npm install
+npm run dev
+
+🎨 Conception & UX
+📄 Licence
+
+Projet personnel – utilisation non commerciale.
