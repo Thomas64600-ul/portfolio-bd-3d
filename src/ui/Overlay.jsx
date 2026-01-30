@@ -1,6 +1,5 @@
-// src/ui/Overlay.jsx
-import { useMemo, useState, useEffect } from "react";
-import { SECTIONS, BOOK_LAYOUT } from "../data/sections";
+import { useMemo, useState, useEffect, useCallback } from "react";
+import { SECTIONS } from "../data/sections";
 
 function resolveRowAndIndex(itemId, rowCounts) {
   if (itemId == null || Number.isNaN(Number(itemId))) return null;
@@ -8,12 +7,31 @@ function resolveRowAndIndex(itemId, rowCounts) {
   let remaining = Number(itemId);
   for (let rowIndex = 0; rowIndex < rowCounts.length; rowIndex++) {
     const count = rowCounts[rowIndex];
-    if (remaining < count) {
-      return { rowIndex, bookIndex: remaining };
-    }
+    if (remaining < count) return { rowIndex, bookIndex: remaining };
     remaining -= count;
   }
   return null;
+}
+
+function RowButton({ idx, title, selected, onSelect }) {
+  return (
+    <button
+      className="btn"
+      style={{
+        marginRight: 8,
+        marginTop: 8,
+        padding: "8px 10px",
+        borderRadius: 10,
+        border: "1px solid rgba(255,255,255,0.12)",
+        background: selected ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.15)",
+        color: "var(--text)",
+        cursor: "pointer",
+      }}
+      onClick={() => onSelect(idx)}
+    >
+      {title || `Rangée ${idx + 1}`}
+    </button>
+  );
 }
 
 export default function Overlay({
@@ -26,7 +44,8 @@ export default function Overlay({
 }) {
   const section = openSectionId ? SECTIONS[openSectionId] : null;
 
-  const rowCounts = (BOOK_LAYOUT && BOOK_LAYOUT.rowCounts) || [24, 22, 20];
+  // Doit matcher tes ROW_COUNTS dans LibraryScene / BookcaseUnit
+  const rowCounts = [24, 22, 20];
 
   const [selectedRow, setSelectedRow] = useState(null);
 
@@ -42,35 +61,37 @@ export default function Overlay({
   const activeRow = rowInfo ? section?.rows?.[rowInfo.rowIndex] : null;
   const activeItem = rowInfo ? activeRow?.items?.[rowInfo.bookIndex] : null;
 
-  // ✅ On masque le panneau “texte” pour éviter le doublon sur les diplômes
   const hidePanelForSection =
     openSectionId === "diplomas" ||
     openSectionId === "travels" ||
     openSectionId === "about";
 
-  // ✅ action “reprendre le contrôle”
-  const handleTakeBackControl = () => {
+  const handleTakeBackControl = useCallback(() => {
     onReleaseLock?.();
     onClosePanel?.();
-  };
+  }, [onReleaseLock, onClosePanel]);
 
-  // ✅ CV (uniquement affiché quand panel ouvert = quand section est ouverte)
   const CV_URL = "/cv/Thomas-DeTraversay-CV.pdf";
 
-  const handleOpenCV = () => {
+  const handleOpenCV = useCallback(() => {
     window.open(CV_URL, "_blank", "noopener,noreferrer");
-  };
+  }, []);
 
-  const handleDownloadCV = () => {
+  const handleDownloadCV = useCallback(() => {
     const a = document.createElement("a");
     a.href = CV_URL;
     a.download = "Thomas-DeTraversay-CV.pdf";
     document.body.appendChild(a);
     a.click();
     a.remove();
-  };
+  }, []);
 
-  // ---------- Render helpers ----------
+  const handleRequestLock = useCallback(() => {
+    onRequestLock?.();
+    const canvas = document.querySelector("canvas");
+    if (canvas?.requestPointerLock) canvas.requestPointerLock();
+  }, [onRequestLock]);
+
   const renderCareerItem = (it, idx) => (
     <div
       key={`${it.name}-${idx}`}
@@ -159,26 +180,6 @@ export default function Overlay({
     return isCareerItem ? renderCareerItem(it, idx) : renderStandardItem(it, idx);
   };
 
-  const RowButton = ({ idx, title }) => (
-    <button
-      className="btn"
-      style={{
-        marginRight: 8,
-        marginTop: 8,
-        padding: "8px 10px",
-        borderRadius: 10,
-        border: "1px solid rgba(255,255,255,0.12)",
-        background:
-          selectedRow === idx ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.15)",
-        color: "var(--text)",
-        cursor: "pointer",
-      }}
-      onClick={() => setSelectedRow(idx)}
-    >
-      {title || `Rangée ${idx + 1}`}
-    </button>
-  );
-
   return (
     <div className="hud">
       <div className="topbar">
@@ -187,14 +188,7 @@ export default function Overlay({
             ⎋ Quitter (reprendre le contrôle)
           </button>
         ) : !isLocked ? (
-          <button
-            className="btn btn-lock"
-            onClick={() => {
-              onRequestLock?.();
-              const canvas = document.querySelector("canvas");
-              if (canvas?.requestPointerLock) canvas.requestPointerLock();
-            }}
-          >
+          <button className="btn btn-lock" onClick={handleRequestLock}>
             🎮 Entrer (clic pour contrôler)
           </button>
         ) : (
@@ -203,7 +197,6 @@ export default function Overlay({
           </button>
         )}
 
-        {/* ✅ Boutons CV UNIQUEMENT quand le panel est ouvert (section ouverte) */}
         {section && (
           <>
             <button className="btn" onClick={handleOpenCV}>
@@ -212,7 +205,6 @@ export default function Overlay({
             <button className="btn" onClick={handleDownloadCV}>
               ⬇ Télécharger
             </button>
-
             <button className="btn" onClick={onClosePanel}>
               ✖ Fermer
             </button>
@@ -220,7 +212,6 @@ export default function Overlay({
         )}
       </div>
 
-      {/* ✅ Panneau à droite */}
       {section && !hidePanelForSection && (
         <div className="panel">
           <h2>{section.title}</h2>
@@ -237,7 +228,6 @@ export default function Overlay({
             ))}
           </div>
 
-          {/* MODE LIVRE */}
           {section.rows && openItemId != null && (
             <div style={{ marginTop: 14 }}>
               <div style={{ color: "var(--muted)", fontSize: 12, marginBottom: 8 }}>
@@ -300,7 +290,6 @@ export default function Overlay({
             </div>
           )}
 
-          {/* MODE ÉTAGÈRE */}
           {section.rows && openItemId == null && (
             <div style={{ marginTop: 14 }}>
               <div style={{ color: "var(--muted)", fontSize: 12, marginBottom: 6 }}>
@@ -309,7 +298,13 @@ export default function Overlay({
 
               <div style={{ display: "flex", flexWrap: "wrap" }}>
                 {section.rows.map((r, idx) => (
-                  <RowButton key={idx} idx={idx} title={r.title} />
+                  <RowButton
+                    key={idx}
+                    idx={idx}
+                    title={r.title}
+                    selected={selectedRow === idx}
+                    onSelect={setSelectedRow}
+                  />
                 ))}
               </div>
 
@@ -358,7 +353,6 @@ export default function Overlay({
             </div>
           )}
 
-          {/* MODE LISTE fallback */}
           {!section.rows && section.items?.length > 0 && (
             <div style={{ marginTop: 12 }}>
               {section.items.map((it, idx) => renderItemSmart(it, idx))}
@@ -374,3 +368,4 @@ export default function Overlay({
     </div>
   );
 }
+
