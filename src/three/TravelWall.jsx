@@ -1,144 +1,196 @@
 // src/three/TravelWall.jsx
-import { useMemo, useRef } from "react";
-import { useFrame, useThree } from "@react-three/fiber";
+import { useMemo, useEffect, useRef } from "react";
+import { useLoader, useThree } from "@react-three/fiber";
 import * as THREE from "three";
-import InteractiveItem from "./InteractiveItem";
+import { SECTIONS } from "../data/sections";
 
-// itemIndex = index dans SECTIONS.travels.items
+/* ================================
+   MODE DEBUG
+================================ */
+const DEBUG_PINS = false;
+
+/* ================================
+   TAILLE FIXE DE LA CARTE
+================================ */
+const MAP_W = 6.8;
+const MAP_H = 3.6;
+
+/* ================================
+   TAILLE DES PINS
+================================ */
+const PIN_SIZE = 0.04;
+
+/* ================================
+   FLIP VERTICAL (texture)
+================================ */
+const FLIP_V = true;
+
+/* ================================
+   PINS (UV)
+================================ */
 const PINS = [
-  // EUROPE
-  { label: "Pays de Galles", itemIndex: 0, pos: [-1.6, 0.55, 0.07] },
-  { label: "Tenerife", itemIndex: 5, pos: [-1.35, 0.05, 0.07] },
-  { label: "Minorque", itemIndex: 6, pos: [-1.05, 0.18, 0.07] },
+  { label: "Inde", itemIndex: 0, uv: [0.6436, 0.5154] },
+ { label: "Vietnam", itemIndex: 1, uv: [0.7250, 0.5350] },
+{ label: "Cambodge", itemIndex: 2, uv: [0.7150, 0.5450] },
 
-  // ASIE
-  { label: "Inde (Sud)", itemIndex: 1, pos: [0.45, 0.05, 0.07] },
-  { label: "Vietnam", itemIndex: 3, pos: [0.95, 0.05, 0.07] },
-  { label: "Cambodge", itemIndex: 4, pos: [0.85, -0.1, 0.07] },
-
-  // OCEANIE
-  { label: "Nouvelle-Calédonie", itemIndex: 2, pos: [1.75, -0.75, 0.07] },
+  { label: "Nouvelle-Calédonie", itemIndex: 3, uv: [0.8905, 0.6894] },
+  { label: "Sud du Portugal", itemIndex: 4, uv: [0.429, 0.4045] },
+  { label: "Tenerife", itemIndex: 5, uv: [0.4029, 0.4626] },
+  { label: "Minorque", itemIndex: 6, uv: [0.4638, 0.3936] },
+  { label: "Pays de Galles", itemIndex: 7, uv: [0.4436, 0.3327] },
 ];
 
-function Pin({ position, active, onPick }) {
-  const groupRef = useRef();
-  const { camera } = useThree();
+export default function TravelWall({
+  position = [0, 0, 0],
+  rotation = [0, 0, 0],
+  mapUrl = "/textures/world_map.jpg",
+  activeIndex = null,
+  onPickPin,
+  onPickWall, // ✅ AJOUT: clic sur la carte (focus mur)
+}) {
+  const mapRef = useRef();
+  const mapTex = useLoader(THREE.TextureLoader, mapUrl);
 
-  // petit halo “glow” (simple et efficace)
-  const glowMat = useMemo(
+  const { camera, gl } = useThree();
+  const raycasterRef = useRef(new THREE.Raycaster());
+
+  const items = SECTIONS?.travels?.items || [];
+
+  useEffect(() => {
+    if (!mapTex) return;
+
+    if ("colorSpace" in mapTex) mapTex.colorSpace = THREE.SRGBColorSpace;
+    else mapTex.encoding = THREE.sRGBEncoding;
+
+    mapTex.anisotropy = 8;
+    mapTex.wrapS = THREE.ClampToEdgeWrapping;
+    mapTex.wrapT = THREE.ClampToEdgeWrapping;
+    mapTex.needsUpdate = true;
+  }, [mapTex]);
+
+  // ✅ si debug UV: on libère la souris
+  useEffect(() => {
+    if (!DEBUG_PINS) return;
+    if (document.pointerLockElement) document.exitPointerLock();
+  }, []);
+
+  const mapMat = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
-        color: new THREE.Color("#ff4d6d"),
-        emissive: new THREE.Color("#ff4d6d"),
-        emissiveIntensity: active ? 1.4 : 0.4,
-        roughness: 0.35,
-        metalness: 0.0,
+        map: mapTex,
+        roughness: 0.9,
+        metalness: 0,
+        side: THREE.DoubleSide,
       }),
-    [active]
+    [mapTex]
   );
 
-  useFrame(() => {
-    if (!groupRef.current) return;
+  const MAP_Z = 0;
+  const PIN_Z = 0.15;
 
-    // effet proximité (grossit un peu quand on est près)
-    const worldPos = new THREE.Vector3();
-    groupRef.current.getWorldPosition(worldPos);
-    const d = camera.position.distanceTo(worldPos);
+  const uvToXY = (u, v) => {
+    const vv = FLIP_V ? 1 - v : v;
+    const x = (u - 0.5) * MAP_W;
+    const y = (vv - 0.5) * MAP_H;
+    return [x, y];
+  };
 
-    const nearScale = d < 3 ? 1.18 : 1.0;
-    const activeScale = active ? 1.35 : 1.0;
-    const targetScale = nearScale * activeScale;
+  // ✅ DEBUG : récup UV au clic sur la carte
+  const handlePickDebugUV = (e) => {
+    if (!DEBUG_PINS) return;
+    e.stopPropagation();
 
-    groupRef.current.scale.lerp(
-      new THREE.Vector3(targetScale, targetScale, targetScale),
-      0.12
+    if (document.pointerLockElement) {
+      document.exitPointerLock();
+      console.warn("🔒 PointerLock actif -> libère la souris puis reclique.");
+      return;
+    }
+
+    const mesh = mapRef.current;
+    if (!mesh) return;
+
+    const native = e.nativeEvent;
+    const rect = gl.domElement.getBoundingClientRect();
+
+    const ndc = new THREE.Vector2(
+      ((native.clientX - rect.left) / rect.width) * 2 - 1,
+      -(((native.clientY - rect.top) / rect.height) * 2 - 1)
     );
 
-    // effet “sort du mur” quand actif (avance sur Z local)
-    const targetZ = active ? 0.18 : 0.0;
-    groupRef.current.position.z = THREE.MathUtils.lerp(
-      groupRef.current.position.z,
-      targetZ,
-      0.12
-    );
-  });
+    const raycaster = raycasterRef.current;
+    raycaster.setFromCamera(ndc, camera);
+
+    const hits = raycaster.intersectObject(mesh, false);
+    if (!hits.length) return;
+
+    const hit = hits[0];
+    if (!hit.uv) return;
+
+    const u = Number(hit.uv.x.toFixed(4));
+    const vRaw = Number(hit.uv.y.toFixed(4));
+    const v = FLIP_V ? Number((1 - vRaw).toFixed(4)) : vRaw;
+
+    console.log("🧭 UV STABLE A COLLER :", [u, v]);
+  };
+
+  // ✅ MODE NORMAL : clic sur la carte => focus mur "travels"
+  const handlePickWall = (e) => {
+    if (DEBUG_PINS) return;
+    e.stopPropagation();
+    console.log("🗺️ WALL CLICK");
+    onPickWall?.();
+  };
 
   return (
-    <InteractiveItem onPick={onPick}>
-      <group ref={groupRef} position={position}>
-        {/* halo */}
-        <mesh position={[0, 0, -0.01]}>
-          <circleGeometry args={[0.12, 24]} />
-          <primitive object={glowMat} attach="material" />
-        </mesh>
-
-        {/* pin */}
-        <mesh>
-          <sphereGeometry args={[0.07, 16, 16]} />
-          <primitive object={glowMat} attach="material" />
-        </mesh>
-
-        {/* petite tige (style épingle) */}
-        <mesh position={[0, -0.11, 0]}>
-          <cylinderGeometry args={[0.01, 0.01, 0.18, 10]} />
-          <meshStandardMaterial color="#1a1a22" roughness={0.7} />
-        </mesh>
-      </group>
-    </InteractiveItem>
-  );
-}
-
-export default function TravelWall({ onPickPin, activeIndex = null }) {
-  const inkMat = useMemo(
-    () =>
-      new THREE.MeshStandardMaterial({
-        color: new THREE.Color("#1a1a22"),
-        roughness: 0.8,
-        metalness: 0.05,
-      }),
-    []
-  );
-
-  const paperMat = useMemo(
-    () =>
-      new THREE.MeshStandardMaterial({
-        color: new THREE.Color("#e6dfd4"),
-        roughness: 0.92,
-        metalness: 0.0,
-      }),
-    []
-  );
-
-  return (
-    // ✅ Mur droit (x proche du mur 11) + orienté vers la salle
-    <group position={[10.85, 2.35, -1]} rotation={[0, -Math.PI / 2, 0]}>
-      {/* Cadre */}
-      <mesh>
-        <boxGeometry args={[5.8, 3.4, 0.08]} />
-        <primitive object={inkMat} attach="material" />
+    <group position={position} rotation={rotation}>
+      {/* CARTE */}
+      <mesh
+        ref={mapRef}
+        position={[0, 0, MAP_Z]}
+        material={mapMat}
+        onPointerDown={DEBUG_PINS ? handlePickDebugUV : handlePickWall}
+      >
+        <planeGeometry args={[MAP_W, MAP_H]} />
       </mesh>
 
-      {/* “Carte” (papier) */}
-      <mesh position={[0, 0, 0.06]}>
-        <boxGeometry args={[5.5, 3.1, 0.03]} />
-        <primitive object={paperMat} attach="material" />
-      </mesh>
+      {/* PINS */}
+      {!DEBUG_PINS &&
+        PINS.map((p) => {
+          const isActive = activeIndex === p.itemIndex;
+          const item = items?.[p.itemIndex];
+          const title = item?.title || item?.name || p.label;
 
-      {/* Bandeau titre (style BD) */}
-      <mesh position={[0, 1.45, 0.09]}>
-        <boxGeometry args={[3.3, 0.18, 0.02]} />
-        <primitive object={inkMat} attach="material" />
-      </mesh>
+          const [x, y] = uvToXY(p.uv[0], p.uv[1]);
 
-      {/* Pins */}
-      {PINS.map((p) => (
-        <Pin
-          key={p.itemIndex}
-          position={p.pos}
-          active={activeIndex === p.itemIndex}
-          onPick={() => onPickPin(p.itemIndex)}
-        />
-      ))}
+          const pickPin = (e) => {
+            e.stopPropagation();
+            console.log("📍 PIN CLICK:", p.label, "=>", p.itemIndex);
+            onPickPin?.(p.itemIndex);
+          };
+
+          return (
+            <mesh
+              key={`${p.label}-${p.itemIndex}`}
+              position={[x, y, PIN_Z]}
+              onPointerDown={pickPin} // ✅ AJOUT: clic direct
+              userData={{
+                type: "pin",
+                label: p.label,
+                itemIndex: p.itemIndex,
+                title,
+                // ✅ IMPORTANT : callback pour le raycast FPS (center screen)
+                pick: () => onPickPin?.(p.itemIndex),
+              }}
+            >
+              <sphereGeometry args={[PIN_SIZE, 20, 20]} />
+              <meshStandardMaterial
+                color={isActive ? "#ff6b8a" : "#ff7a9a"}
+                roughness={0.35}
+                metalness={0.1}
+              />
+            </mesh>
+          );
+        })}
     </group>
   );
 }

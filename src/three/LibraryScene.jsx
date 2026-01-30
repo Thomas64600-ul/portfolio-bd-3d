@@ -1,46 +1,754 @@
-import { Canvas, useFrame } from "@react-three/fiber";
-import { Environment } from "@react-three/drei";
+// src/three/LibraryScene.jsx
+import { Canvas, useFrame, useLoader } from "@react-three/fiber";
+import { Environment, Text } from "@react-three/drei";
 import * as THREE from "three";
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useEffect, useCallback, useState } from "react";
 import { easing } from "maath";
+
 import FPSController from "./FPSController";
 import InteractiveItem from "./InteractiveItem";
 import AboutPanel from "./AboutPanel";
 import DiplomaWall from "./DiplomaWall";
-import TravelWall from "./TravelWall"; // ✅ AJOUT
+import TravelWall from "./TravelWall";
+import MovieWall from "./MovieWall";
+import StylizedCeiling from "./StylizedCeiling";
 
+import { SECTIONS } from "../data/sections";
+
+/**
+ * =========================
+ * ✅ BOOKCASE UNIT
+ * =========================
+ */
+function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
+  const palette =
+    theme === "comics"
+      ? ["#ffd166", "#ef476f", "#06d6a0", "#118ab2"]
+      : theme === "manga"
+      ? ["#f4f4f4", "#d9d9d9", "#a8a8a8", "#1f1f1f"]
+      : ["#78d6ff", "#ff7a9a", "#e9d36b", "#7CFF8D"];
+
+  const label =
+    theme === "comics" ? "COMICS" : theme === "manga" ? "MANGA" : "BD";
+
+  const labelAccent =
+    theme === "comics" ? "#ef476f" : theme === "manga" ? "#f4f4f4" : "#ff7a9a";
+
+  const W = 4.6;
+  const H = 2.9;
+  const D = 0.78;
+
+  const frameT = 0.16;
+  const shelfT = 0.08;
+
+  const frontZ = D / 2 - 0.02;
+  const shelfZ = 0.02;
+  const backZ = -D / 2 + 0.06;
+
+  const bookZ = 0.165;
+
+  const innerBackMat = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: new THREE.Color("#1a1310"),
+        roughness: 0.85,
+        metalness: 0.0,
+      }),
+    []
+  );
+
+  // ✅ MANGA TEXTURES
+  const mangaTextures = useLoader(THREE.TextureLoader, [
+    "/textures/manga/dragonball.jpg",
+    "/textures/manga/aot.jpg",
+    "/textures/manga/sommet.jpg",
+    "/textures/manga/lastman.jpg",
+    "/textures/manga/gunnm.jpg",
+  ]);
+
+  // ✅ COMICS TEXTURES
+  const comicsTextures = useLoader(THREE.TextureLoader, [
+    "/textures/comics/300.jpg",
+    "/textures/comics/dc.jpg",
+    "/textures/comics/preacher.jpg",
+    "/textures/comics/sincity.jpg",
+    "/textures/comics/walkingdead.jpg",
+  ]);
+
+  // ✅ BD TEXTURES (⚠️ dossier bd en minuscule = OK Linux)
+  const bdTextures = useLoader(THREE.TextureLoader, [
+    "/textures/bd/signe.jpg",
+    "/textures/bd/complainte.jpg",
+    "/textures/bd/jeremiah.jpg",
+    "/textures/bd/largo.jpg",
+    "/textures/bd/lesaigles.jpg",
+    "/textures/bd/lesvieux.jpg",
+    "/textures/bd/murena.jpg",
+  ]);
+
+  // ✅ réglages textures (sRGB + mipmaps)
+  useMemo(() => {
+    const apply = (texList) => {
+      const list = Array.isArray(texList) ? texList : [texList];
+      list.forEach((t) => {
+        if (!t) return;
+
+        if ("colorSpace" in t) t.colorSpace = THREE.SRGBColorSpace;
+        else t.encoding = THREE.sRGBEncoding;
+
+        t.anisotropy = 12;
+        t.minFilter = THREE.LinearMipmapLinearFilter;
+        t.magFilter = THREE.LinearFilter;
+        t.generateMipmaps = true;
+        t.needsUpdate = true;
+
+        t.wrapS = THREE.RepeatWrapping;
+        t.wrapT = THREE.ClampToEdgeWrapping;
+      });
+    };
+
+    apply(mangaTextures);
+    apply(comicsTextures);
+    apply(bdTextures);
+  }, [mangaTextures, comicsTextures, bdTextures]);
+
+  /**
+   * ✅ Découpe une image "panorama de tranches" en N morceaux horizontaux
+   * + uStart/uEnd pour ignorer les marges blanches
+   */
+  const sliceTexture = useCallback((baseTex, i, count, uStart = 0, uEnd = 1) => {
+    if (!baseTex || !count) return null;
+
+    const t = baseTex.clone();
+    t.needsUpdate = true;
+
+    const span = Math.max(0.0001, uEnd - uStart);
+    const w = span / count;
+
+    // ✅ petit padding anti-bleeding entre slices
+    const pad = 0.0015 * span;
+
+    t.repeat.set(Math.max(0.0001, w - pad), 1);
+    t.offset.set(uStart + i * w + pad * 0.5, 0);
+
+    t.wrapS = THREE.RepeatWrapping;
+    t.wrapT = THREE.ClampToEdgeWrapping;
+
+    if ("colorSpace" in t) t.colorSpace = THREE.SRGBColorSpace;
+    else t.encoding = THREE.sRGBEncoding;
+
+    t.anisotropy = 12;
+    t.minFilter = THREE.LinearMipmapLinearFilter;
+    t.magFilter = THREE.LinearFilter;
+    t.generateMipmaps = true;
+
+    return t;
+  }, []);
+
+  // ✅ densité (plus rempli)
+  const ROW_COUNTS = useMemo(() => [20, 18, 24], []);
+
+  const rand01 = (n) => {
+    const x = Math.sin(n * 999) * 10000;
+    return x - Math.floor(x);
+  };
+
+  const Book = ({ itemId, x, y, h, w, c, tilt = 0, variant = 0, spineTex }) => {
+    const isManga = theme === "manga";
+    const isComics = theme === "comics";
+    const isBD = theme === "bd";
+    const hasSpine = !!spineTex && (isManga || isComics || isBD);
+
+    const zNudge = isComics ? (variant % 2) * 0.002 : (variant % 3) * 0.004;
+    const yNudge = (rand01(variant) - 0.5) * (isComics ? 0.006 : 0.012);
+    const xNudge = (rand01(variant + 7) - 0.5) * (isComics ? 0.002 : 0.01);
+
+    const band = isManga
+      ? variant % 2
+        ? "#111111"
+        : "#2a2a2a"
+      : palette[(variant + 1) % palette.length];
+
+    return (
+      <InteractiveItem onPick={() => onPickItem?.(itemId)}>
+        <group
+          position={[x + xNudge, y + yNudge, bookZ + zNudge]}
+          rotation={[0, 0, tilt]}
+        >
+          {/* Corps */}
+          <mesh castShadow receiveShadow>
+            <boxGeometry args={[w, h, 0.07]} />
+            <meshStandardMaterial
+              color={
+                isManga ? "#eaeaea" : isComics ? "#101010" : isBD ? "#e8e1d8" : c
+              }
+              roughness={isComics ? 0.9 : isBD ? 0.85 : 0.72}
+              metalness={isComics ? 0.04 : 0.02}
+            />
+          </mesh>
+
+          {/* ✅ Tranche texture (BD = un poil plus devant + plus "petite" pour bordure) */}
+          {hasSpine && (
+            <mesh
+              castShadow
+              receiveShadow
+              position={[0, 0, isBD ? 0.043 : 0.041]}
+            >
+              <planeGeometry
+                args={[
+                  w * (isBD ? 0.96 : 0.92), // ✅ avant: 0.985
+                  h * (isBD ? 0.96 : 0.92), // ✅ avant: 0.985
+                ]}
+              />
+              {isComics ? (
+                <meshPhysicalMaterial
+                  map={spineTex}
+                  roughness={0.78}
+                  metalness={0.02}
+                  clearcoat={0.45}
+                  clearcoatRoughness={0.6}
+                  polygonOffset
+                  polygonOffsetFactor={-1}
+                  polygonOffsetUnits={-1}
+                />
+              ) : (
+                <meshStandardMaterial
+                  map={spineTex}
+                  roughness={isBD ? 0.65 : 0.86} // ✅ avant: 0.75
+                  metalness={isBD ? 0.05 : 0.0} // ✅ avant: 0.0
+                  emissive={isBD ? new THREE.Color("#000000") : undefined} // ✅ contraste/relief
+                  emissiveIntensity={0.15}
+                  polygonOffset
+                  polygonOffsetFactor={-1}
+                  polygonOffsetUnits={-1}
+                />
+              )}
+            </mesh>
+          )}
+
+          {/* Bande déco (BD uniquement si PAS de texture) */}
+          {!isManga && !isComics && !hasSpine && (
+            <mesh position={[0, h * 0.28, 0.045]}>
+              <boxGeometry args={[w * 0.86, h * 0.14, 0.012]} />
+              <meshStandardMaterial
+                color={band}
+                roughness={0.55}
+                metalness={0.01}
+              />
+            </mesh>
+          )}
+
+          {/* Plaque blanche BD (uniquement si PAS de texture) */}
+          {theme === "bd" && !hasSpine && (
+            <mesh position={[0, -h * 0.32, 0.045]}>
+              <boxGeometry args={[w * 0.7, h * 0.12, 0.012]} />
+              <meshStandardMaterial color={"#f2f2f2"} roughness={0.6} />
+            </mesh>
+          )}
+        </group>
+      </InteractiveItem>
+    );
+  };
+
+  const Row = ({
+    rowIndex,
+    y,
+    count,
+    leftPad = 0.72,
+    rightPad = 0.72,
+    offset = 0,
+  }) => {
+    const usable = W - leftPad - rightPad;
+    const step = usable / count;
+
+    const pickSlice = (
+      baseTex,
+      iInBlock,
+      displayBlockCount,
+      realCount,
+      uStart = 0,
+      uEnd = 1
+    ) => {
+      const localIndex = Math.floor((iInBlock * realCount) / displayBlockCount);
+      return sliceTexture(baseTex, localIndex, realCount, uStart, uEnd);
+    };
+
+    return (
+      <group>
+        {Array.from({ length: count }).map((_, i) => {
+          const globalIndex = offset + i;
+          const x = -W / 2 + leftPad + i * step + step * 0.5;
+
+          const h =
+            theme === "manga" ? 0.545 : theme === "comics" ? 0.59 : 0.62;
+
+          const w =
+            theme === "manga"
+              ? step * 0.9
+              : theme === "comics"
+              ? step * 0.86
+              : step * 0.88;
+
+          const baseColor =
+            theme === "manga"
+              ? i % 2 === 0
+                ? "#f2f2f2"
+                : "#dcdcdc"
+              : palette[i % palette.length];
+
+          const tilt =
+            theme === "comics"
+              ? 0
+              : i % 9 === 0
+              ? 0.028
+              : i % 13 === 0
+              ? -0.022
+              : i % 17 === 0
+              ? 0.018
+              : 0;
+
+          let spineTex = null;
+
+          // ✅ MANGA
+          if (theme === "manga") {
+            const SERIES = { db: 34, aot: 11, sommet: 5, lastman: 12, gunnm: 9 };
+
+            if (rowIndex === 2) {
+              spineTex = pickSlice(mangaTextures[0], i, count, SERIES.db);
+            }
+
+            if (rowIndex === 1) {
+              const total = SERIES.aot + SERIES.sommet;
+              const aotBlock = Math.max(
+                1,
+                Math.round((count * SERIES.aot) / total)
+              );
+              const sommetBlock = Math.max(1, count - aotBlock);
+
+              if (i < aotBlock) {
+                spineTex = pickSlice(mangaTextures[1], i, aotBlock, SERIES.aot);
+              } else {
+                const j = i - aotBlock;
+                spineTex = pickSlice(
+                  mangaTextures[2],
+                  j,
+                  sommetBlock,
+                  SERIES.sommet
+                );
+              }
+            }
+
+            if (rowIndex === 0) {
+              const total = SERIES.lastman + SERIES.gunnm;
+              const lastBlock = Math.max(
+                1,
+                Math.round((count * SERIES.lastman) / total)
+              );
+              const gunnmBlock = Math.max(1, count - lastBlock);
+
+              if (i < lastBlock) {
+                spineTex = pickSlice(
+                  mangaTextures[3],
+                  i,
+                  lastBlock,
+                  SERIES.lastman
+                );
+              } else {
+                const j = i - lastBlock;
+                spineTex = pickSlice(
+                  mangaTextures[4],
+                  j,
+                  gunnmBlock,
+                  SERIES.gunnm
+                );
+              }
+            }
+          }
+
+          // ✅ COMICS
+          if (theme === "comics") {
+            const SERIES = { t300: 1, dc: 10, preacher: 4, sincity: 7, walkingdead: 16 };
+
+            if (rowIndex === 2) {
+              spineTex = pickSlice(comicsTextures[4], i, count, SERIES.walkingdead);
+            }
+
+            if (rowIndex === 1) {
+              spineTex = pickSlice(comicsTextures[1], i, count, SERIES.dc);
+            }
+
+            if (rowIndex === 0) {
+              const preacherPart = 0.35;
+              const sincityPart = 0.55;
+              const preacherBlock = Math.max(1, Math.round(count * preacherPart));
+              const sincityBlock = Math.max(1, Math.round(count * sincityPart));
+              const used = preacherBlock + sincityBlock;
+              const lastBlock = Math.max(1, count - used);
+
+              if (i < preacherBlock) {
+                spineTex = pickSlice(
+                  comicsTextures[2],
+                  i,
+                  preacherBlock,
+                  SERIES.preacher
+                );
+              } else if (i < preacherBlock + sincityBlock) {
+                const j = i - preacherBlock;
+                spineTex = pickSlice(
+                  comicsTextures[3],
+                  j,
+                  sincityBlock,
+                  SERIES.sincity
+                );
+              } else {
+                spineTex = pickSlice(comicsTextures[0], 0, lastBlock, SERIES.t300);
+              }
+            }
+          }
+
+          // ✅ BD (organisation logique collections)
+          if (theme === "bd") {
+            const SERIES = {
+              signe: 32,
+              complainte: 16,
+              jeremiah: 7,
+              largo: 25,
+              aigles: 8,
+              vieux: 8,
+              murena: 13,
+            };
+
+            // 👉 TRIM gardé (même si tu as recadré, ça évite encore le "bleed")
+            const TRIM = {
+              signe: [0.02, 0.98],
+              complainte: [0.06, 0.94],
+              jeremiah: [0.06, 0.94],
+              largo: [0.05, 0.95],
+              aigles: [0.06, 0.94],
+              vieux: [0.08, 0.92],
+              murena: [0.06, 0.94],
+            };
+
+            /* 🔝 HAUT : Largo + Signé */
+            if (rowIndex === 2) {
+              const total = SERIES.largo + SERIES.signe;
+              const largoBlock = Math.max(
+                1,
+                Math.round((count * SERIES.largo) / total)
+              );
+              const signeBlock = Math.max(1, count - largoBlock);
+
+              if (i < largoBlock) {
+                spineTex = pickSlice(
+                  bdTextures[3],
+                  i,
+                  largoBlock,
+                  SERIES.largo,
+                  ...TRIM.largo
+                );
+              } else {
+                const j = i - largoBlock;
+                spineTex = pickSlice(
+                  bdTextures[0],
+                  j,
+                  signeBlock,
+                  SERIES.signe,
+                  ...TRIM.signe
+                );
+              }
+            }
+
+            /* 🟡 MILIEU : Murena + Aigles */
+            if (rowIndex === 1) {
+              const total = SERIES.murena + SERIES.aigles;
+              const murenaBlock = Math.max(
+                1,
+                Math.round((count * SERIES.murena) / total)
+              );
+              const aiglesBlock = Math.max(1, count - murenaBlock);
+
+              if (i < murenaBlock) {
+                spineTex = pickSlice(
+                  bdTextures[6],
+                  i,
+                  murenaBlock,
+                  SERIES.murena,
+                  ...TRIM.murena
+                );
+              } else {
+                const j = i - murenaBlock;
+                spineTex = pickSlice(
+                  bdTextures[4],
+                  j,
+                  aiglesBlock,
+                  SERIES.aigles,
+                  ...TRIM.aigles
+                );
+              }
+            }
+
+            /* 🔻 BAS : Complainte + Vieux + Jeremiah */
+            if (rowIndex === 0) {
+              const total =
+                SERIES.complainte + SERIES.vieux + SERIES.jeremiah;
+
+              const complainteBlock = Math.max(
+                1,
+                Math.round((count * SERIES.complainte) / total)
+              );
+              const vieuxBlock = Math.max(
+                1,
+                Math.round((count * SERIES.vieux) / total)
+              );
+
+              const used = complainteBlock + vieuxBlock;
+              const jeremiahBlock = Math.max(1, count - used);
+
+              if (i < complainteBlock) {
+                spineTex = pickSlice(
+                  bdTextures[1],
+                  i,
+                  complainteBlock,
+                  SERIES.complainte,
+                  ...TRIM.complainte
+                );
+              } else if (i < complainteBlock + vieuxBlock) {
+                const j = i - complainteBlock;
+                spineTex = pickSlice(
+                  bdTextures[5],
+                  j,
+                  vieuxBlock,
+                  SERIES.vieux,
+                  ...TRIM.vieux
+                );
+              } else {
+                const j = i - (complainteBlock + vieuxBlock);
+                spineTex = pickSlice(
+                  bdTextures[2],
+                  j,
+                  jeremiahBlock,
+                  SERIES.jeremiah,
+                  ...TRIM.jeremiah
+                );
+              }
+            }
+          }
+
+          return (
+            <Book
+              key={`${rowIndex}-${y}-${i}`}
+              itemId={globalIndex}
+              x={x}
+              y={y + 0.02}
+              h={h}
+              w={w}
+              c={baseColor}
+              tilt={tilt}
+              variant={globalIndex}
+              spineTex={spineTex}
+            />
+          );
+        })}
+      </group>
+    );
+  };
+
+  const bottomCount = ROW_COUNTS[0];
+  const midCount = ROW_COUNTS[1];
+  const topCount = ROW_COUNTS[2];
+
+  return (
+    <group>
+      {/* hitbox shelf */}
+      {onPickShelf && (
+        <InteractiveItem onPick={onPickShelf}>
+          <mesh position={[0, H / 2, frontZ - 0.02]}>
+            <boxGeometry args={[W * 0.98, H * 0.98, 0.02]} />
+            <meshStandardMaterial transparent opacity={0} />
+          </mesh>
+        </InteractiveItem>
+      )}
+
+      {/* back panel */}
+      <mesh position={[0, H / 2, backZ]} receiveShadow>
+        <boxGeometry args={[W - frameT * 1.2, H - frameT * 1.2, 0.06]} />
+        <primitive object={innerBackMat} attach="material" />
+      </mesh>
+
+      {/* frame */}
+      <mesh position={[-W / 2 + frameT / 2, H / 2, 0]} castShadow receiveShadow>
+        <boxGeometry args={[frameT, H, D]} />
+        <primitive object={walnutMat} attach="material" />
+      </mesh>
+      <mesh position={[W / 2 - frameT / 2, H / 2, 0]} castShadow receiveShadow>
+        <boxGeometry args={[frameT, H, D]} />
+        <primitive object={walnutMat} attach="material" />
+      </mesh>
+      <mesh position={[0, frameT / 2, 0]} castShadow receiveShadow>
+        <boxGeometry args={[W, frameT, D]} />
+        <primitive object={walnutMat} attach="material" />
+      </mesh>
+      <mesh position={[0, H - frameT / 2, 0]} castShadow receiveShadow>
+        <boxGeometry args={[W, frameT, D]} />
+        <primitive object={walnutMat} attach="material" />
+      </mesh>
+
+      {/* shelves */}
+      {[0.95, 1.55, 2.15].map((yy, idx) => (
+        <mesh key={idx} position={[0, yy, shelfZ]} castShadow receiveShadow>
+          <boxGeometry args={[W - frameT * 1.2, shelfT, D - 0.1]} />
+          <primitive object={walnutMat} attach="material" />
+        </mesh>
+      ))}
+
+      {/* rows (bas / milieu / haut) */}
+      <Row rowIndex={0} y={0.62} count={bottomCount} offset={0} />
+      <Row rowIndex={1} y={1.22} count={midCount} offset={bottomCount} />
+      <Row
+        rowIndex={2}
+        y={1.82}
+        count={topCount}
+        offset={bottomCount + midCount}
+      />
+
+      {/* label plate */}
+      <mesh position={[0, H - 0.24, frontZ]}>
+        <boxGeometry args={[W * 0.58, 0.22, 0.05]} />
+        <meshStandardMaterial transparent opacity={0} />
+      </mesh>
+      <mesh position={[0, H - 0.24, frontZ + 0.03]} castShadow receiveShadow>
+        <boxGeometry args={[W * 0.52, 0.16, 0.01]} />
+        <meshStandardMaterial
+          color={labelAccent}
+          roughness={0.5}
+          metalness={0.02}
+        />
+      </mesh>
+      <Text
+        position={[0, H - 0.24, frontZ + 0.05]}
+        fontSize={0.16}
+        color={"#0b0b0b"}
+        anchorX="center"
+        anchorY="middle"
+        outlineWidth={0.006}
+        outlineColor={"#ffffff"}
+      >
+        {label}
+      </Text>
+    </group>
+  );
+}
+
+/**
+ * =========================
+ * ✅ SCENE INNER
+ * =========================
+ */
 function SceneInner({
   onOpenSection,
   focus,
   setFocus,
   controlsEnabled,
   setIsLocked,
+  mapEditMode,
+  setMapEditMode,
 }) {
+  const fpsEnabled = controlsEnabled && !focus?.active && !mapEditMode;
+
   const cameraTarget = useRef(new THREE.Vector3());
   const lookTarget = useRef(new THREE.Vector3());
 
-  // Matériau "papier / trame" version légère
-  const paperMat = useMemo(
+  const woodMap = useLoader(THREE.TextureLoader, "/textures/wood_floor.jpg");
+  const stoneMap = useLoader(THREE.TextureLoader, "/textures/stone_wall.jpg");
+
+  const unlockPointer = useCallback(() => {
+    if (document.pointerLockElement) {
+      try {
+        document.exitPointerLock();
+      } catch {
+        // ignore
+      }
+    }
+    setIsLocked?.(false);
+  }, [setIsLocked]);
+
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key.toLowerCase() !== "m") return;
+      setMapEditMode((v) => {
+        const next = !v;
+        if (next) unlockPointer();
+        return next;
+      });
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [setMapEditMode, unlockPointer]);
+
+  useEffect(() => {
+    if (!focus?.active) return;
+    unlockPointer();
+    setIsLocked?.(false);
+  }, [focus?.active, unlockPointer, setIsLocked]);
+
+  useEffect(() => {
+    if (!fpsEnabled) setIsLocked?.(false);
+  }, [fpsEnabled, setIsLocked]);
+
+  const floorMat = useMemo(() => {
+    if (!woodMap) return null;
+
+    woodMap.wrapS = THREE.RepeatWrapping;
+    woodMap.wrapT = THREE.RepeatWrapping;
+    woodMap.repeat.set(5, 4);
+    woodMap.anisotropy = 8;
+
+    if ("colorSpace" in woodMap) woodMap.colorSpace = THREE.SRGBColorSpace;
+    else woodMap.encoding = THREE.sRGBEncoding;
+
+    return new THREE.MeshStandardMaterial({
+      map: woodMap,
+      roughness: 0.55,
+      metalness: 0.03,
+    });
+  }, [woodMap]);
+
+  const stoneMat = useMemo(() => {
+    if (!stoneMap) return null;
+
+    const base = stoneMap.clone();
+    base.wrapS = THREE.RepeatWrapping;
+    base.wrapT = THREE.RepeatWrapping;
+    base.repeat.set(7, 3.2);
+    base.anisotropy = 8;
+
+    if ("colorSpace" in base) base.colorSpace = THREE.SRGBColorSpace;
+    else base.encoding = THREE.sRGBEncoding;
+
+    return new THREE.MeshStandardMaterial({
+      map: base,
+      roughness: 0.88,
+      metalness: 0.02,
+    });
+  }, [stoneMap]);
+
+  const walnutMat = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
-        color: new THREE.Color("#d8d2c7"),
-        roughness: 0.9,
-        metalness: 0.0,
+        color: new THREE.Color("#3a2a1f"),
+        roughness: 0.55,
+        metalness: 0.06,
       }),
     []
   );
 
-  const inkMat = useMemo(
-    () =>
-      new THREE.MeshStandardMaterial({
-        color: new THREE.Color("#1a1a22"),
-        roughness: 0.8,
-        metalness: 0.05,
-      }),
-    []
-  );
+  const SHELF_Z = -6.55;
 
-  // Animation caméra vers un point + lookAt
+  const focusForShelf = (x) => ({
+    pos: [x, 1.55, -4.95],
+    look: [x, 1.35, SHELF_Z - 0.25],
+  });
+
   useFrame((state, dt) => {
     if (!focus?.active) return;
 
@@ -57,130 +765,167 @@ function SceneInner({
     const dist = state.camera.position.distanceTo(cameraTarget.current);
     if (dist < 0.08 && !focus.opened) {
       setFocus((f) => ({ ...f, opened: true }));
-      onOpenSection?.(focus.sectionId);
+      onOpenSection?.(focus.sectionId, focus.itemId);
     }
   });
 
-  // ✅ pick corrigé: accepte itemId + délock juste après
   const pick = (sectionId, pos, look, itemId = null) => {
-    setFocus({
-      active: true,
-      opened: false,
-      sectionId,
-      itemId,
-      pos,
-      look,
-    });
-
-    // évite l'effet "retour observation" au clic
-    setTimeout(() => setIsLocked(false), 0);
+    unlockPointer();
+    setMapEditMode(false);
+    setFocus({ active: true, opened: false, sectionId, itemId, pos, look });
   };
 
   return (
     <>
-      {/* Lumières */}
-      <ambientLight intensity={0.35} />
-      <directionalLight position={[6, 10, 6]} intensity={1.1} />
-      <pointLight position={[-6, 2, -2]} intensity={0.7} />
+      <fog attach="fog" args={["#07070a", 10, 28]} />
 
-      {/* FPS */}
-      <FPSController enabled={controlsEnabled} onLockChange={setIsLocked} />
+      <ambientLight intensity={0.32} />
+      <spotLight
+        position={[0, 6.6, -1.5]}
+        angle={0.55}
+        penumbra={0.75}
+        intensity={2.2}
+        distance={35}
+        castShadow
+        shadow-mapSize-width={1024}
+        shadow-mapSize-height={1024}
+      />
+      <directionalLight position={[7, 9, 7]} intensity={0.45} />
+      <directionalLight position={[-6, 5.5, 6]} intensity={0.25} />
+      <pointLight position={[-7, 4.2, 0]} intensity={0.22} distance={30} />
+      <pointLight position={[7, 4.2, 0]} intensity={0.22} distance={30} />
 
-      {/* Sol */}
+      <Environment preset="warehouse" />
+
+      {fpsEnabled && <FPSController enabled={true} onLockChange={setIsLocked} />}
+
       <mesh receiveShadow position={[0, 0, 0]}>
         <boxGeometry args={[22, 0.2, 18]} />
-        <primitive object={paperMat} attach="material" />
+        {floorMat ? <primitive object={floorMat} attach="material" /> : null}
       </mesh>
 
-      {/* Murs */}
-      <mesh position={[0, 2.3, -8]}>
-        <boxGeometry args={[22, 4.6, 0.3]} />
-        <primitive object={inkMat} attach="material" />
-      </mesh>
-      <mesh position={[-11, 2.3, 0]}>
-        <boxGeometry args={[0.3, 4.6, 18]} />
-        <primitive object={inkMat} attach="material" />
-      </mesh>
-      <mesh position={[11, 2.3, 0]}>
-        <boxGeometry args={[0.3, 4.6, 18]} />
-        <primitive object={inkMat} attach="material" />
+      <mesh position={[0, 2.3, -7.85]} receiveShadow>
+        <planeGeometry args={[22, 4.6]} />
+        {stoneMat ? <primitive object={stoneMat} attach="material" /> : null}
       </mesh>
 
-      {/* ✅ Mur “À propos de moi” */}
-      <AboutPanel onPick={() => pick("about", [0, 2.2, -6.2], [0, 2.2, -8])} />
+      <mesh position={[0, 2.3, 7.85]} rotation={[0, Math.PI, 0]} receiveShadow>
+        <planeGeometry args={[22, 4.6]} />
+        {stoneMat ? <primitive object={stoneMat} attach="material" /> : null}
+      </mesh>
 
-      {/* ✅ Mur Diplômes */}
+      <MovieWall position={[0, 2.35, 7.78]} />
+
+      <mesh
+        position={[-10.98, 2.3, 0]}
+        rotation={[0, Math.PI / 2, 0]}
+        receiveShadow
+      >
+        <planeGeometry args={[18, 4.6]} />
+        {stoneMat ? <primitive object={stoneMat} attach="material" /> : null}
+      </mesh>
+      <mesh
+        position={[10.98, 2.3, 0]}
+        rotation={[0, -Math.PI / 2, 0]}
+        receiveShadow
+      >
+        <planeGeometry args={[18, 4.6]} />
+        {stoneMat ? <primitive object={stoneMat} attach="material" /> : null}
+      </mesh>
+
+      <mesh
+        position={[-10.92, 0.65, 0]}
+        rotation={[0, Math.PI / 2, 0]}
+        receiveShadow
+      >
+        <boxGeometry args={[18, 1.3, 0.08]} />
+        <primitive object={walnutMat} attach="material" />
+      </mesh>
+      <mesh
+        position={[10.92, 0.65, 0]}
+        rotation={[0, -Math.PI / 2, 0]}
+        receiveShadow
+      >
+        <boxGeometry args={[18, 1.3, 0.08]} />
+        <primitive object={walnutMat} attach="material" />
+      </mesh>
+
+      <StylizedCeiling y={4.6} width={22} depth={18} beamCount={6} />
+
+      <AboutPanel
+        enabled={true}
+        position={[10.92, 2.55, -2.8]}
+        rotation={[0, -Math.PI / 2, 0]}
+        baseY={2.55}
+        onPick={() => pick("about", [7.9, 2.35, -2.8], [10.5, 2.55, -2.8])}
+      />
+
+      <TravelWall
+        position={[10.92, 2.55, 3.3]}
+        rotation={[0, -Math.PI / 2, 0]}
+        mapUrl="/textures/world_map.jpg"
+        frameId="travels"
+        selectedId={focus?.sectionId === "travels" ? "travels" : null}
+        activeIndex={focus?.sectionId === "travels" ? focus?.itemId : null}
+        onPickWall={() => pick("travels", [7.8, 2.35, 3.3], [10.5, 2.55, 3.3])}
+        onPickPin={(itemIndex) =>
+          pick("travels", [7.8, 2.35, 3.3], [10.5, 2.55, 3.3], itemIndex)
+        }
+      />
+
       <DiplomaWall
         activeIndex={focus?.sectionId === "diplomas" ? focus?.itemId : null}
-        onPickDiplomas={(i) =>
-          pick("diplomas", [-8.3, 2.4, -1.5], [-10.7, 2.6, -0.2], i)
-        }
+        onPickDiplomas={(i) => {
+          const zList = [3.8, 1.1, -1.6, -4.3];
+          const z = zList[i] ?? -0.5;
+          pick("diplomas", [-8.3, 2.4, z], [-10.7, 2.6, z], i);
+        }}
       />
 
-      {/* ✅ Mur Voyages (carte du monde sur mur droit) */}
-      <TravelWall
-        activeIndex={focus?.sectionId === "travels" ? focus?.itemId : null}
-        onPickPin={(itemIndex) =>
-          pick(
-            "travels",
-            [7.8, 2.35, -1.0], // caméra devant la carte
-            [10.85, 2.35, -1.0], // centre de la carte
-            itemIndex
-          )
-        }
-      />
-
-      {/* Étagères (3 zones : BD, Comics, Manga) */}
-      <group position={[-6.5, 0, -4]}>
-        <mesh position={[0, 1.2, 0]}>
-          <boxGeometry args={[3.2, 2.4, 0.6]} />
-          <primitive object={inkMat} attach="material" />
-        </mesh>
-
-        <InteractiveItem
-          onPick={() => pick("projects", [-4.8, 1.6, -3.2], [-6.5, 1.3, -4])}
-        >
-          <mesh position={[0.7, 1.1, 0.35]}>
-            <boxGeometry args={[0.25, 0.4, 0.06]} />
-            <meshStandardMaterial color={"#e9d36b"} roughness={0.75} />
-          </mesh>
-        </InteractiveItem>
+      <group position={[-6.2, 0.0, -6.55]}>
+        <BookcaseUnit
+          theme="comics"
+          walnutMat={walnutMat}
+          onPickShelf={() => {
+            const { pos, look } = focusForShelf(-6.2);
+            pick("career", pos, look);
+          }}
+          onPickItem={(itemIndex) => {
+            const { pos, look } = focusForShelf(-6.2);
+            pick("career", pos, look, itemIndex);
+          }}
+        />
       </group>
 
-      {/* Étagère du milieu */}
-      <group position={[0, 0, -4]}>
-        <mesh position={[0, 1.2, 0]}>
-          <boxGeometry args={[3.2, 2.4, 0.6]} />
-          <primitive object={inkMat} attach="material" />
-        </mesh>
+      <group position={[0, 0.0, -6.55]}>
+        <BookcaseUnit
+          theme="bd"
+          walnutMat={walnutMat}
+          onPickShelf={() => {
+            const { pos, look } = focusForShelf(0);
+            pick("projects", pos, look);
+          }}
+          onPickItem={(itemIndex) => {
+            const { pos, look } = focusForShelf(0);
+            pick("projects", pos, look, itemIndex);
+          }}
+        />
       </group>
 
-      <group position={[6.5, 0, -4]}>
-        <mesh position={[0, 1.2, 0]}>
-          <boxGeometry args={[3.2, 2.4, 0.6]} />
-          <primitive object={inkMat} attach="material" />
-        </mesh>
-
-        <InteractiveItem
-          onPick={() => pick("cv", [4.8, 1.3, -3.0], [6.5, 1.2, -4])}
-        >
-          <mesh position={[-0.6, 0.9, 0.35]}>
-            <boxGeometry args={[0.45, 0.28, 0.08]} />
-            <meshStandardMaterial color={"#ff7a9a"} roughness={0.7} />
-          </mesh>
-        </InteractiveItem>
-
-        <InteractiveItem
-          onPick={() => pick("contact", [6.8, 1.25, -2.9], [6.5, 1.2, -4])}
-        >
-          <mesh position={[0.8, 0.75, 0.35]}>
-            <boxGeometry args={[0.35, 0.35, 0.35]} />
-            <meshStandardMaterial color={"#7CFF8D"} roughness={0.7} />
-          </mesh>
-        </InteractiveItem>
+      <group position={[6.2, 0.0, -6.55]}>
+        <BookcaseUnit
+          theme="manga"
+          walnutMat={walnutMat}
+          onPickShelf={() => {
+            const { pos, look } = focusForShelf(6.2);
+            pick("stack", pos, look);
+          }}
+          onPickItem={(itemIndex) => {
+            const { pos, look } = focusForShelf(6.2);
+            pick("stack", pos, look, itemIndex);
+          }}
+        />
       </group>
-
-      <Environment preset="city" />
     </>
   );
 }
@@ -192,11 +937,17 @@ export default function LibraryScene({
   focus,
   setFocus,
 }) {
+  const [mapEditMode, setMapEditMode] = useState(false);
+
   return (
     <Canvas
-      shadows={false}
+      shadows
       camera={{ position: [0, 1.6, 4], fov: 65 }}
       gl={{ antialias: true }}
+      onCreated={({ gl }) => {
+        gl.toneMapping = THREE.ACESFilmicToneMapping;
+        gl.toneMappingExposure = 0.98;
+      }}
     >
       <SceneInner
         controlsEnabled={controlsEnabled}
@@ -204,7 +955,11 @@ export default function LibraryScene({
         onOpenSection={onOpenSection}
         focus={focus}
         setFocus={setFocus}
+        mapEditMode={mapEditMode}
+        setMapEditMode={setMapEditMode}
       />
     </Canvas>
   );
 }
+
+

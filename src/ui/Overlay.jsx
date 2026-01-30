@@ -1,19 +1,200 @@
-import { SECTIONS } from "../data/sections";
+// src/ui/Overlay.jsx
+import { useMemo, useState, useEffect } from "react";
+import { SECTIONS, BOOK_LAYOUT } from "../data/sections";
+
+function resolveRowAndIndex(itemId, rowCounts) {
+  if (itemId == null || Number.isNaN(Number(itemId))) return null;
+
+  let remaining = Number(itemId);
+  for (let rowIndex = 0; rowIndex < rowCounts.length; rowIndex++) {
+    const count = rowCounts[rowIndex];
+    if (remaining < count) {
+      return { rowIndex, bookIndex: remaining };
+    }
+    remaining -= count;
+  }
+  return null;
+}
 
 export default function Overlay({
   isLocked,
   onRequestLock,
   onReleaseLock,
   openSectionId,
+  openItemId = null,
   onClosePanel,
 }) {
   const section = openSectionId ? SECTIONS[openSectionId] : null;
 
+  const rowCounts = (BOOK_LAYOUT && BOOK_LAYOUT.rowCounts) || [24, 22, 20];
+
+  const [selectedRow, setSelectedRow] = useState(null);
+
+  useEffect(() => {
+    setSelectedRow(null);
+  }, [openSectionId]);
+
+  const rowInfo = useMemo(() => {
+    if (!section?.rows) return null;
+    return resolveRowAndIndex(openItemId, rowCounts);
+  }, [section, openItemId, rowCounts]);
+
+  const activeRow = rowInfo ? section?.rows?.[rowInfo.rowIndex] : null;
+  const activeItem = rowInfo ? activeRow?.items?.[rowInfo.bookIndex] : null;
+
+  // ✅ On masque le panneau “texte” pour éviter le doublon sur les diplômes
+  const hidePanelForSection =
+    openSectionId === "diplomas" ||
+    openSectionId === "travels" ||
+    openSectionId === "about";
+
+  // ✅ action “reprendre le contrôle”
+  const handleTakeBackControl = () => {
+    onReleaseLock?.();
+    onClosePanel?.();
+  };
+
+  // ✅ CV (uniquement affiché quand panel ouvert = quand section est ouverte)
+  const CV_URL = "/cv/Thomas-DeTraversay-CV.pdf";
+
+  const handleOpenCV = () => {
+    window.open(CV_URL, "_blank", "noopener,noreferrer");
+  };
+
+  const handleDownloadCV = () => {
+    const a = document.createElement("a");
+    a.href = CV_URL;
+    a.download = "Thomas-DeTraversay-CV.pdf";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+
+  // ---------- Render helpers ----------
+  const renderCareerItem = (it, idx) => (
+    <div
+      key={`${it.name}-${idx}`}
+      style={{
+        marginBottom: 12,
+        padding: 10,
+        border: "1px solid rgba(255,255,255,0.10)",
+        borderRadius: 10,
+        background: "rgba(0,0,0,0.20)",
+      }}
+    >
+      <div style={{ color: "var(--text)", fontWeight: 700 }}>{it.name}</div>
+
+      {(it.company || it.location || it.period) && (
+        <div style={{ color: "var(--muted)", fontSize: 13, marginTop: 2 }}>
+          {it.company ? <span>{it.company}</span> : null}
+          {it.location ? (
+            <span>
+              {it.company ? " • " : ""}
+              {it.location}
+            </span>
+          ) : null}
+          {it.period ? (
+            <span>
+              {(it.company || it.location) ? " • " : ""}
+              {it.period}
+            </span>
+          ) : null}
+        </div>
+      )}
+
+      {it.desc && (
+        <div style={{ color: "var(--muted)", fontSize: 13, marginTop: 6 }}>
+          {it.desc}
+        </div>
+      )}
+
+      {Array.isArray(it.bullets) && it.bullets.length > 0 && (
+        <ul
+          style={{
+            margin: "8px 0 0 16px",
+            color: "var(--text)",
+            fontSize: 13,
+          }}
+        >
+          {it.bullets.map((b, i) => (
+            <li key={i} style={{ marginBottom: 4, opacity: 0.9 }}>
+              {b}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+
+  const renderStandardItem = (it, idx) => (
+    <div key={`${it.name}-${idx}`} style={{ marginBottom: 10 }}>
+      <div style={{ color: "var(--text)", fontWeight: 600 }}>
+        {it.href ? (
+          <a className="link" href={it.href} target="_blank" rel="noreferrer">
+            {it.name}
+          </a>
+        ) : (
+          it.name
+        )}
+      </div>
+
+      {it.desc && (
+        <div style={{ color: "var(--muted)", fontSize: 13 }}>{it.desc}</div>
+      )}
+
+      {it.year && (
+        <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 2 }}>
+          {it.year}
+        </div>
+      )}
+    </div>
+  );
+
+  const renderItemSmart = (it, idx) => {
+    const isCareerItem =
+      Boolean(it.company) ||
+      Boolean(it.period) ||
+      Boolean(it.location) ||
+      Array.isArray(it.bullets);
+    return isCareerItem ? renderCareerItem(it, idx) : renderStandardItem(it, idx);
+  };
+
+  const RowButton = ({ idx, title }) => (
+    <button
+      className="btn"
+      style={{
+        marginRight: 8,
+        marginTop: 8,
+        padding: "8px 10px",
+        borderRadius: 10,
+        border: "1px solid rgba(255,255,255,0.12)",
+        background:
+          selectedRow === idx ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.15)",
+        color: "var(--text)",
+        cursor: "pointer",
+      }}
+      onClick={() => setSelectedRow(idx)}
+    >
+      {title || `Rangée ${idx + 1}`}
+    </button>
+  );
+
   return (
     <div className="hud">
       <div className="topbar">
-        {!isLocked ? (
-          <button className="btn" onClick={onRequestLock}>
+        {section ? (
+          <button className="btn" onClick={handleTakeBackControl}>
+            ⎋ Quitter (reprendre le contrôle)
+          </button>
+        ) : !isLocked ? (
+          <button
+            className="btn btn-lock"
+            onClick={() => {
+              onRequestLock?.();
+              const canvas = document.querySelector("canvas");
+              if (canvas?.requestPointerLock) canvas.requestPointerLock();
+            }}
+          >
             🎮 Entrer (clic pour contrôler)
           </button>
         ) : (
@@ -22,40 +203,165 @@ export default function Overlay({
           </button>
         )}
 
+        {/* ✅ Boutons CV UNIQUEMENT quand le panel est ouvert (section ouverte) */}
         {section && (
-          <button className="btn" onClick={onClosePanel}>
-            ✖ Fermer
-          </button>
+          <>
+            <button className="btn" onClick={handleOpenCV}>
+              📄 Voir le CV
+            </button>
+            <button className="btn" onClick={handleDownloadCV}>
+              ⬇ Télécharger
+            </button>
+
+            <button className="btn" onClick={onClosePanel}>
+              ✖ Fermer
+            </button>
+          </>
         )}
       </div>
 
-      {section && (
+      {/* ✅ Panneau à droite */}
+      {section && !hidePanelForSection && (
         <div className="panel">
           <h2>{section.title}</h2>
-          <p>{section.description}</p>
+
+          {section.description && (
+            <p style={{ whiteSpace: "pre-line" }}>{section.description}</p>
+          )}
 
           <div>
             {section.tags?.map((t) => (
-              <span key={t} className="badge">{t}</span>
+              <span key={t} className="badge">
+                {t}
+              </span>
             ))}
           </div>
 
-          {section.items?.length > 0 && (
-            <div style={{ marginTop: 10 }}>
-              {section.items.map((it) => (
-                <div key={it.name} style={{ marginBottom: 10 }}>
-                  <div style={{ color: "var(--text)", fontWeight: 600 }}>
-                    {it.href ? (
-                      <a className="link" href={it.href} target="_blank" rel="noreferrer">
-                        {it.name}
-                      </a>
-                    ) : (
-                      it.name
-                    )}
+          {/* MODE LIVRE */}
+          {section.rows && openItemId != null && (
+            <div style={{ marginTop: 14 }}>
+              <div style={{ color: "var(--muted)", fontSize: 12, marginBottom: 8 }}>
+                Livre sélectionné :{" "}
+                <strong style={{ color: "var(--text)" }}>#{openItemId}</strong>
+              </div>
+
+              {rowInfo && activeRow ? (
+                <>
+                  <div
+                    style={{
+                      marginBottom: 10,
+                      padding: "8px 10px",
+                      borderRadius: 10,
+                      border: "1px solid rgba(255,255,255,0.10)",
+                      background: "rgba(0,0,0,0.18)",
+                    }}
+                  >
+                    <div style={{ color: "var(--text)", fontWeight: 700 }}>
+                      {activeRow.title || `Rangée ${rowInfo.rowIndex + 1}`}
+                    </div>
+                    <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 2 }}>
+                      Index dans la rangée : {rowInfo.bookIndex}
+                    </div>
                   </div>
-                  {it.desc && <div style={{ color: "var(--muted)", fontSize: 13 }}>{it.desc}</div>}
+
+                  {activeItem ? (
+                    <div>{renderItemSmart(activeItem, rowInfo.bookIndex)}</div>
+                  ) : (
+                    <div
+                      style={{
+                        marginTop: 10,
+                        padding: 12,
+                        borderRadius: 10,
+                        border: "1px dashed rgba(255,255,255,0.25)",
+                        background: "rgba(0,0,0,0.12)",
+                        color: "var(--muted)",
+                        fontSize: 13,
+                      }}
+                    >
+                      Emplacement réservé (aucun contenu pour ce livre pour l’instant).
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div
+                  style={{
+                    marginTop: 10,
+                    padding: 12,
+                    borderRadius: 10,
+                    border: "1px dashed rgba(255,255,255,0.25)",
+                    background: "rgba(0,0,0,0.12)",
+                    color: "var(--muted)",
+                    fontSize: 13,
+                  }}
+                >
+                  Livre hors plage (index non reconnu).
                 </div>
-              ))}
+              )}
+            </div>
+          )}
+
+          {/* MODE ÉTAGÈRE */}
+          {section.rows && openItemId == null && (
+            <div style={{ marginTop: 14 }}>
+              <div style={{ color: "var(--muted)", fontSize: 12, marginBottom: 6 }}>
+                Choisis une rangée (ou clique un livre pour un item précis).
+              </div>
+
+              <div style={{ display: "flex", flexWrap: "wrap" }}>
+                {section.rows.map((r, idx) => (
+                  <RowButton key={idx} idx={idx} title={r.title} />
+                ))}
+              </div>
+
+              {selectedRow != null && section.rows[selectedRow] && (
+                <div style={{ marginTop: 14 }}>
+                  <div
+                    style={{
+                      marginBottom: 10,
+                      padding: "8px 10px",
+                      borderRadius: 10,
+                      border: "1px solid rgba(255,255,255,0.10)",
+                      background: "rgba(0,0,0,0.18)",
+                    }}
+                  >
+                    <div style={{ color: "var(--text)", fontWeight: 700 }}>
+                      {section.rows[selectedRow].title || `Rangée ${selectedRow + 1}`}
+                    </div>
+                    <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 2 }}>
+                      Livres disponibles : {section.rows[selectedRow].items?.length || 0}
+                    </div>
+                  </div>
+
+                  {section.rows[selectedRow].items?.length > 0 ? (
+                    <div>
+                      {section.rows[selectedRow].items.map((it, idx) =>
+                        renderItemSmart(it, idx)
+                      )}
+                    </div>
+                  ) : (
+                    <div
+                      style={{
+                        marginTop: 10,
+                        padding: 12,
+                        borderRadius: 10,
+                        border: "1px dashed rgba(255,255,255,0.25)",
+                        background: "rgba(0,0,0,0.12)",
+                        color: "var(--muted)",
+                        fontSize: 13,
+                      }}
+                    >
+                      Rangée vide pour l’instant.
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* MODE LISTE fallback */}
+          {!section.rows && section.items?.length > 0 && (
+            <div style={{ marginTop: 12 }}>
+              {section.items.map((it, idx) => renderItemSmart(it, idx))}
             </div>
           )}
         </div>

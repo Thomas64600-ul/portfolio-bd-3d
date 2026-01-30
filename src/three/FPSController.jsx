@@ -1,15 +1,73 @@
-import { useEffect, useRef, useState } from "react";
+// src/three/FPSController.jsx
+import { useEffect, useRef, useState, useCallback } from "react";
 import { PointerLockControls } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
-export default function FPSController({ enabled, onLockChange, bounds = { minX: -8, maxX: 8, minZ: -10, maxZ: 6 } }) {
+export default function FPSController({
+  enabled,
+  onLockChange,
+  bounds = { minX: -8, maxX: 8, minZ: -10, maxZ: 6 },
+}) {
   const controlsRef = useRef();
-  const { camera, gl } = useThree();
-  const keys = useRef({ w: false, a: false, s: false, d: false, up: false, left: false, down: false, right: false });
+  const { camera, gl, scene } = useThree();
+
+  const keys = useRef({
+    w: false,
+    a: false,
+    s: false,
+    d: false,
+    up: false,
+    left: false,
+    down: false,
+    right: false,
+  });
+
   const velocity = useRef(new THREE.Vector3());
   const [locked, setLocked] = useState(false);
 
+  const resetKeys = () => {
+    Object.keys(keys.current).forEach((k) => (keys.current[k] = false));
+  };
+
+  // ✅ Raycast FPS au centre de l'écran (utile en PointerLock)
+  const pickCenter = useCallback(() => {
+    const raycaster = new THREE.Raycaster();
+    const ndc = new THREE.Vector2(0, 0); // centre écran
+    raycaster.setFromCamera(ndc, camera);
+
+    const hits = raycaster.intersectObjects(scene.children, true);
+    if (!hits.length) return false;
+
+    // On cherche le 1er objet cliquable (userData.pick)
+    for (const hit of hits) {
+      const obj = hit.object;
+      if (obj?.userData?.pick) {
+        // debug
+        console.log("🎯 FPS PICK:", obj.userData.type, obj.userData.label, obj.userData.itemIndex);
+        obj.userData.pick();
+        return true;
+      }
+    }
+    return false;
+  }, [camera, scene]);
+
+  // ✅ Si enabled passe à false : on unlock + stop net
+  useEffect(() => {
+    if (enabled) return;
+
+    const controls = controlsRef.current;
+
+    if (document.pointerLockElement) document.exitPointerLock();
+    if (controls?.isLocked) controls.unlock();
+
+    resetKeys();
+    velocity.current.set(0, 0, 0);
+    setLocked(false);
+    onLockChange?.(false);
+  }, [enabled, onLockChange]);
+
+  // ✅ Mouvement clavier
   useEffect(() => {
     const onKeyDown = (e) => {
       if (!enabled) return;
@@ -22,7 +80,9 @@ export default function FPSController({ enabled, onLockChange, bounds = { minX: 
       if (e.code === "ArrowDown") keys.current.down = true;
       if (e.code === "ArrowRight") keys.current.right = true;
     };
+
     const onKeyUp = (e) => {
+      if (!enabled) return;
       if (e.code === "KeyW") keys.current.w = false;
       if (e.code === "KeyA") keys.current.a = false;
       if (e.code === "KeyS") keys.current.s = false;
@@ -41,6 +101,7 @@ export default function FPSController({ enabled, onLockChange, bounds = { minX: 
     };
   }, [enabled]);
 
+  // ✅ Lock/unlock events
   useEffect(() => {
     const controls = controlsRef.current;
     if (!controls) return;
@@ -49,8 +110,13 @@ export default function FPSController({ enabled, onLockChange, bounds = { minX: 
       setLocked(true);
       onLockChange?.(true);
     };
+
     const onUnlock = () => {
       setLocked(false);
+      resetKeys();
+      velocity.current.set(0, 0, 0);
+
+      if (document.pointerLockElement) document.exitPointerLock();
       onLockChange?.(false);
     };
 
@@ -62,35 +128,56 @@ export default function FPSController({ enabled, onLockChange, bounds = { minX: 
     };
   }, [onLockChange]);
 
+  // ✅ CLIC SOURIS en FPS (pointer lock) => raycast centre écran
+  useEffect(() => {
+    if (!enabled || !locked) return;
+
+    const onMouseDown = (e) => {
+      // clic gauche seulement
+      if (e.button !== 0) return;
+
+      // tente pick au centre
+      const picked = pickCenter();
+
+      // si un pin est pické, on évite des effets de bord
+      if (picked) {
+        e.preventDefault();
+      }
+    };
+
+    window.addEventListener("mousedown", onMouseDown, { passive: false });
+    return () => window.removeEventListener("mousedown", onMouseDown);
+  }, [enabled, locked, pickCenter]);
+
+  // ✅ Déplacement
   useFrame((_, dt) => {
     if (!enabled || !locked) return;
 
-    const speed = 3.2; // marche douce
+    const speed = 3.2;
     const damping = 10;
 
-    // direction locale (avant/arrière, gauche/droite)
     const forward =
-      (keys.current.w || keys.current.up ? 1 : 0) - (keys.current.s || keys.current.down ? 1 : 0);
-    const strafe =
-      (keys.current.d || keys.current.right ? 1 : 0) - (keys.current.a || keys.current.left ? 1 : 0);
+      (keys.current.w || keys.current.up ? 1 : 0) -
+      (keys.current.s || keys.current.down ? 1 : 0);
 
-    // amortissement
+    const strafe =
+      (keys.current.d || keys.current.right ? 1 : 0) -
+      (keys.current.a || keys.current.left ? 1 : 0);
+
     velocity.current.x -= velocity.current.x * damping * dt;
     velocity.current.z -= velocity.current.z * damping * dt;
 
     if (forward !== 0) velocity.current.z -= forward * speed * dt;
     if (strafe !== 0) velocity.current.x += strafe * speed * dt;
 
-    // appliquer dans l’espace caméra
     const dir = new THREE.Vector3(velocity.current.x, 0, velocity.current.z);
     dir.applyQuaternion(camera.quaternion);
 
     camera.position.add(dir);
 
-    // limites de déplacement
     camera.position.x = Math.max(bounds.minX, Math.min(bounds.maxX, camera.position.x));
     camera.position.z = Math.max(bounds.minZ, Math.min(bounds.maxZ, camera.position.z));
-    camera.position.y = 1.6; // hauteur FPS
+    camera.position.y = 1.6;
   });
 
   return (

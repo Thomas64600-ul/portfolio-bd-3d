@@ -88,3 +88,105 @@ html, body, #root { height: 100%; margin: 0; background: var(--bg); }
 }
 .link:hover { border-bottom-color: rgba(255,255,255,0.6); }
 
+.panel::-webkit-scrollbar {
+  width: 10px;
+}
+.panel::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.15);
+  border-radius: 999px;
+  border: 2px solid rgba(0,0,0,0);
+  background-clip: padding-box;
+}
+.panel::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.25);
+  border: 2px solid rgba(0,0,0,0);
+  background-clip: padding-box;
+}
+
+.travelCard{
+  position: fixed;
+  left: 50%;
+  top: 16px;
+  transform: translateX(-50%);
+  width: min(720px, calc(100% - 32px));
+  max-height: calc(100% - 32px);
+  overflow: auto;
+  background: rgba(10, 10, 14, 0.92);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 14px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.55);
+  pointer-events: auto;
+  z-index: 50;
+}
+
+.travelCard__top{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:flex-start;
+  margin-bottom: 10px;
+}
+
+.travelCard__title{
+  color: var(--text);
+  font-size: 22px;
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+
+.travelCard__desc{
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.travelCard__mapWrap{
+  margin-top: 10px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.10);
+}
+
+.travelCard__map{
+  display:block;
+  width:100%;
+  height:auto;
+}
+
+.travelCard__sectionTitle{
+  margin-top: 12px;
+  color: var(--text);
+  font-weight: 700;
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.travelCard__grid{
+  margin-top: 10px;
+  display:grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.travelCard__photo{
+  width:100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.10);
+}
+
+.travelCard__empty{
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px dashed rgba(255,255,255,0.25);
+  background: rgba(0,0,0,0.12);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+@media (max-width: 640px){
+  .travelCard__grid{ grid-template-columns: repeat(2, 1fr); }
+}
