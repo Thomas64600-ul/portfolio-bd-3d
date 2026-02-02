@@ -19,12 +19,43 @@ function setGlobalFlag(key, value) {
   window[key] = !!value;
 }
 
+function detectPortrait() {
+  if (typeof window === "undefined") return false;
+  return window.innerHeight > window.innerWidth;
+}
+
 export default function App() {
   const [isLocked, setIsLocked] = useState(false);
   const [controlsEnabled, setControlsEnabled] = useState(true);
   const [openSectionId, setOpenSectionId] = useState(null);
 
   const isMobile = useMemo(() => detectMobile(), []);
+
+ 
+  const [isPortrait, setIsPortrait] = useState(() => (isMobile ? detectPortrait() : false));
+
+  useEffect(() => {
+    if (!isMobile) {
+      setIsPortrait(false);
+      setGlobalFlag("__IS_PORTRAIT__", false);
+      return;
+    }
+
+    const compute = () => {
+      const portrait = detectPortrait();
+      setIsPortrait(portrait);
+      setGlobalFlag("__IS_PORTRAIT__", portrait);
+    };
+
+    compute();
+    window.addEventListener("resize", compute);
+    window.addEventListener("orientationchange", compute);
+
+    return () => {
+      window.removeEventListener("resize", compute);
+      window.removeEventListener("orientationchange", compute);
+    };
+  }, [isMobile]);
 
   const mobileForwardRef = useRef(false);
   const mobileBackRef = useRef(false);
@@ -57,7 +88,7 @@ export default function App() {
     }));
   }, []);
 
- 
+  
   useEffect(() => {
     if (typeof document === "undefined") return;
 
@@ -66,6 +97,8 @@ export default function App() {
     };
 
     document.addEventListener("pointerlockchange", onChange);
+    onChange();
+
     return () => document.removeEventListener("pointerlockchange", onChange);
   }, []);
 
@@ -75,7 +108,9 @@ export default function App() {
     if (typeof document === "undefined") return;
     const canvas = document.querySelector("canvas");
     if (canvas && !document.pointerLockElement) {
-      canvas.requestPointerLock?.();
+      if (typeof canvas.requestPointerLock === "function") {
+        canvas.requestPointerLock();
+      }
     }
   }, []);
 
@@ -98,7 +133,6 @@ export default function App() {
     setOpenSectionId(null);
     cancelFocus();
     setControlsEnabled(true);
-
     stopMobileMove();
   }, [cancelFocus, stopMobileMove]);
 
@@ -113,8 +147,11 @@ export default function App() {
           // no-op
         }
       }
-      setControlsEnabled(false);
 
+    
+      setGlobalFlag("__UI_ACTIVE__", true);
+
+      setControlsEnabled(false);
       stopMobileMove();
 
       setFocus((f) => ({
@@ -163,6 +200,7 @@ export default function App() {
     <>
       <LibraryScene
         isMobile={isMobile}
+        isPortrait={isPortrait}
         controlsEnabled={controlsEnabled}
         setIsLocked={setIsLocked}
         focus={focus}
@@ -174,6 +212,7 @@ export default function App() {
 
       <Overlay
         isMobile={isMobile}
+        isPortrait={isPortrait}
         isLocked={isLocked}
         onRequestLock={requestLock}
         onReleaseLock={releaseLock}
@@ -192,4 +231,5 @@ export default function App() {
     </>
   );
 }
+
 
