@@ -1,12 +1,31 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import LibraryScene from "./three/LibraryScene";
 import Overlay from "./ui/Overlay";
 import TravelCard from "./ui/TravelCard";
+
+function detectMobile() {
+  if (typeof window === "undefined") return false;
+
+  // 1) "pointer: coarse" = tactile (souvent mobile/tablette)
+  const coarse = window.matchMedia?.("(pointer: coarse)")?.matches ?? false;
+
+  // 2) userAgent (fallback)
+  const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+  const uaMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(ua);
+
+  // 3) largeur (fallback)
+  const smallScreen = window.innerWidth < 768;
+
+  return coarse || uaMobile || smallScreen;
+}
 
 export default function App() {
   const [isLocked, setIsLocked] = useState(false);
   const [controlsEnabled, setControlsEnabled] = useState(true);
   const [openSectionId, setOpenSectionId] = useState(null);
+
+  // ✅ Phase 1: détection mobile (stable au montage)
+  const isMobile = useMemo(() => detectMobile(), []);
 
   const [focus, setFocus] = useState({
     active: false,
@@ -83,6 +102,7 @@ export default function App() {
   return (
     <>
       <LibraryScene
+        isMobile={isMobile} // ✅ Phase 1 (préparation)
         controlsEnabled={controlsEnabled}
         setIsLocked={setIsLocked}
         focus={focus}
@@ -91,6 +111,7 @@ export default function App() {
       />
 
       <Overlay
+        isMobile={isMobile} // ✅ Phase 1 (préparation)
         isLocked={isLocked}
         onRequestLock={requestLock}
         onReleaseLock={releaseLock}
