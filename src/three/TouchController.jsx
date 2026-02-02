@@ -34,12 +34,25 @@ export default function TouchController({
     pitch.current = e.x;
   }, [camera]);
 
+  // Helper: ignorer les gestes si on touche l'UI (boutons overlay, liens, etc.)
+  const isUiTarget = (target) => {
+    if (!target || typeof target.closest !== "function") return false;
+    return Boolean(
+      target.closest(
+        "button, a, input, textarea, select, label, .btn, .panel, .topbar, .hud"
+      )
+    );
+  };
+
   useEffect(() => {
     const el = gl.domElement;
 
     const onTouchStart = (e) => {
       if (!enabled) return;
       if (lockWhileInteracting) return;
+
+      // Ne pas démarrer le look si le doigt est sur l'UI
+      if (isUiTarget(e.target)) return;
 
       // 1 doigt = look
       const t = e.touches?.[0];
@@ -52,6 +65,10 @@ export default function TouchController({
     const onTouchMove = (e) => {
       if (!enabled) return;
       if (!dragging.current) return;
+
+      // ✅ IMPORTANT : éviter scroll/pull-to-refresh pendant qu'on "look"
+      // On ne preventDefault que pendant le drag.
+      if (typeof e.preventDefault === "function") e.preventDefault();
 
       const t = e.touches?.[0];
       if (!t) return;
@@ -73,8 +90,12 @@ export default function TouchController({
       dragging.current = false;
     };
 
+    // touchstart peut rester passive
     el.addEventListener("touchstart", onTouchStart, { passive: true });
-    el.addEventListener("touchmove", onTouchMove, { passive: true });
+
+    // ✅ touchmove doit être passive:false si on veut preventDefault()
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+
     el.addEventListener("touchend", onTouchEnd, { passive: true });
     el.addEventListener("touchcancel", onTouchEnd, { passive: true });
 
