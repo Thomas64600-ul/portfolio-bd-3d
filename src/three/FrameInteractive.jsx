@@ -13,8 +13,9 @@ export default function FrameInteractive({
   pop = 0.28,
   children,
   hitbox = [2.2, 1.6, 0.25],
-  hitboxZ = 0.1,
+  hitboxZ = 0.12,
   enableHitbox = true,
+  disabled = false,
 }) {
   const ref = useRef();
 
@@ -32,11 +33,8 @@ export default function FrameInteractive({
   useFrame((_, dt) => {
     if (!ref.current) return;
 
-    if (isOpen) {
-      tmpTarget.copy(basePos).addScaledVector(forward, pop);
-    } else {
-      tmpTarget.copy(basePos);
-    }
+    if (isOpen) tmpTarget.copy(basePos).addScaledVector(forward, pop);
+    else tmpTarget.copy(basePos);
 
     easing.damp3(ref.current.position, tmpTarget, 0.18, dt);
 
@@ -46,16 +44,20 @@ export default function FrameInteractive({
 
   return (
     <group ref={ref} position={position} rotation={rotation}>
-      {children}
+      <InteractiveItem disabled={disabled} onPick={() => onPick?.(id)}>
+      
+        <group>
+          {children}
 
-      {enableHitbox && (
-        <InteractiveItem onPick={() => onPick?.(id)}>
-          <mesh position={[0, 0, hitboxZ]}>
-            <boxGeometry args={hitbox} />
-            <meshBasicMaterial transparent opacity={0} depthWrite={false} />
-          </mesh>
-        </InteractiveItem>
-      )}
+          {enableHitbox && (
+            <mesh position={[0, 0, hitboxZ]}>
+              <boxGeometry args={hitbox} />
+             
+              <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+            </mesh>
+          )}
+        </group>
+      </InteractiveItem>
     </group>
   );
 }
