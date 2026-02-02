@@ -13,6 +13,11 @@ import TravelWall from "./TravelWall";
 import MovieWall from "./MovieWall";
 import StylizedCeiling from "./StylizedCeiling";
 
+function setGlobalFlag(key, value) {
+  if (typeof window === "undefined") return;
+  window[key] = !!value;
+}
+
 function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
   const palette = useMemo(() => {
     if (theme === "comics") return ["#ffd166", "#ef476f", "#06d6a0", "#118ab2"];
@@ -46,7 +51,6 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
       }),
     []
   );
-
 
   const mangaTextures = useLoader(THREE.TextureLoader, [
     "/textures/manga/dragonball.jpg",
@@ -115,7 +119,6 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
     t.wrapT = THREE.ClampToEdgeWrapping;
 
     t.colorSpace = THREE.SRGBColorSpace;
-
     t.anisotropy = 12;
     t.minFilter = THREE.LinearMipmapLinearFilter;
     t.magFilter = THREE.LinearFilter;
@@ -222,7 +225,8 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
           const x = -W / 2 + leftPad + i * step + step * 0.5;
 
           const h = theme === "manga" ? 0.545 : theme === "comics" ? 0.59 : 0.62;
-          const w = theme === "manga" ? step * 0.9 : theme === "comics" ? step * 0.86 : step * 0.88;
+          const w =
+            theme === "manga" ? step * 0.9 : theme === "comics" ? step * 0.86 : step * 0.88;
 
           const baseColor =
             theme === "manga"
@@ -409,8 +413,8 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
       </mesh>
 
       {[0.95, 1.55, 2.15].map((yy, idx) => (
-        <mesh key={idx} position={[0, yy, shelfZ]} castShadow receiveShadow>
-          <boxGeometry args={[W - frameT * 1.2, shelfT, D - 0.1]} />
+        <mesh key={idx} position={[0, yy, 0.02]} castShadow receiveShadow>
+          <boxGeometry args={[W - frameT * 1.2, 0.08, D - 0.1]} />
           <primitive object={walnutMat} attach="material" />
         </mesh>
       ))}
@@ -444,6 +448,7 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
 
 function SceneInner({
   isMobile,
+  isPortrait,
   mobileForwardRef,
   mobileBackRef,
   onOpenSection,
@@ -460,11 +465,11 @@ function SceneInner({
   const cameraTarget = useRef(new THREE.Vector3());
   const lookTarget = useRef(new THREE.Vector3());
 
+  const fovTarget = useRef(65); 
   const woodMap = useLoader(THREE.TextureLoader, "/textures/wood_floor.jpg");
   const stoneMap = useLoader(THREE.TextureLoader, "/textures/stone_wall.jpg");
 
   const unlockPointer = useCallback(() => {
-   
     if (typeof document === "undefined") return;
 
     if (document.pointerLockElement) {
@@ -494,9 +499,13 @@ function SceneInner({
   }, [setMapEditMode, unlockPointer]);
 
   useEffect(() => {
-    if (!focus?.active) return;
+    if (!focus?.active) {
+      setGlobalFlag("__UI_ACTIVE__", false);
+      return;
+    }
     unlockPointer();
     setIsLocked?.(false);
+    setGlobalFlag("__UI_ACTIVE__", true);
   }, [focus?.active, unlockPointer, setIsLocked]);
 
   useEffect(() => {
@@ -559,6 +568,12 @@ function SceneInner({
   );
 
   useFrame((state, dt) => {
+    
+    const baseFov = 65;
+    const desiredFov = isMobile && isPortrait ? fovTarget.current : baseFov;
+    state.camera.fov = easing.damp(state.camera.fov, desiredFov, 0.22, dt);
+    state.camera.updateProjectionMatrix();
+
     if (!focus?.active) return;
 
     cameraTarget.current.set(focus.pos[0], focus.pos[1], focus.pos[2]);
@@ -582,13 +597,28 @@ function SceneInner({
       unlockPointer();
       setMapEditMode(false);
 
-      
+    
       if (mobileForwardRef?.current !== undefined) mobileForwardRef.current = false;
       if (mobileBackRef?.current !== undefined) mobileBackRef.current = false;
 
-      setFocus({ active: true, opened: false, sectionId, itemId, pos, look });
+      
+      let finalPos = pos;
+      let finalLook = look;
+
+      if (isMobile && isPortrait && (sectionId === "travels" || sectionId === "about")) {
+        
+        finalPos = [pos[0] - 0.55, pos[1] + 0.05, pos[2]];
+        finalLook = [look[0], look[1], look[2]];
+
+        
+        fovTarget.current = 78;
+      } else {
+        fovTarget.current = 65;
+      }
+
+      setFocus({ active: true, opened: false, sectionId, itemId, pos: finalPos, look: finalLook });
     },
-    [unlockPointer, setMapEditMode, setFocus, mobileForwardRef, mobileBackRef]
+    [unlockPointer, setMapEditMode, setFocus, mobileForwardRef, mobileBackRef, isMobile, isPortrait]
   );
 
   return (
@@ -613,15 +643,15 @@ function SceneInner({
 
       <Environment preset="warehouse" />
 
-    
       {fpsEnabled && <FPSController enabled={true} onLockChange={setIsLocked} />}
 
-     
       {touchEnabled && (
         <TouchController
           enabled={true}
           forwardRef={mobileForwardRef}
           backRef={mobileBackRef}
+          speed={3.6}         
+          lookSpeed={0.0042}   
           bounds={{ minX: -8, maxX: 8, minZ: -10, maxZ: 6 }}
         />
       )}
@@ -691,8 +721,6 @@ function SceneInner({
         position={[10.92, 2.55, 3.3]}
         rotation={[0, -Math.PI / 2, 0]}
         mapUrl="/textures/world_map.jpg"
-        frameId="travels"
-        selectedId={focus?.sectionId === "travels" ? "travels" : null}
         activeIndex={focus?.sectionId === "travels" ? focus?.itemId : null}
         onPickWall={() => pick("travels", [7.8, 2.35, 3.3], [10.5, 2.55, 3.3])}
         onPickPin={(itemIndex) =>
@@ -759,6 +787,7 @@ function SceneInner({
 
 export default function LibraryScene({
   isMobile,
+  isPortrait = false,
   controlsEnabled,
   setIsLocked,
   onOpenSection,
@@ -785,6 +814,7 @@ export default function LibraryScene({
     >
       <SceneInner
         isMobile={isMobile}
+        isPortrait={isPortrait}
         mobileForwardRef={mobileForwardRef}
         mobileBackRef={mobileBackRef}
         controlsEnabled={controlsEnabled}
