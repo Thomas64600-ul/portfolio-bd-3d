@@ -1,15 +1,7 @@
-// src/three/TouchController.jsx
 import { useEffect, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
-/**
- * TouchController (mobile)
- * - Glisser (1 doigt) = tourner la caméra (yaw/pitch)
- * - forwardRef/backRef = refs booléennes pour avancer/reculer (boutons Overlay)
- *
- * ✅ Perf-friendly : pas de state React, uniquement des refs.
- */
 export default function TouchController({
   enabled = true,
   forwardRef,
@@ -17,7 +9,8 @@ export default function TouchController({
   speed = 2.2,
   lookSpeed = 0.004,
   bounds = { minX: -8, maxX: 8, minZ: -10, maxZ: 6 },
-  lockWhileInteracting = false, // si tu veux ignorer quand un panel est ouvert plus tard
+  lockWhileInteracting = false,
+  dragThresholdPx = 10,
 }) {
   const { camera, gl } = useThree();
 
@@ -25,24 +18,20 @@ export default function TouchController({
   const pitch = useRef(0);
 
   const dragging = useRef(false);
+  const dragMoved = useRef(false);
+  const start = useRef({ x: 0, y: 0 });
   const last = useRef({ x: 0, y: 0 });
 
-  // Init yaw/pitch à partir de la rotation actuelle de la caméra
+  const setGlobalDragging = (v) => {
+  
+    window.__TOUCH_LOOKING__ = !!v;
+  };
+
   useEffect(() => {
     const e = new THREE.Euler().setFromQuaternion(camera.quaternion, "YXZ");
     yaw.current = e.y;
     pitch.current = e.x;
   }, [camera]);
-
-  // Helper: ignorer les gestes si on touche l'UI (boutons overlay, liens, etc.)
-  const isUiTarget = (target) => {
-    if (!target || typeof target.closest !== "function") return false;
-    return Boolean(
-      target.closest(
-        "button, a, input, textarea, select, label, .btn, .panel, .topbar, .hud"
-      )
-    );
-  };
 
   useEffect(() => {
     const el = gl.domElement;
@@ -51,61 +40,79 @@ export default function TouchController({
       if (!enabled) return;
       if (lockWhileInteracting) return;
 
-      // Ne pas démarrer le look si le doigt est sur l'UI
-      if (isUiTarget(e.target)) return;
-
-      // 1 doigt = look
       const t = e.touches?.[0];
       if (!t) return;
 
       dragging.current = true;
+      dragMoved.current = false;
+      start.current = { x: t.clientX, y: t.clientY };
       last.current = { x: t.clientX, y: t.clientY };
+
+      e.preventDefault?.();
     };
 
     const onTouchMove = (e) => {
       if (!enabled) return;
       if (!dragging.current) return;
 
-      // ✅ IMPORTANT : éviter scroll/pull-to-refresh pendant qu'on "look"
-      // On ne preventDefault que pendant le drag.
-      if (typeof e.preventDefault === "function") e.preventDefault();
-
       const t = e.touches?.[0];
       if (!t) return;
 
-      const dx = t.clientX - last.current.x;
-      const dy = t.clientY - last.current.y;
-      last.current = { x: t.clientX, y: t.clientY };
+      const dxTotal = t.clientX - start.current.x;
+      const dyTotal = t.clientY - start.current.y;
 
-      yaw.current -= dx * lookSpeed;
-      pitch.current -= dy * lookSpeed;
+      if (!dragMoved.current) {
+        const dist = Math.hypot(dxTotal, dyTotal);
+        if (dist >= dragThresholdPx) {
+          dragMoved.current = true;
+          setGlobalDragging(true);
+        }
+      }
 
-      // clamp pitch pour éviter de passer la tête à l’envers
-      const limit = Math.PI / 2 - 0.08;
-      if (pitch.current > limit) pitch.current = limit;
-      if (pitch.current < -limit) pitch.current = -limit;
+      if (dragMoved.current) {
+        const dx = t.clientX - last.current.x;
+        const dy = t.clientY - last.current.y;
+
+        last.current = { x: t.clientX, y: t.clientY };
+
+        yaw.current -= dx * lookSpeed;
+        pitch.current -= dy * lookSpeed;
+
+        const limit = Math.PI / 2 - 0.08;
+        if (pitch.current > limit) pitch.current = limit;
+        if (pitch.current < -limit) pitch.current = -limit;
+      }
+
+      e.preventDefault?.();
     };
 
-    const onTouchEnd = () => {
+    const end = (e) => {
       dragging.current = false;
+
+      if (dragMoved.current) {
+        dragMoved.current = false;
+        setTimeout(() => setGlobalDragging(false), 120);
+      } else {
+        
+        setGlobalDragging(false);
+      }
+
+      e?.preventDefault?.();
     };
 
-    // touchstart peut rester passive
-    el.addEventListener("touchstart", onTouchStart, { passive: true });
-
-    // ✅ touchmove doit être passive:false si on veut preventDefault()
+    el.addEventListener("touchstart", onTouchStart, { passive: false });
     el.addEventListener("touchmove", onTouchMove, { passive: false });
-
-    el.addEventListener("touchend", onTouchEnd, { passive: true });
-    el.addEventListener("touchcancel", onTouchEnd, { passive: true });
+    el.addEventListener("touchend", end, { passive: false });
+    el.addEventListener("touchcancel", end, { passive: false });
 
     return () => {
       el.removeEventListener("touchstart", onTouchStart);
       el.removeEventListener("touchmove", onTouchMove);
-      el.removeEventListener("touchend", onTouchEnd);
-      el.removeEventListener("touchcancel", onTouchEnd);
+      el.removeEventListener("touchend", end);
+      el.removeEventListener("touchcancel", end);
+      setGlobalDragging(false);
     };
-  }, [enabled, gl, lookSpeed, lockWhileInteracting]);
+  }, [enabled, gl, lookSpeed, lockWhileInteracting, dragThresholdPx]);
 
   const forwardDir = useRef(new THREE.Vector3());
   const moveVec = useRef(new THREE.Vector3());
@@ -113,7 +120,6 @@ export default function TouchController({
   useFrame((_, dt) => {
     if (!enabled) return;
 
-    // Appliquer rotation caméra
     camera.rotation.order = "YXZ";
     camera.rotation.y = yaw.current;
     camera.rotation.x = pitch.current;
@@ -123,7 +129,6 @@ export default function TouchController({
     const move = (fwd ? 1 : 0) + (back ? -1 : 0);
 
     if (move !== 0) {
-      // direction caméra (au sol)
       camera.getWorldDirection(forwardDir.current);
       forwardDir.current.y = 0;
       forwardDir.current.normalize();
@@ -131,7 +136,6 @@ export default function TouchController({
       moveVec.current.copy(forwardDir.current).multiplyScalar(move * speed * dt);
       camera.position.add(moveVec.current);
 
-      // bounds simples (comme ton FPSController)
       camera.position.x = Math.max(bounds.minX, Math.min(bounds.maxX, camera.position.x));
       camera.position.z = Math.max(bounds.minZ, Math.min(bounds.maxZ, camera.position.z));
     }
@@ -139,3 +143,4 @@ export default function TouchController({
 
   return null;
 }
+

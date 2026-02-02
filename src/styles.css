@@ -303,3 +303,19 @@ canvas {
     border-radius: 12px;
   }
 }
+
+html,
+body {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  overscroll-behavior: none;
+}
+
+canvas {
+  touch-action: none;
+}
+
+.btn {
+  touch-action: manipulation;
+}
