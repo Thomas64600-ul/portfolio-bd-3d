@@ -5,6 +5,7 @@ import { useMemo, useRef, useEffect, useCallback, useState } from "react";
 import { easing } from "maath";
 
 import FPSController from "./FPSController";
+import TouchController from "./TouchController";
 import InteractiveItem from "./InteractiveItem";
 import AboutPanel from "./AboutPanel";
 import DiplomaWall from "./DiplomaWall";
@@ -46,7 +47,6 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
     []
   );
 
- 
   const mangaTextures = useLoader(THREE.TextureLoader, [
     "/textures/manga/dragonball.jpg",
     "/textures/manga/aot.jpg",
@@ -73,14 +73,12 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
     "/textures/bd/murena.jpg",
   ]);
 
- 
   useEffect(() => {
     const apply = (texList) => {
       const list = Array.isArray(texList) ? texList : [texList];
       list.forEach((t) => {
         if (!t) return;
 
-        
         t.colorSpace = THREE.SRGBColorSpace;
 
         t.anisotropy = 12;
@@ -99,7 +97,6 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
     apply(bdTextures);
   }, [mangaTextures, comicsTextures, bdTextures]);
 
- 
   const sliceTexture = useCallback((baseTex, i, count, uStart = 0, uEnd = 1) => {
     if (!baseTex || !count) return null;
 
@@ -108,7 +105,7 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
 
     const span = Math.max(0.0001, uEnd - uStart);
     const w = span / count;
-    const pad = 0.0015 * span; 
+    const pad = 0.0015 * span;
     t.repeat.set(Math.max(0.0001, w - pad), 1);
     t.offset.set(uStart + i * w + pad * 0.5, 0);
 
@@ -444,6 +441,9 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
 }
 
 function SceneInner({
+  isMobile,
+  mobileForwardRef,
+  mobileBackRef,
   onOpenSection,
   focus,
   setFocus,
@@ -453,6 +453,7 @@ function SceneInner({
   setMapEditMode,
 }) {
   const fpsEnabled = controlsEnabled && !focus?.active && !mapEditMode;
+  const touchEnabled = isMobile && !focus?.active && !mapEditMode;
 
   const cameraTarget = useRef(new THREE.Vector3());
   const lookTarget = useRef(new THREE.Vector3());
@@ -501,8 +502,6 @@ function SceneInner({
     woodMap.wrapT = THREE.RepeatWrapping;
     woodMap.repeat.set(5, 4);
     woodMap.anisotropy = 8;
-
-   
     woodMap.colorSpace = THREE.SRGBColorSpace;
 
     return new THREE.MeshStandardMaterial({
@@ -520,8 +519,6 @@ function SceneInner({
     base.wrapT = THREE.RepeatWrapping;
     base.repeat.set(7, 3.2);
     base.anisotropy = 8;
-
-   
     base.colorSpace = THREE.SRGBColorSpace;
 
     return new THREE.MeshStandardMaterial({
@@ -574,9 +571,14 @@ function SceneInner({
     (sectionId, pos, look, itemId = null) => {
       unlockPointer();
       setMapEditMode(false);
+
+      // ✅ sécurité : on stop le move mobile quand on déclenche un focus
+      if (mobileForwardRef) mobileForwardRef.current = false;
+      if (mobileBackRef) mobileBackRef.current = false;
+
       setFocus({ active: true, opened: false, sectionId, itemId, pos, look });
     },
-    [unlockPointer, setMapEditMode, setFocus]
+    [unlockPointer, setMapEditMode, setFocus, mobileForwardRef, mobileBackRef]
   );
 
   return (
@@ -590,7 +592,7 @@ function SceneInner({
         penumbra={0.75}
         intensity={2.2}
         distance={35}
-        castShadow
+        castShadow={!isMobile}
         shadow-mapSize-width={1024}
         shadow-mapSize-height={1024}
       />
@@ -601,39 +603,66 @@ function SceneInner({
 
       <Environment preset="warehouse" />
 
+      {/* Desktop controls */}
       {fpsEnabled && <FPSController enabled={true} onLockChange={setIsLocked} />}
 
-      <mesh receiveShadow position={[0, 0, 0]}>
+      {/* Mobile controls */}
+      {touchEnabled && (
+        <TouchController
+          enabled={true}
+          forwardRef={mobileForwardRef}
+          backRef={mobileBackRef}
+          bounds={{ minX: -8, maxX: 8, minZ: -10, maxZ: 6 }}
+        />
+      )}
+
+      <mesh receiveShadow={!isMobile} position={[0, 0, 0]}>
         <boxGeometry args={[22, 0.2, 18]} />
         {floorMat ? <primitive object={floorMat} attach="material" /> : null}
       </mesh>
 
-      <mesh position={[0, 2.3, -7.85]} receiveShadow>
+      <mesh position={[0, 2.3, -7.85]} receiveShadow={!isMobile}>
         <planeGeometry args={[22, 4.6]} />
         {stoneMat ? <primitive object={stoneMat} attach="material" /> : null}
       </mesh>
 
-      <mesh position={[0, 2.3, 7.85]} rotation={[0, Math.PI, 0]} receiveShadow>
+      <mesh position={[0, 2.3, 7.85]} rotation={[0, Math.PI, 0]} receiveShadow={!isMobile}>
         <planeGeometry args={[22, 4.6]} />
         {stoneMat ? <primitive object={stoneMat} attach="material" /> : null}
       </mesh>
 
       <MovieWall position={[0, 2.35, 7.78]} />
 
-      <mesh position={[-10.98, 2.3, 0]} rotation={[0, Math.PI / 2, 0]} receiveShadow>
+      <mesh
+        position={[-10.98, 2.3, 0]}
+        rotation={[0, Math.PI / 2, 0]}
+        receiveShadow={!isMobile}
+      >
         <planeGeometry args={[18, 4.6]} />
         {stoneMat ? <primitive object={stoneMat} attach="material" /> : null}
       </mesh>
-      <mesh position={[10.98, 2.3, 0]} rotation={[0, -Math.PI / 2, 0]} receiveShadow>
+      <mesh
+        position={[10.98, 2.3, 0]}
+        rotation={[0, -Math.PI / 2, 0]}
+        receiveShadow={!isMobile}
+      >
         <planeGeometry args={[18, 4.6]} />
         {stoneMat ? <primitive object={stoneMat} attach="material" /> : null}
       </mesh>
 
-      <mesh position={[-10.92, 0.65, 0]} rotation={[0, Math.PI / 2, 0]} receiveShadow>
+      <mesh
+        position={[-10.92, 0.65, 0]}
+        rotation={[0, Math.PI / 2, 0]}
+        receiveShadow={!isMobile}
+      >
         <boxGeometry args={[18, 1.3, 0.08]} />
         <primitive object={walnutMat} attach="material" />
       </mesh>
-      <mesh position={[10.92, 0.65, 0]} rotation={[0, -Math.PI / 2, 0]} receiveShadow>
+      <mesh
+        position={[10.92, 0.65, 0]}
+        rotation={[0, -Math.PI / 2, 0]}
+        receiveShadow={!isMobile}
+      >
         <boxGeometry args={[18, 1.3, 0.08]} />
         <primitive object={walnutMat} attach="material" />
       </mesh>
@@ -725,26 +754,29 @@ export default function LibraryScene({
   onOpenSection,
   focus,
   setFocus,
+  mobileForwardRef,
+  mobileBackRef,
 }) {
-
   const [mapEditMode, setMapEditMode] = useState(false);
 
   return (
     <Canvas
-  shadows={!isMobile} // 🔹 ombres désactivées sur mobile (perf)
-  dpr={isMobile ? 1 : [1, 2]} // 🔹 résolution adaptative
-  camera={{ position: [0, 1.6, 4], fov: 65 }}
-  gl={{
-    antialias: !isMobile,
-    powerPreference: "high-performance",
-  }}
-  onCreated={({ gl }) => {
-    gl.toneMapping = THREE.ACESFilmicToneMapping;
-    gl.toneMappingExposure = 0.98;
-  }}
->
-
+      shadows={!isMobile}
+      dpr={isMobile ? 1 : [1, 2]}
+      camera={{ position: [0, 1.6, 4], fov: 65 }}
+      gl={{
+        antialias: !isMobile,
+        powerPreference: "high-performance",
+      }}
+      onCreated={({ gl }) => {
+        gl.toneMapping = THREE.ACESFilmicToneMapping;
+        gl.toneMappingExposure = 0.98;
+      }}
+    >
       <SceneInner
+        isMobile={isMobile}
+        mobileForwardRef={mobileForwardRef}
+        mobileBackRef={mobileBackRef}
         controlsEnabled={controlsEnabled}
         setIsLocked={setIsLocked}
         onOpenSection={onOpenSection}
