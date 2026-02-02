@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 
 export default function MobileJoystick({
   enabled = true,
@@ -14,8 +14,63 @@ export default function MobileJoystick({
   const baseRef = useRef(null);
   const pointerIdRef = useRef(null);
 
+ 
+  const onMoveRef = useRef(onMove);
+  const onEndRef = useRef(onEnd);
+  useEffect(() => {
+    onMoveRef.current = onMove;
+    onEndRef.current = onEnd;
+  }, [onMove, onEnd]);
+
   const [active, setActive] = useState(false);
   const [knob, setKnob] = useState({ x: 0, y: 0 });
+
+  const emit = useCallback(
+    (dx, dy) => {
+      const max = radius - knobRadius;
+
+      let x = dx / max;
+      let y = dy / max;
+
+      x = Math.max(-1, Math.min(1, x));
+      y = Math.max(-1, Math.min(1, y));
+
+      const mag = Math.hypot(x, y);
+      if (mag < deadZone) {
+        x = 0;
+        y = 0;
+      }
+
+      onMoveRef.current?.({ x, y });
+    },
+    [deadZone, radius, knobRadius]
+  );
+
+  const reset = useCallback(() => {
+    
+    if (pointerIdRef.current == null && !active) return;
+
+    setActive(false);
+    setKnob({ x: 0, y: 0 });
+    pointerIdRef.current = null;
+
+    if (typeof window !== "undefined") window.__JOYSTICK_ACTIVE__ = false;
+
+    onEndRef.current?.();
+    onMoveRef.current?.({ x: 0, y: 0 });
+  }, [active]);
+
+  const clampToCircle = useCallback(
+    (dx, dy) => {
+      const max = radius - knobRadius;
+      const dist = Math.hypot(dx, dy);
+      if (dist <= max) return { dx, dy };
+
+      const k = max / Math.max(0.0001, dist);
+      return { dx: dx * k, dy: dy * k };
+    },
+    [radius, knobRadius]
+  );
 
   const styles = useMemo(
     () => ({
@@ -40,7 +95,7 @@ export default function MobileJoystick({
         WebkitTapHighlightColor: "transparent",
         userSelect: "none",
         WebkitUserSelect: "none",
-        WebkitTouchCallout: "none", 
+        WebkitTouchCallout: "none",
       },
       knob: {
         width: knobSize,
@@ -50,6 +105,7 @@ export default function MobileJoystick({
         left: "50%",
         top: "50%",
         transform: `translate(calc(-50% + ${knob.x}px), calc(-50% + ${knob.y}px))`,
+        transition: active ? "none" : "transform 120ms ease-out",
         background: active ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.14)",
         border: "1px solid rgba(255,255,255,0.18)",
         boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
@@ -71,42 +127,6 @@ export default function MobileJoystick({
     [active, knob.x, knob.y, knobSize, enabled, size]
   );
 
-  const emit = (dx, dy) => {
-    let x = dx / (radius - knobRadius);
-    let y = dy / (radius - knobRadius);
-
-    x = Math.max(-1, Math.min(1, x));
-    y = Math.max(-1, Math.min(1, y));
-
-    const mag = Math.hypot(x, y);
-    if (mag < deadZone) {
-      x = 0;
-      y = 0;
-    }
-
-    onMove?.({ x, y });
-  };
-
-  const reset = () => {
-    setActive(false);
-    setKnob({ x: 0, y: 0 });
-    pointerIdRef.current = null;
-
-    if (typeof window !== "undefined") window.__JOYSTICK_ACTIVE__ = false;
-
-    onEnd?.();
-    onMove?.({ x: 0, y: 0 });
-  };
-
-  const clampToCircle = (dx, dy) => {
-    const max = radius - knobRadius;
-    const dist = Math.hypot(dx, dy);
-    if (dist <= max) return { dx, dy };
-
-    const k = max / Math.max(0.0001, dist);
-    return { dx: dx * k, dy: dy * k };
-  };
-
   useEffect(() => {
     const base = baseRef.current;
     if (!base) return;
@@ -121,10 +141,7 @@ export default function MobileJoystick({
     const onPointerDown = (e) => {
       if (!enabled) return;
 
-     
       e.stopPropagation?.();
-
-     
       e.preventDefault?.();
 
       if (typeof window !== "undefined") window.__JOYSTICK_ACTIVE__ = true;
@@ -157,25 +174,30 @@ export default function MobileJoystick({
     const onPointerUp = (e) => {
       if (pointerIdRef.current == null) return;
       if (e.pointerId !== pointerIdRef.current) return;
+
+      e.stopPropagation?.();
+      e.preventDefault?.();
       reset();
     };
 
     const onPointerCancel = (e) => {
       if (pointerIdRef.current == null) return;
       if (e.pointerId !== pointerIdRef.current) return;
+
+      e.stopPropagation?.();
+      e.preventDefault?.();
       reset();
     };
 
     const onContextMenu = (e) => {
-     
       e.preventDefault?.();
       e.stopPropagation?.();
     };
 
     base.addEventListener("pointerdown", onPointerDown, { passive: false });
     base.addEventListener("pointermove", onPointerMove, { passive: false });
-    base.addEventListener("pointerup", onPointerUp, { passive: true });
-    base.addEventListener("pointercancel", onPointerCancel, { passive: true });
+    base.addEventListener("pointerup", onPointerUp, { passive: false });
+    base.addEventListener("pointercancel", onPointerCancel, { passive: false });
     base.addEventListener("lostpointercapture", reset, { passive: true });
     base.addEventListener("contextmenu", onContextMenu);
 
@@ -187,7 +209,7 @@ export default function MobileJoystick({
       base.removeEventListener("lostpointercapture", reset);
       base.removeEventListener("contextmenu", onContextMenu);
     };
-  }, [enabled, deadZone]); 
+  }, [enabled, clampToCircle, emit, reset]);
 
   return (
     <div style={styles.wrap}>
