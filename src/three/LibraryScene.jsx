@@ -47,6 +47,7 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
     []
   );
 
+
   const mangaTextures = useLoader(THREE.TextureLoader, [
     "/textures/manga/dragonball.jpg",
     "/textures/manga/aot.jpg",
@@ -80,15 +81,15 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
         if (!t) return;
 
         t.colorSpace = THREE.SRGBColorSpace;
-
         t.anisotropy = 12;
         t.minFilter = THREE.LinearMipmapLinearFilter;
         t.magFilter = THREE.LinearFilter;
         t.generateMipmaps = true;
-        t.needsUpdate = true;
 
         t.wrapS = THREE.RepeatWrapping;
         t.wrapT = THREE.ClampToEdgeWrapping;
+
+        t.needsUpdate = true;
       });
     };
 
@@ -106,6 +107,7 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
     const span = Math.max(0.0001, uEnd - uStart);
     const w = span / count;
     const pad = 0.0015 * span;
+
     t.repeat.set(Math.max(0.0001, w - pad), 1);
     t.offset.set(uStart + i * w + pad * 0.5, 0);
 
@@ -462,6 +464,9 @@ function SceneInner({
   const stoneMap = useLoader(THREE.TextureLoader, "/textures/stone_wall.jpg");
 
   const unlockPointer = useCallback(() => {
+   
+    if (typeof document === "undefined") return;
+
     if (document.pointerLockElement) {
       try {
         document.exitPointerLock();
@@ -473,6 +478,8 @@ function SceneInner({
   }, [setIsLocked]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
     const onKeyDown = (e) => {
       if (e.key.toLowerCase() !== "m") return;
       setMapEditMode((v) => {
@@ -481,6 +488,7 @@ function SceneInner({
         return next;
       });
     };
+
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [setMapEditMode, unlockPointer]);
@@ -503,6 +511,7 @@ function SceneInner({
     woodMap.repeat.set(5, 4);
     woodMap.anisotropy = 8;
     woodMap.colorSpace = THREE.SRGBColorSpace;
+    woodMap.needsUpdate = true;
 
     return new THREE.MeshStandardMaterial({
       map: woodMap,
@@ -520,6 +529,7 @@ function SceneInner({
     base.repeat.set(7, 3.2);
     base.anisotropy = 8;
     base.colorSpace = THREE.SRGBColorSpace;
+    base.needsUpdate = true;
 
     return new THREE.MeshStandardMaterial({
       map: base,
@@ -572,9 +582,9 @@ function SceneInner({
       unlockPointer();
       setMapEditMode(false);
 
-      // ✅ sécurité : on stop le move mobile quand on déclenche un focus
-      if (mobileForwardRef) mobileForwardRef.current = false;
-      if (mobileBackRef) mobileBackRef.current = false;
+      
+      if (mobileForwardRef?.current !== undefined) mobileForwardRef.current = false;
+      if (mobileBackRef?.current !== undefined) mobileBackRef.current = false;
 
       setFocus({ active: true, opened: false, sectionId, itemId, pos, look });
     },
@@ -603,10 +613,10 @@ function SceneInner({
 
       <Environment preset="warehouse" />
 
-      {/* Desktop controls */}
+    
       {fpsEnabled && <FPSController enabled={true} onLockChange={setIsLocked} />}
 
-      {/* Mobile controls */}
+     
       {touchEnabled && (
         <TouchController
           enabled={true}
