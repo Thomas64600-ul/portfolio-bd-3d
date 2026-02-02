@@ -35,6 +35,11 @@ function RowButton({ idx, title, selected, onSelect }) {
   );
 }
 
+function setGlobalFlag(key, value) {
+  if (typeof window === "undefined") return;
+  window[key] = !!value;
+}
+
 export default function Overlay({
   isMobile,
   isLocked,
@@ -51,7 +56,7 @@ export default function Overlay({
 }) {
   const section = openSectionId ? SECTIONS[openSectionId] : null;
 
- 
+
   const rowCounts = [24, 22, 20];
 
   const [selectedRow, setSelectedRow] = useState(null);
@@ -64,16 +69,15 @@ export default function Overlay({
     setSelectedRow(null);
   }, [openSectionId]);
 
- 
   useEffect(() => {
     setDismissRotateHint(false);
   }, [isMobile]);
 
   useEffect(() => {
     if (!isMobile) return;
+    if (typeof window === "undefined") return;
 
     const compute = () => {
-    
       const portrait = window.innerHeight > window.innerWidth;
       setIsPortrait(portrait);
     };
@@ -109,26 +113,50 @@ export default function Overlay({
   const CV_URL = "/cv/Thomas-DeTraversay-CV.pdf";
 
   const handleOpenCV = useCallback(() => {
+    if (typeof window === "undefined") return;
     window.open(CV_URL, "_blank", "noopener,noreferrer");
-  }, []);
+  }, [CV_URL]);
 
   const handleDownloadCV = useCallback(() => {
+    if (typeof document === "undefined") return;
     const a = document.createElement("a");
     a.href = CV_URL;
     a.download = "Thomas-DeTraversay-CV.pdf";
     document.body.appendChild(a);
     a.click();
     a.remove();
-  }, []);
+  }, [CV_URL]);
 
   const handleRequestLock = useCallback(() => {
     onRequestLock?.();
+
+  
+    if (typeof document === "undefined") return;
     const canvas = document.querySelector("canvas");
     if (canvas?.requestPointerLock) canvas.requestPointerLock();
   }, [onRequestLock]);
 
-  
   const showRotateHint = isMobile && isPortrait && !section && !dismissRotateHint;
+
+  const setMobileMove = useCallback(
+    ({ forward, back }) => {
+     
+      setGlobalFlag("__UI_ACTIVE__", forward || back);
+
+      if (forward) onMobileForwardDown?.();
+      else onMobileForwardUp?.();
+
+      if (back) onMobileBackDown?.();
+      else onMobileBackUp?.();
+    },
+    [onMobileForwardDown, onMobileForwardUp, onMobileBackDown, onMobileBackUp]
+  );
+
+  const stopMobileMove = useCallback(() => {
+    setGlobalFlag("__UI_ACTIVE__", false);
+    onMobileForwardUp?.();
+    onMobileBackUp?.();
+  }, [onMobileForwardUp, onMobileBackUp]);
 
   return (
     <div className="hud">
@@ -143,11 +171,7 @@ export default function Overlay({
               🎮 Entrer (clic pour contrôler)
             </button>
           ) : (
-            <button
-              className="btn"
-              disabled
-              style={{ opacity: 0.6, cursor: "not-allowed" }}
-            >
+            <button className="btn" disabled style={{ opacity: 0.6, cursor: "not-allowed" }}>
               📱 Mode mobile
             </button>
           )
@@ -176,9 +200,7 @@ export default function Overlay({
         <div className="panel">
           <h2>{section.title}</h2>
 
-          {section.description && (
-            <p style={{ whiteSpace: "pre-line" }}>{section.description}</p>
-          )}
+          {section.description && <p style={{ whiteSpace: "pre-line" }}>{section.description}</p>}
 
           <div>
             {section.tags?.map((t) => (
@@ -191,8 +213,7 @@ export default function Overlay({
           {section.rows && openItemId != null && (
             <div style={{ marginTop: 14 }}>
               <div style={{ color: "var(--muted)", fontSize: 12, marginBottom: 8 }}>
-                Livre sélectionné :{" "}
-                <strong style={{ color: "var(--text)" }}>#{openItemId}</strong>
+                Livre sélectionné : <strong style={{ color: "var(--text)" }}>#{openItemId}</strong>
               </div>
 
               {rowInfo && activeRow ? (
@@ -289,9 +310,7 @@ export default function Overlay({
 
                   {section.rows[selectedRow].items?.length > 0 ? (
                     <div>
-                      {section.rows[selectedRow].items.map((it, idx) =>
-                        renderItemSmart(it, idx)
-                      )}
+                      {section.rows[selectedRow].items.map((it, idx) => renderItemSmart(it, idx))}
                     </div>
                   ) : (
                     <div
@@ -321,27 +340,19 @@ export default function Overlay({
         </div>
       )}
 
-{isMobile && !section && (
-  <MobileJoystick
-    enabled={true}
-    onMove={({ y }) => {
-  
-      const forward = y < -0.18;
-      const back = y > 0.18;
-
-      if (forward) onMobileForwardDown?.();
-      else onMobileForwardUp?.();
-
-      if (back) onMobileBackDown?.();
-      else onMobileBackUp?.();
-    }}
-    onEnd={() => {
-    
-      onMobileForwardUp?.();
-      onMobileBackUp?.();
-    }}
-  />
-)}
+      {isMobile && !section && (
+        <MobileJoystick
+          enabled={true}
+          onMove={({ y }) => {
+            const forward = y < -0.18;
+            const back = y > 0.18;
+            setMobileMove({ forward, back });
+          }}
+          onEnd={() => {
+            stopMobileMove();
+          }}
+        />
+      )}
 
       {showRotateHint && (
         <div
@@ -386,7 +397,7 @@ export default function Overlay({
           </>
         ) : (
           <>
-            <div>📱 Glisse pour regarder • Boutons = avancer/reculer • Tap = interagir</div>
+            <div>📱 Glisse pour regarder • Joystick = avancer/reculer • Tap = interagir</div>
             <div>Astuce : tap un objet (livre, poster) pour zoom + panneau</div>
           </>
         )}
@@ -427,19 +438,11 @@ export default function Overlay({
         )}
 
         {it.desc && (
-          <div style={{ color: "var(--muted)", fontSize: 13, marginTop: 6 }}>
-            {it.desc}
-          </div>
+          <div style={{ color: "var(--muted)", fontSize: 13, marginTop: 6 }}>{it.desc}</div>
         )}
 
         {Array.isArray(it.bullets) && it.bullets.length > 0 && (
-          <ul
-            style={{
-              margin: "8px 0 0 16px",
-              color: "var(--text)",
-              fontSize: 13,
-            }}
-          >
+          <ul style={{ margin: "8px 0 0 16px", color: "var(--text)", fontSize: 13 }}>
             {it.bullets.map((b, i) => (
               <li key={i} style={{ marginBottom: 4, opacity: 0.9 }}>
                 {b}
@@ -467,9 +470,7 @@ export default function Overlay({
         {it.desc && <div style={{ color: "var(--muted)", fontSize: 13 }}>{it.desc}</div>}
 
         {it.year && (
-          <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 2 }}>
-            {it.year}
-          </div>
+          <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 2 }}>{it.year}</div>
         )}
       </div>
     );
@@ -477,7 +478,6 @@ export default function Overlay({
 
   function renderItemSmart(it, idx) {
     const isCareerItem =
-
       Boolean(it.company) ||
       Boolean(it.period) ||
       Boolean(it.location) ||
