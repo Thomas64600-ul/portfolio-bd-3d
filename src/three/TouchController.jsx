@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
@@ -22,10 +22,24 @@ export default function TouchController({
   const start = useRef({ x: 0, y: 0 });
   const last = useRef({ x: 0, y: 0 });
 
-  const setGlobalDragging = (v) => {
-  
-    window.__TOUCH_LOOKING__ = !!v;
+  const getGlobal = (k) => (typeof window !== "undefined" ? !!window[k] : false);
+  const setGlobal = (k, v) => {
+    if (typeof window === "undefined") return;
+    window[k] = !!v;
   };
+
+  const setGlobalDragging = useCallback((v) => {
+    setGlobal("__TOUCH_LOOKING__", v);
+  }, []);
+
+  const shouldIgnoreLook = useCallback(() => {
+    
+    if (getGlobal("__JOYSTICK_ACTIVE__")) return true;
+
+    if (getGlobal("__UI_ACTIVE__")) return true;
+
+    return false;
+  }, []);
 
   useEffect(() => {
     const e = new THREE.Euler().setFromQuaternion(camera.quaternion, "YXZ");
@@ -35,10 +49,13 @@ export default function TouchController({
 
   useEffect(() => {
     const el = gl.domElement;
+    if (!el) return;
 
     const onTouchStart = (e) => {
       if (!enabled) return;
       if (lockWhileInteracting) return;
+
+      if (shouldIgnoreLook()) return;
 
       const t = e.touches?.[0];
       if (!t) return;
@@ -54,6 +71,13 @@ export default function TouchController({
     const onTouchMove = (e) => {
       if (!enabled) return;
       if (!dragging.current) return;
+
+      if (shouldIgnoreLook()) {
+        dragging.current = false;
+        dragMoved.current = false;
+        setGlobalDragging(false);
+        return;
+      }
 
       const t = e.touches?.[0];
       if (!t) return;
@@ -91,9 +115,9 @@ export default function TouchController({
 
       if (dragMoved.current) {
         dragMoved.current = false;
+       
         setTimeout(() => setGlobalDragging(false), 120);
       } else {
-        
         setGlobalDragging(false);
       }
 
@@ -112,7 +136,7 @@ export default function TouchController({
       el.removeEventListener("touchcancel", end);
       setGlobalDragging(false);
     };
-  }, [enabled, gl, lookSpeed, lockWhileInteracting, dragThresholdPx]);
+  }, [enabled, gl, lookSpeed, lockWhileInteracting, dragThresholdPx, shouldIgnoreLook, setGlobalDragging]);
 
   const forwardDir = useRef(new THREE.Vector3());
   const moveVec = useRef(new THREE.Vector3());
