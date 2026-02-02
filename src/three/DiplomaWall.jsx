@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect, useCallback } from "react";
 import { useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import FrameInteractive from "./FrameInteractive";
@@ -15,15 +15,20 @@ const DIPLOMA_TEXTURES = [
   "/textures/diplomas/bac.jpg",
 ];
 
-function DiplomaFrameContent({ size = SIZE, textureUrl }) {
+function canPickNow() {
+  if (typeof window === "undefined") return true;
+  if (window.__TOUCH_LOOKING__) return false; 
+  if (window.__JOYSTICK_ACTIVE__) return false;
+  return true;
+}
+
+function DiplomaFrameContent({ size = SIZE, textureUrl, onPick }) {
   const diplomaTex = useTexture(textureUrl);
 
   useEffect(() => {
     if (!diplomaTex) return;
 
-    
     diplomaTex.colorSpace = THREE.SRGBColorSpace;
-
     diplomaTex.anisotropy = 8;
     diplomaTex.wrapS = THREE.ClampToEdgeWrapping;
     diplomaTex.wrapT = THREE.ClampToEdgeWrapping;
@@ -61,8 +66,22 @@ function DiplomaFrameContent({ size = SIZE, textureUrl }) {
     [diplomaTex]
   );
 
+  const handlePointerDown = useCallback((e) => {
+    e.stopPropagation?.(); 
+  }, []);
+
+  const handlePointerUp = useCallback(
+    (e) => {
+      e.stopPropagation?.();
+      if (!canPickNow()) return;
+      onPick?.();
+    },
+    [onPick]
+  );
+
   return (
     <group>
+   
       <mesh raycast={() => null}>
         <boxGeometry args={[size[0] + 0.12, size[1] + 0.12, 0.05]} />
         <primitive object={inkMat} attach="material" />
@@ -73,7 +92,11 @@ function DiplomaFrameContent({ size = SIZE, textureUrl }) {
         <primitive object={paperMat} attach="material" />
       </mesh>
 
-      <mesh position={[0, 0, 0.055]} raycast={() => null}>
+      <mesh
+        position={[0, 0, 0.055]}
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+      >
         <planeGeometry args={[size[0] * 0.98, size[1] * 0.98]} />
         <primitive object={imageMat} attach="material" />
       </mesh>
@@ -107,7 +130,11 @@ export default function DiplomaWall({ onPickDiplomas, activeIndex }) {
           hitbox={[SIZE[0] + 0.35, SIZE[1] + 0.35, 0.35]}
           hitboxZ={0.12}
         >
-          <DiplomaFrameContent size={SIZE} textureUrl={DIPLOMA_TEXTURES[i]} />
+          <DiplomaFrameContent
+            size={SIZE}
+            textureUrl={DIPLOMA_TEXTURES[i]}
+            onPick={() => onPickDiplomas?.(i)}
+          />
         </FrameInteractive>
       ))}
 
