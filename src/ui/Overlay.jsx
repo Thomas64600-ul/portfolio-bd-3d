@@ -35,12 +35,19 @@ function RowButton({ idx, title, selected, onSelect }) {
 }
 
 export default function Overlay({
+  isMobile,
   isLocked,
   onRequestLock,
   onReleaseLock,
   openSectionId,
   openItemId = null,
   onClosePanel,
+
+  // ✅ mobile controls (phase 3: UI only, phase 4: brancher)
+  onMobileForwardDown,
+  onMobileForwardUp,
+  onMobileBackDown,
+  onMobileBackUp,
 }) {
   const section = openSectionId ? SECTIONS[openSectionId] : null;
 
@@ -92,94 +99,6 @@ export default function Overlay({
     if (canvas?.requestPointerLock) canvas.requestPointerLock();
   }, [onRequestLock]);
 
-  const renderCareerItem = (it, idx) => (
-    <div
-      key={`${it.name}-${idx}`}
-      style={{
-        marginBottom: 12,
-        padding: 10,
-        border: "1px solid rgba(255,255,255,0.10)",
-        borderRadius: 10,
-        background: "rgba(0,0,0,0.20)",
-      }}
-    >
-      <div style={{ color: "var(--text)", fontWeight: 700 }}>{it.name}</div>
-
-      {(it.company || it.location || it.period) && (
-        <div style={{ color: "var(--muted)", fontSize: 13, marginTop: 2 }}>
-          {it.company ? <span>{it.company}</span> : null}
-          {it.location ? (
-            <span>
-              {it.company ? " • " : ""}
-              {it.location}
-            </span>
-          ) : null}
-          {it.period ? (
-            <span>
-              {(it.company || it.location) ? " • " : ""}
-              {it.period}
-            </span>
-          ) : null}
-        </div>
-      )}
-
-      {it.desc && (
-        <div style={{ color: "var(--muted)", fontSize: 13, marginTop: 6 }}>
-          {it.desc}
-        </div>
-      )}
-
-      {Array.isArray(it.bullets) && it.bullets.length > 0 && (
-        <ul
-          style={{
-            margin: "8px 0 0 16px",
-            color: "var(--text)",
-            fontSize: 13,
-          }}
-        >
-          {it.bullets.map((b, i) => (
-            <li key={i} style={{ marginBottom: 4, opacity: 0.9 }}>
-              {b}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-
-  const renderStandardItem = (it, idx) => (
-    <div key={`${it.name}-${idx}`} style={{ marginBottom: 10 }}>
-      <div style={{ color: "var(--text)", fontWeight: 600 }}>
-        {it.href ? (
-          <a className="link" href={it.href} target="_blank" rel="noreferrer">
-            {it.name}
-          </a>
-        ) : (
-          it.name
-        )}
-      </div>
-
-      {it.desc && (
-        <div style={{ color: "var(--muted)", fontSize: 13 }}>{it.desc}</div>
-      )}
-
-      {it.year && (
-        <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 2 }}>
-          {it.year}
-        </div>
-      )}
-    </div>
-  );
-
-  const renderItemSmart = (it, idx) => {
-    const isCareerItem =
-      Boolean(it.company) ||
-      Boolean(it.period) ||
-      Boolean(it.location) ||
-      Array.isArray(it.bullets);
-    return isCareerItem ? renderCareerItem(it, idx) : renderStandardItem(it, idx);
-  };
-
   return (
     <div className="hud">
       <div className="topbar">
@@ -188,9 +107,19 @@ export default function Overlay({
             ⎋ Quitter (reprendre le contrôle)
           </button>
         ) : !isLocked ? (
-          <button className="btn btn-lock" onClick={handleRequestLock}>
-            🎮 Entrer (clic pour contrôler)
-          </button>
+          !isMobile ? (
+            <button className="btn btn-lock" onClick={handleRequestLock}>
+              🎮 Entrer (clic pour contrôler)
+            </button>
+          ) : (
+            <button
+              className="btn"
+              disabled
+              style={{ opacity: 0.6, cursor: "not-allowed" }}
+            >
+              📱 Mode mobile
+            </button>
+          )
         ) : (
           <button className="btn" onClick={onReleaseLock}>
             ⎋ Libérer la souris
@@ -361,11 +290,149 @@ export default function Overlay({
         </div>
       )}
 
+      {/* ✅ Mobile movement buttons (only when no panel is open) */}
+      {isMobile && !section && (
+        <div
+          style={{
+            position: "absolute",
+            left: 14,
+            bottom: 86,
+            display: "flex",
+            flexDirection: "column",
+            gap: 10,
+            zIndex: 20,
+          }}
+        >
+          <button
+            className="btn"
+            style={{ padding: "14px 16px", borderRadius: 14, fontSize: 16 }}
+            onTouchStart={() => onMobileForwardDown?.()}
+            onTouchEnd={() => onMobileForwardUp?.()}
+            onMouseDown={() => onMobileForwardDown?.()} // utile en responsive
+            onMouseUp={() => onMobileForwardUp?.()}
+          >
+            ⬆ Avancer
+          </button>
+
+          <button
+            className="btn"
+            style={{ padding: "14px 16px", borderRadius: 14, fontSize: 16 }}
+            onTouchStart={() => onMobileBackDown?.()}
+            onTouchEnd={() => onMobileBackUp?.()}
+            onMouseDown={() => onMobileBackDown?.()} // utile en responsive
+            onMouseUp={() => onMobileBackUp?.()}
+          >
+            ⬇ Reculer
+          </button>
+        </div>
+      )}
+
       <div className="hint">
-        <div>WASD / Flèches = se déplacer • Souris = regarder • Clic = interagir</div>
-        <div>Astuce : clique un objet (livre, poster) pour zoom + panneau</div>
+        {!isMobile ? (
+          <>
+            <div>WASD / Flèches = se déplacer • Souris = regarder • Clic = interagir</div>
+            <div>Astuce : clique un objet (livre, poster) pour zoom + panneau</div>
+          </>
+        ) : (
+          <>
+            <div>📱 Glisse pour regarder • Boutons = avancer/reculer • Tap = interagir</div>
+            <div>Astuce : tap un objet (livre, poster) pour zoom + panneau</div>
+          </>
+        )}
       </div>
     </div>
   );
-}
 
+  // -----------------------------
+  // Render helpers (inchangés)
+  // -----------------------------
+  function renderCareerItem(it, idx) {
+    return (
+      <div
+        key={`${it.name}-${idx}`}
+        style={{
+          marginBottom: 12,
+          padding: 10,
+          border: "1px solid rgba(255,255,255,0.10)",
+          borderRadius: 10,
+          background: "rgba(0,0,0,0.20)",
+        }}
+      >
+        <div style={{ color: "var(--text)", fontWeight: 700 }}>{it.name}</div>
+
+        {(it.company || it.location || it.period) && (
+          <div style={{ color: "var(--muted)", fontSize: 13, marginTop: 2 }}>
+            {it.company ? <span>{it.company}</span> : null}
+            {it.location ? (
+              <span>
+                {it.company ? " • " : ""}
+                {it.location}
+              </span>
+            ) : null}
+            {it.period ? (
+              <span>
+                {(it.company || it.location) ? " • " : ""}
+                {it.period}
+              </span>
+            ) : null}
+          </div>
+        )}
+
+        {it.desc && (
+          <div style={{ color: "var(--muted)", fontSize: 13, marginTop: 6 }}>
+            {it.desc}
+          </div>
+        )}
+
+        {Array.isArray(it.bullets) && it.bullets.length > 0 && (
+          <ul
+            style={{
+              margin: "8px 0 0 16px",
+              color: "var(--text)",
+              fontSize: 13,
+            }}
+          >
+            {it.bullets.map((b, i) => (
+              <li key={i} style={{ marginBottom: 4, opacity: 0.9 }}>
+                {b}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    );
+  }
+
+  function renderStandardItem(it, idx) {
+    return (
+      <div key={`${it.name}-${idx}`} style={{ marginBottom: 10 }}>
+        <div style={{ color: "var(--text)", fontWeight: 600 }}>
+          {it.href ? (
+            <a className="link" href={it.href} target="_blank" rel="noreferrer">
+              {it.name}
+            </a>
+          ) : (
+            it.name
+          )}
+        </div>
+
+        {it.desc && <div style={{ color: "var(--muted)", fontSize: 13 }}>{it.desc}</div>}
+
+        {it.year && (
+          <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 2 }}>
+            {it.year}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function renderItemSmart(it, idx) {
+    const isCareerItem =
+      Boolean(it.company) ||
+      Boolean(it.period) ||
+      Boolean(it.location) ||
+      Array.isArray(it.bullets);
+    return isCareerItem ? renderCareerItem(it, idx) : renderStandardItem(it, idx);
+  }
+}
