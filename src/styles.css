@@ -15,6 +15,43 @@ body,
   background: var(--bg);
 }
 
+/* ============================
+   ✅ MOBILE UX PATCH (anti scroll / anti select / anti long-press)
+   ============================ */
+html,
+body {
+  /* évite les rebonds + scroll horizontal accidentel */
+  overflow: hidden;
+  overscroll-behavior: none;
+
+  /* empêche la sélection/long-press de texte sur la page */
+  -webkit-user-select: none;
+  user-select: none;
+
+  /* empêche le menu iOS (callout) */
+  -webkit-touch-callout: none;
+
+  /* améliore la réactivité tactile */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Canvas 3D : on bloque les gestes navigateur (scroll/zoom) */
+canvas {
+  touch-action: none;               /* crucial */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* HUD : pas de sélection par défaut */
+.hud {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
 * {
   box-sizing: border-box;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
@@ -35,6 +72,7 @@ body,
   pointer-events: auto;
 }
 
+/* Boutons : on garde les interactions, mais on évite le long-press “sélection” */
 .btn {
   pointer-events: auto;
   background: rgba(255, 255, 255, 0.06);
@@ -44,6 +82,15 @@ body,
   border-radius: 12px;
   cursor: pointer;
   backdrop-filter: blur(6px);
+
+  /* ✅ anti sélection / anti long-press */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+
+  /* ✅ évite le délai “double tap zoom” sur certains navigateurs */
+  touch-action: manipulation;
 }
 
 .btn:hover {
@@ -82,6 +129,15 @@ body,
   padding: 14px;
   backdrop-filter: blur(10px);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+
+  /* ✅ scroll fluide iOS/Android */
+  -webkit-overflow-scrolling: touch;
+
+  /* ✅ autorise sélection dans la panel si tu veux copier un lien (optionnel)
+     Si tu préfères tout bloquer, laisse à none.
+  */
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 .panel h2 {
@@ -149,6 +205,13 @@ body,
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
   pointer-events: auto;
   z-index: 50;
+
+ 
+  -webkit-overflow-scrolling: touch;
+
+ 
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 .travelCard__top {
@@ -225,5 +288,18 @@ body,
   .hint {
     flex-direction: column;
     gap: 6px;
+  }
+
+  .topbar {
+    top: 10px;
+    left: 10px;
+    gap: 8px;
+    flex-wrap: wrap;
+    max-width: calc(100% - 20px);
+  }
+
+  .btn {
+    padding: 10px 10px;
+    border-radius: 12px;
   }
 }
