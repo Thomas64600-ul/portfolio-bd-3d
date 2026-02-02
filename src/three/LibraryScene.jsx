@@ -718,19 +718,32 @@ function SceneInner({
   );
 }
 
-export default function LibraryScene({ controlsEnabled, setIsLocked, onOpenSection, focus, setFocus }) {
+export default function LibraryScene({
+  isMobile,
+  controlsEnabled,
+  setIsLocked,
+  onOpenSection,
+  focus,
+  setFocus,
+}) {
+
   const [mapEditMode, setMapEditMode] = useState(false);
 
   return (
     <Canvas
-      shadows
-      camera={{ position: [0, 1.6, 4], fov: 65 }}
-      gl={{ antialias: true }}
-      onCreated={({ gl }) => {
-        gl.toneMapping = THREE.ACESFilmicToneMapping;
-        gl.toneMappingExposure = 0.98;
-      }}
-    >
+  shadows={!isMobile} // 🔹 ombres désactivées sur mobile (perf)
+  dpr={isMobile ? 1 : [1, 2]} // 🔹 résolution adaptative
+  camera={{ position: [0, 1.6, 4], fov: 65 }}
+  gl={{
+    antialias: !isMobile,
+    powerPreference: "high-performance",
+  }}
+  onCreated={({ gl }) => {
+    gl.toneMapping = THREE.ACESFilmicToneMapping;
+    gl.toneMappingExposure = 0.98;
+  }}
+>
+
       <SceneInner
         controlsEnabled={controlsEnabled}
         setIsLocked={setIsLocked}
