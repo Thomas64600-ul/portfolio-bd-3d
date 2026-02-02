@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import LibraryScene from "./three/LibraryScene";
 import Overlay from "./ui/Overlay";
 import TravelCard from "./ui/TravelCard";
@@ -26,6 +26,10 @@ export default function App() {
 
   // ✅ Phase 1: détection mobile (stable au montage)
   const isMobile = useMemo(() => detectMobile(), []);
+
+  // ✅ PHASE 4: refs de déplacement mobile (pilotées par Overlay)
+  const mobileForwardRef = useRef(false);
+  const mobileBackRef = useRef(false);
 
   const [focus, setFocus] = useState({
     active: false,
@@ -64,6 +68,10 @@ export default function App() {
     setOpenSectionId(null);
     cancelFocus();
     setControlsEnabled(true);
+
+    // ✅ sécurité: stop mouvement mobile quand on ferme un panel
+    mobileForwardRef.current = false;
+    mobileBackRef.current = false;
   }, [cancelFocus]);
 
   const handleOpenSection = useCallback((id, itemId = null) => {
@@ -71,6 +79,10 @@ export default function App() {
 
     if (document.pointerLockElement) document.exitPointerLock();
     setControlsEnabled(false);
+
+    // ✅ stop mouvement mobile quand on ouvre un panel
+    mobileForwardRef.current = false;
+    mobileBackRef.current = false;
 
     setFocus((f) => ({
       ...f,
@@ -88,6 +100,9 @@ export default function App() {
         setOpenSectionId(null);
         cancelFocus();
         setControlsEnabled(true);
+
+        mobileForwardRef.current = false;
+        mobileBackRef.current = false;
         return;
       }
 
@@ -102,22 +117,30 @@ export default function App() {
   return (
     <>
       <LibraryScene
-        isMobile={isMobile} // ✅ Phase 1 (préparation)
+        isMobile={isMobile}
         controlsEnabled={controlsEnabled}
         setIsLocked={setIsLocked}
         focus={focus}
         setFocus={setFocus}
         onOpenSection={handleOpenSection}
+        // ✅ PHASE 4: passage des refs au controller mobile
+        mobileForwardRef={mobileForwardRef}
+        mobileBackRef={mobileBackRef}
       />
 
       <Overlay
-        isMobile={isMobile} // ✅ Phase 1 (préparation)
+        isMobile={isMobile}
         isLocked={isLocked}
         onRequestLock={requestLock}
         onReleaseLock={releaseLock}
         openSectionId={openSectionId}
         openItemId={focus?.itemId ?? null}
         onClosePanel={closePanel}
+        // ✅ PHASE 4: callbacks boutons mobile
+        onMobileForwardDown={() => (mobileForwardRef.current = true)}
+        onMobileForwardUp={() => (mobileForwardRef.current = false)}
+        onMobileBackDown={() => (mobileBackRef.current = true)}
+        onMobileBackUp={() => (mobileBackRef.current = false)}
       />
 
       {openSectionId === "travels" && (
