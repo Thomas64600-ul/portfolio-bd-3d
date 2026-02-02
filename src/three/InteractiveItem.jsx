@@ -3,9 +3,17 @@ import { useCursor } from "@react-three/drei";
 
 export default function InteractiveItem({ children, onPick }) {
   const [hovered, setHovered] = useState(false);
-  const down = useRef({ x: 0, y: 0, id: null });
+
+  const down = useRef({ x: 0, y: 0, id: null, moved: false });
+  const DRAG_PX = 10;
 
   useCursor(hovered);
+
+  const isTouchLooking = () => {
+    if (typeof window === "undefined") return false;
+    
+    return !!window.__TOUCH_LOOKING__;
+  };
 
   const handleOver = useCallback((e) => {
     e.stopPropagation();
@@ -19,41 +27,56 @@ export default function InteractiveItem({ children, onPick }) {
 
   const handleDown = useCallback((e) => {
     e.stopPropagation();
+
+    if (isTouchLooking()) return;
+
     try {
       e.target.setPointerCapture?.(e.pointerId);
     } catch {
       // ignore
     }
-    down.current = { x: e.clientX ?? 0, y: e.clientY ?? 0, id: e.pointerId };
+
+    down.current = {
+      x: e.clientX ?? 0,
+      y: e.clientY ?? 0,
+      id: e.pointerId ?? null,
+      moved: false,
+    };
+  }, []);
+
+  const handleMove = useCallback((e) => {
+   
+    const dx = Math.abs((e.clientX ?? 0) - down.current.x);
+    const dy = Math.abs((e.clientY ?? 0) - down.current.y);
+    if (dx + dy > DRAG_PX) down.current.moved = true;
+  }, []);
+
+  const handleUp = useCallback((e) => {
+    e.stopPropagation();
+   
   }, []);
 
   const handleClick = useCallback(
     (e) => {
       e.stopPropagation();
+
+      if (isTouchLooking()) return;
+
+      if (down.current.moved) return;
+
       onPick?.();
     },
     [onPick]
   );
-
-  const handleUp = useCallback((e) => {
-    e.stopPropagation();
-
-    const dx = Math.abs((e.clientX ?? 0) - down.current.x);
-    const dy = Math.abs((e.clientY ?? 0) - down.current.y);
-    const dragged = dx + dy > 10;
-
-    // On garde la mesure anti-drag sans changer le comportement :
-    // le déclenchement se fait via onClick.
-    void dragged;
-  }, []);
 
   return (
     <group
       onPointerOver={handleOver}
       onPointerOut={handleOut}
       onPointerDown={handleDown}
-      onClick={handleClick}
+      onPointerMove={handleMove}
       onPointerUp={handleUp}
+      onClick={handleClick}
     >
       <group scale={hovered ? 1.03 : 1.0}>{children}</group>
     </group>
