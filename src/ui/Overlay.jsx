@@ -43,7 +43,7 @@ export default function Overlay({
   openItemId = null,
   onClosePanel,
 
-  // ✅ mobile controls (phase 3: UI only, phase 4: brancher)
+  // ✅ mobile controls
   onMobileForwardDown,
   onMobileForwardUp,
   onMobileBackDown,
@@ -56,9 +56,37 @@ export default function Overlay({
 
   const [selectedRow, setSelectedRow] = useState(null);
 
+  // ✅ Suggestion paysage (non bloquante)
+  const [isPortrait, setIsPortrait] = useState(false);
+  const [dismissRotateHint, setDismissRotateHint] = useState(false);
+
   useEffect(() => {
     setSelectedRow(null);
   }, [openSectionId]);
+
+  // Reset du “dismiss” quand on quitte/revient (ou reload)
+  useEffect(() => {
+    setDismissRotateHint(false);
+  }, [isMobile]);
+
+  useEffect(() => {
+    if (!isMobile) return;
+
+    const compute = () => {
+      // portrait = hauteur > largeur
+      const portrait = window.innerHeight > window.innerWidth;
+      setIsPortrait(portrait);
+    };
+
+    compute();
+    window.addEventListener("resize", compute);
+    window.addEventListener("orientationchange", compute);
+
+    return () => {
+      window.removeEventListener("resize", compute);
+      window.removeEventListener("orientationchange", compute);
+    };
+  }, [isMobile]);
 
   const rowInfo = useMemo(() => {
     if (!section?.rows) return null;
@@ -98,6 +126,9 @@ export default function Overlay({
     const canvas = document.querySelector("canvas");
     if (canvas?.requestPointerLock) canvas.requestPointerLock();
   }, [onRequestLock]);
+
+  // ✅ On montre le hint seulement si : mobile + portrait + pas de panel + pas dismiss
+  const showRotateHint = isMobile && isPortrait && !section && !dismissRotateHint;
 
   return (
     <div className="hud">
@@ -296,7 +327,7 @@ export default function Overlay({
           style={{
             position: "absolute",
             left: 14,
-            bottom: 86,
+            bottom: showRotateHint ? 156 : 86, // ✅ on remonte si le hint est visible
             display: "flex",
             flexDirection: "column",
             gap: 10,
@@ -327,6 +358,42 @@ export default function Overlay({
         </div>
       )}
 
+      {/* ✅ Suggestion paysage (non bloquante) */}
+      {showRotateHint && (
+        <div
+          style={{
+            position: "absolute",
+            left: 14,
+            right: 14,
+            bottom: 14,
+            zIndex: 25,
+            padding: 12,
+            borderRadius: 14,
+            border: "1px solid rgba(255,255,255,0.12)",
+            background: "rgba(0,0,0,0.55)",
+            backdropFilter: "blur(6px)",
+          }}
+        >
+          <div style={{ color: "var(--text)", fontWeight: 800, marginBottom: 6 }}>
+            📱 Meilleure expérience en paysage
+          </div>
+          <div style={{ color: "var(--muted)", fontSize: 13, lineHeight: 1.35 }}>
+            Tourne ton téléphone pour profiter d’un champ de vision plus large et d’une navigation plus
+            confortable.
+          </div>
+
+          <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+            <button
+              className="btn"
+              onClick={() => setDismissRotateHint(true)}
+              style={{ padding: "10px 12px", borderRadius: 12 }}
+            >
+              Continuer quand même
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="hint">
         {!isMobile ? (
           <>
@@ -344,7 +411,7 @@ export default function Overlay({
   );
 
   // -----------------------------
-  // Render helpers (inchangés)
+  // Render helpers
   // -----------------------------
   function renderCareerItem(it, idx) {
     return (
