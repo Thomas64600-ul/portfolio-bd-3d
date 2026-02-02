@@ -22,6 +22,11 @@ const PINS = [
   { label: "Pays de Galles", itemIndex: 7, uv: [0.4436, 0.3327] },
 ];
 
+function isBlockedByUX() {
+  if (typeof window === "undefined") return false;
+  return !!window.__TOUCH_LOOKING__ || !!window.__JOYSTICK_ACTIVE__ || !!window.__UI_ACTIVE__;
+}
+
 export default function TravelWall({
   position = [0, 0, 0],
   rotation = [0, 0, 0],
@@ -41,9 +46,7 @@ export default function TravelWall({
   useEffect(() => {
     if (!mapTex) return;
 
-    
     mapTex.colorSpace = THREE.SRGBColorSpace;
-
     mapTex.anisotropy = 8;
     mapTex.wrapS = THREE.ClampToEdgeWrapping;
     mapTex.wrapT = THREE.ClampToEdgeWrapping;
@@ -75,6 +78,31 @@ export default function TravelWall({
     const y = (vv - 0.5) * MAP_H;
     return [x, y];
   }, []);
+
+ 
+  const canInteractWithMap = useCallback(() => {
+    const mesh = mapRef.current;
+    if (!mesh) return false;
+
+    
+    const mapWorldPos = new THREE.Vector3();
+    mesh.getWorldPosition(mapWorldPos);
+
+    
+    const normal = new THREE.Vector3(0, 0, 1).applyQuaternion(mesh.getWorldQuaternion(new THREE.Quaternion())).normalize();
+
+  
+    const dist = camera.position.distanceTo(mapWorldPos);
+
+    
+    const camToMap = mapWorldPos.clone().sub(camera.position).normalize();
+    const facing = camToMap.dot(normal); 
+
+    const maxDist = 4.4;             
+    const minFacing = 0.78;         
+
+    return dist <= maxDist && facing >= minFacing;
+  }, [camera]);
 
   const handlePickDebugUV = useCallback(
     (e) => {
@@ -120,9 +148,26 @@ export default function TravelWall({
     (e) => {
       if (DEBUG_PINS) return;
       e.stopPropagation();
+
+   
+      if (isBlockedByUX()) return;
+
+   
+      if (!canInteractWithMap()) return;
+
       onPickWall?.();
     },
-    [onPickWall]
+    [onPickWall, canInteractWithMap]
+  );
+
+  const pickPin = useCallback(
+    (itemIndex, e) => {
+      e.stopPropagation();
+      if (isBlockedByUX()) return;
+      if (!canInteractWithMap()) return;
+      onPickPin?.(itemIndex);
+    },
+    [onPickPin, canInteractWithMap]
   );
 
   return (
@@ -144,16 +189,11 @@ export default function TravelWall({
 
           const [x, y] = uvToXY(p.uv[0], p.uv[1]);
 
-          const pickPin = (e) => {
-            e.stopPropagation();
-            onPickPin?.(p.itemIndex);
-          };
-
           return (
             <mesh
               key={`${p.label}-${p.itemIndex}`}
               position={[x, y, PIN_Z]}
-              onPointerDown={pickPin}
+              onPointerDown={(e) => pickPin(p.itemIndex, e)}
               userData={{
                 type: "pin",
                 label: p.label,
