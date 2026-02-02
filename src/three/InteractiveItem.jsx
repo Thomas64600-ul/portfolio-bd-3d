@@ -1,39 +1,49 @@
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState } from "react";
 import { useCursor } from "@react-three/drei";
 
-export default function InteractiveItem({ children, onPick }) {
+export default function InteractiveItem({ children, onPick, disabled = false }) {
   const [hovered, setHovered] = useState(false);
 
   const down = useRef({ x: 0, y: 0, id: null, moved: false });
   const DRAG_PX = 10;
 
-  useCursor(hovered);
+  useCursor(hovered && !disabled);
 
   const isTouchLooking = () => {
     if (typeof window === "undefined") return false;
-    
     return !!window.__TOUCH_LOOKING__;
   };
 
-  const handleOver = useCallback((e) => {
-    e.stopPropagation();
-    setHovered(true);
-  }, []);
+  const isJoystickActive = () => {
+    if (typeof window === "undefined") return false;
+    return !!window.__JOYSTICK_ACTIVE__;
+  };
 
-  const handleOut = useCallback((e) => {
+  const canPickNow = () => !disabled && !isTouchLooking() && !isJoystickActive();
+
+  function handleOver(e) {
+    e.stopPropagation();
+    if (!disabled) setHovered(true);
+  }
+
+  function handleOut(e) {
     e.stopPropagation();
     setHovered(false);
-  }, []);
+  }
 
-  const handleDown = useCallback((e) => {
+  function handleDown(e) {
     e.stopPropagation();
+    if (e.preventDefault) e.preventDefault();
+    if (!canPickNow()) return;
 
-    if (isTouchLooking()) return;
-
-    try {
-      e.target.setPointerCapture?.(e.pointerId);
-    } catch {
-      // ignore
+    // Pointer capture (safe)
+    const target = e.currentTarget;
+    if (target && typeof target.setPointerCapture === "function") {
+      try {
+        target.setPointerCapture(e.pointerId);
+      } catch {
+        // ignore
+      }
     }
 
     down.current = {
@@ -42,32 +52,30 @@ export default function InteractiveItem({ children, onPick }) {
       id: e.pointerId ?? null,
       moved: false,
     };
-  }, []);
+  }
 
-  const handleMove = useCallback((e) => {
-   
+  function handleMove(e) {
+    if (down.current.id == null) return;
+    if (e.pointerId !== down.current.id) return;
+
     const dx = Math.abs((e.clientX ?? 0) - down.current.x);
     const dy = Math.abs((e.clientY ?? 0) - down.current.y);
     if (dx + dy > DRAG_PX) down.current.moved = true;
-  }, []);
+  }
 
-  const handleUp = useCallback((e) => {
+  function handleUp(e) {
     e.stopPropagation();
-   
-  }, []);
+    // On ne déclenche rien ici : on laisse `onClick` gérer, mais
+    // on s’assure que si l’utilisateur a “drag”, ça ne pick pas.
+  }
 
-  const handleClick = useCallback(
-    (e) => {
-      e.stopPropagation();
+  function handleClick(e) {
+    e.stopPropagation();
+    if (!canPickNow()) return;
+    if (down.current.moved) return;
 
-      if (isTouchLooking()) return;
-
-      if (down.current.moved) return;
-
-      onPick?.();
-    },
-    [onPick]
-  );
+    onPick?.(e);
+  }
 
   return (
     <group
@@ -78,9 +86,7 @@ export default function InteractiveItem({ children, onPick }) {
       onPointerUp={handleUp}
       onClick={handleClick}
     >
-      <group scale={hovered ? 1.03 : 1.0}>{children}</group>
+      <group scale={hovered && !disabled ? 1.03 : 1.0}>{children}</group>
     </group>
   );
 }
-
-
