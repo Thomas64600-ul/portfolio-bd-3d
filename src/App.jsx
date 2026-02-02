@@ -6,17 +6,17 @@ import TravelCard from "./ui/TravelCard";
 function detectMobile() {
   if (typeof window === "undefined") return false;
 
-  // 1) "pointer: coarse" = tactile (souvent mobile/tablette)
   const coarse = window.matchMedia?.("(pointer: coarse)")?.matches ?? false;
-
-  // 2) userAgent (fallback)
   const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
   const uaMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(ua);
-
-  // 3) largeur (fallback)
   const smallScreen = window.innerWidth < 768;
 
   return coarse || uaMobile || smallScreen;
+}
+
+function setGlobalFlag(key, value) {
+  if (typeof window === "undefined") return;
+  window[key] = !!value;
 }
 
 export default function App() {
@@ -24,10 +24,8 @@ export default function App() {
   const [controlsEnabled, setControlsEnabled] = useState(true);
   const [openSectionId, setOpenSectionId] = useState(null);
 
-  // ✅ Phase 1: détection mobile (stable au montage)
   const isMobile = useMemo(() => detectMobile(), []);
 
-  // ✅ PHASE 4: refs de déplacement mobile (pilotées par Overlay)
   const mobileForwardRef = useRef(false);
   const mobileBackRef = useRef(false);
 
@@ -40,6 +38,15 @@ export default function App() {
     look: [0, 1.6, 0],
   });
 
+  const stopMobileMove = useCallback(() => {
+    mobileForwardRef.current = false;
+    mobileBackRef.current = false;
+
+    setGlobalFlag("__UI_ACTIVE__", false);
+    setGlobalFlag("__JOYSTICK_ACTIVE__", false);
+    setGlobalFlag("__TOUCH_LOOKING__", false);
+  }, []);
+
   const cancelFocus = useCallback(() => {
     setFocus((f) => ({
       ...f,
@@ -50,9 +57,22 @@ export default function App() {
     }));
   }, []);
 
+ 
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+
+    const onChange = () => {
+      setIsLocked(Boolean(document.pointerLockElement));
+    };
+
+    document.addEventListener("pointerlockchange", onChange);
+    return () => document.removeEventListener("pointerlockchange", onChange);
+  }, []);
+
   const requestLock = useCallback(() => {
     setControlsEnabled(true);
 
+    if (typeof document === "undefined") return;
     const canvas = document.querySelector("canvas");
     if (canvas && !document.pointerLockElement) {
       canvas.requestPointerLock?.();
@@ -60,59 +80,84 @@ export default function App() {
   }, []);
 
   const releaseLock = useCallback(() => {
-    if (document.pointerLockElement) document.exitPointerLock();
+    if (typeof document === "undefined") return;
+
+    if (document.pointerLockElement) {
+      try {
+        document.exitPointerLock();
+      } catch {
+        // no-op
+      }
+    }
+
     setControlsEnabled(false);
-  }, []);
+    stopMobileMove();
+  }, [stopMobileMove]);
 
   const closePanel = useCallback(() => {
     setOpenSectionId(null);
     cancelFocus();
     setControlsEnabled(true);
 
-    // ✅ sécurité: stop mouvement mobile quand on ferme un panel
-    mobileForwardRef.current = false;
-    mobileBackRef.current = false;
-  }, [cancelFocus]);
+    stopMobileMove();
+  }, [cancelFocus, stopMobileMove]);
 
-  const handleOpenSection = useCallback((id, itemId = null) => {
-    setOpenSectionId(id);
+  const handleOpenSection = useCallback(
+    (id, itemId = null) => {
+      setOpenSectionId(id);
 
-    if (document.pointerLockElement) document.exitPointerLock();
-    setControlsEnabled(false);
+      if (typeof document !== "undefined" && document.pointerLockElement) {
+        try {
+          document.exitPointerLock();
+        } catch {
+          // no-op
+        }
+      }
+      setControlsEnabled(false);
 
-    // ✅ stop mouvement mobile quand on ouvre un panel
-    mobileForwardRef.current = false;
-    mobileBackRef.current = false;
+      stopMobileMove();
 
-    setFocus((f) => ({
-      ...f,
-      sectionId: id,
-      itemId: itemId ?? f?.itemId ?? null,
-    }));
-  }, []);
+      setFocus((f) => ({
+        ...f,
+        sectionId: id,
+        itemId: itemId ?? f?.itemId ?? null,
+      }));
+    },
+    [stopMobileMove]
+  );
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
     const onKeyDown = (e) => {
       if (e.key !== "Escape") return;
 
       if (focus.active) {
-        if (document.pointerLockElement) document.exitPointerLock();
+        if (typeof document !== "undefined" && document.pointerLockElement) {
+          try {
+            document.exitPointerLock();
+          } catch {
+            // no-op
+          }
+        }
         setOpenSectionId(null);
         cancelFocus();
         setControlsEnabled(true);
-
-        mobileForwardRef.current = false;
-        mobileBackRef.current = false;
+        stopMobileMove();
         return;
       }
 
-      if (openSectionId) closePanel();
-      else releaseLock();
+      if (openSectionId) {
+        closePanel();
+        return;
+      }
+
+      releaseLock();
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [openSectionId, closePanel, releaseLock, focus.active, cancelFocus]);
+  }, [openSectionId, closePanel, releaseLock, focus.active, cancelFocus, stopMobileMove]);
 
   return (
     <>
@@ -123,7 +168,6 @@ export default function App() {
         focus={focus}
         setFocus={setFocus}
         onOpenSection={handleOpenSection}
-        // ✅ PHASE 4: passage des refs au controller mobile
         mobileForwardRef={mobileForwardRef}
         mobileBackRef={mobileBackRef}
       />
@@ -136,7 +180,6 @@ export default function App() {
         openSectionId={openSectionId}
         openItemId={focus?.itemId ?? null}
         onClosePanel={closePanel}
-        // ✅ PHASE 4: callbacks boutons mobile
         onMobileForwardDown={() => (mobileForwardRef.current = true)}
         onMobileForwardUp={() => (mobileForwardRef.current = false)}
         onMobileBackDown={() => (mobileBackRef.current = true)}
@@ -149,3 +192,4 @@ export default function App() {
     </>
   );
 }
+
