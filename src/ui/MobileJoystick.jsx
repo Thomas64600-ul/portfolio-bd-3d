@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
-
 export default function MobileJoystick({
   enabled = true,
   size = 120,
@@ -40,6 +39,8 @@ export default function MobileJoystick({
         touchAction: "none",
         WebkitTapHighlightColor: "transparent",
         userSelect: "none",
+        WebkitUserSelect: "none",
+        WebkitTouchCallout: "none", 
       },
       knob: {
         width: knobSize,
@@ -63,21 +64,20 @@ export default function MobileJoystick({
         color: "rgba(255,255,255,0.70)",
         pointerEvents: "none",
         whiteSpace: "nowrap",
+        userSelect: "none",
+        WebkitUserSelect: "none",
       },
     }),
     [active, knob.x, knob.y, knobSize, enabled, size]
   );
 
   const emit = (dx, dy) => {
-   
     let x = dx / (radius - knobRadius);
     let y = dy / (radius - knobRadius);
 
-    
     x = Math.max(-1, Math.min(1, x));
     y = Math.max(-1, Math.min(1, y));
 
-   
     const mag = Math.hypot(x, y);
     if (mag < deadZone) {
       x = 0;
@@ -91,6 +91,9 @@ export default function MobileJoystick({
     setActive(false);
     setKnob({ x: 0, y: 0 });
     pointerIdRef.current = null;
+
+    if (typeof window !== "undefined") window.__JOYSTICK_ACTIVE__ = false;
+
     onEnd?.();
     onMove?.({ x: 0, y: 0 });
   };
@@ -118,7 +121,14 @@ export default function MobileJoystick({
     const onPointerDown = (e) => {
       if (!enabled) return;
 
-      
+     
+      e.stopPropagation?.();
+
+     
+      e.preventDefault?.();
+
+      if (typeof window !== "undefined") window.__JOYSTICK_ACTIVE__ = true;
+
       pointerIdRef.current = e.pointerId;
       base.setPointerCapture?.(e.pointerId);
 
@@ -128,9 +138,6 @@ export default function MobileJoystick({
       const c = clampToCircle(dx, dy);
       setKnob({ x: c.dx, y: c.dy });
       emit(c.dx, c.dy);
-
-    
-      e.preventDefault?.();
     };
 
     const onPointerMove = (e) => {
@@ -138,12 +145,13 @@ export default function MobileJoystick({
       if (pointerIdRef.current == null) return;
       if (e.pointerId !== pointerIdRef.current) return;
 
+      e.stopPropagation?.();
+      e.preventDefault?.();
+
       const { dx, dy } = getLocal(e);
       const c = clampToCircle(dx, dy);
       setKnob({ x: c.dx, y: c.dy });
       emit(c.dx, c.dy);
-
-      e.preventDefault?.();
     };
 
     const onPointerUp = (e) => {
@@ -158,11 +166,18 @@ export default function MobileJoystick({
       reset();
     };
 
+    const onContextMenu = (e) => {
+     
+      e.preventDefault?.();
+      e.stopPropagation?.();
+    };
+
     base.addEventListener("pointerdown", onPointerDown, { passive: false });
     base.addEventListener("pointermove", onPointerMove, { passive: false });
     base.addEventListener("pointerup", onPointerUp, { passive: true });
     base.addEventListener("pointercancel", onPointerCancel, { passive: true });
     base.addEventListener("lostpointercapture", reset, { passive: true });
+    base.addEventListener("contextmenu", onContextMenu);
 
     return () => {
       base.removeEventListener("pointerdown", onPointerDown);
@@ -170,6 +185,7 @@ export default function MobileJoystick({
       base.removeEventListener("pointerup", onPointerUp);
       base.removeEventListener("pointercancel", onPointerCancel);
       base.removeEventListener("lostpointercapture", reset);
+      base.removeEventListener("contextmenu", onContextMenu);
     };
   }, [enabled, deadZone]); 
 
