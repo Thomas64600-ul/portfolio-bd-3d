@@ -322,41 +322,46 @@ export default function Overlay({
       )}
 
       {/* ✅ Mobile movement buttons (only when no panel is open) */}
-      {isMobile && !section && (
-        <div
-          style={{
-            position: "absolute",
-            left: 14,
-            bottom: showRotateHint ? 156 : 86, // ✅ on remonte si le hint est visible
-            display: "flex",
-            flexDirection: "column",
-            gap: 10,
-            zIndex: 20,
-          }}
-        >
-          <button
-            className="btn"
-            style={{ padding: "14px 16px", borderRadius: 14, fontSize: 16 }}
-            onTouchStart={() => onMobileForwardDown?.()}
-            onTouchEnd={() => onMobileForwardUp?.()}
-            onMouseDown={() => onMobileForwardDown?.()} // utile en responsive
-            onMouseUp={() => onMobileForwardUp?.()}
-          >
-            ⬆ Avancer
-          </button>
+      {/* ✅ Mobile movement buttons (only when no panel is open) */}
+{isMobile && !section && (
+  <div
+    style={{
+      position: "absolute",
+      left: 14,
+      bottom: showRotateHint ? 156 : 86,
+      display: "flex",
+      flexDirection: "column",
+      gap: 10,
+      zIndex: 20,
+    }}
+  >
+    <button
+      className="btn"
+      style={{ padding: "14px 16px", borderRadius: 14, fontSize: 16 }}
+      onTouchStart={() => onMobileForwardDown?.()}
+      onTouchEnd={() => onMobileForwardUp?.()}
+      onTouchCancel={() => onMobileForwardUp?.()}   // ✅ sécurité
+      onMouseDown={() => onMobileForwardDown?.()}
+      onMouseUp={() => onMobileForwardUp?.()}
+      onMouseLeave={() => onMobileForwardUp?.()}   // ✅ sécurité
+    >
+      ⬆ Avancer
+    </button>
 
-          <button
-            className="btn"
-            style={{ padding: "14px 16px", borderRadius: 14, fontSize: 16 }}
-            onTouchStart={() => onMobileBackDown?.()}
-            onTouchEnd={() => onMobileBackUp?.()}
-            onMouseDown={() => onMobileBackDown?.()} // utile en responsive
-            onMouseUp={() => onMobileBackUp?.()}
-          >
-            ⬇ Reculer
-          </button>
-        </div>
-      )}
+    <button
+      className="btn"
+      style={{ padding: "14px 16px", borderRadius: 14, fontSize: 16 }}
+      onTouchStart={() => onMobileBackDown?.()}
+      onTouchEnd={() => onMobileBackUp?.()}
+      onTouchCancel={() => onMobileBackUp?.()}     // ✅ sécurité
+      onMouseDown={() => onMobileBackDown?.()}
+      onMouseUp={() => onMobileBackUp?.()}
+      onMouseLeave={() => onMobileBackUp?.()}     // ✅ sécurité
+    >
+      ⬇ Reculer
+    </button>
+  </div>
+)}
 
       {/* ✅ Suggestion paysage (non bloquante) */}
       {showRotateHint && (
@@ -496,6 +501,7 @@ export default function Overlay({
 
   function renderItemSmart(it, idx) {
     const isCareerItem =
+
       Boolean(it.company) ||
       Boolean(it.period) ||
       Boolean(it.location) ||
