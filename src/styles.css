@@ -288,3 +288,31 @@ canvas {
     border-radius: 12px;
   }
 }
+
+.panel,
+.travelCard {
+  touch-action: pan-y;
+}
+
+.mobileJoystick,
+.joystick,
+.joystickWrap {
+  position: fixed;
+  z-index: 80;           
+  pointer-events: auto;  
+  touch-action: none;    
+}
+
+.mobileJoystick * ,
+.joystick * ,
+.joystickWrap * {
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.topbar,
+.panel,
+.travelCard,
+.hint {
+  touch-action: manipulation;
+}
