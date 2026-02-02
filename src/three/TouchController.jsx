@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
@@ -6,40 +6,33 @@ export default function TouchController({
   enabled = true,
   forwardRef,
   backRef,
-  speed = 2.2,
-  lookSpeed = 0.004,
+  speed = 4.2,           
+  lookSpeed = 0.0045,       
   bounds = { minX: -8, maxX: 8, minZ: -10, maxZ: 6 },
-  lockWhileInteracting = false,
   dragThresholdPx = 10,
+
+  
+  enableShelfCollision = true,
 }) {
   const { camera, gl } = useThree();
 
   const yaw = useRef(0);
   const pitch = useRef(0);
 
+  const pointerDown = useRef(false);
   const dragging = useRef(false);
-  const dragMoved = useRef(false);
   const start = useRef({ x: 0, y: 0 });
   const last = useRef({ x: 0, y: 0 });
 
-  const getGlobal = (k) => (typeof window !== "undefined" ? !!window[k] : false);
-  const setGlobal = (k, v) => {
+  const setGlobalLooking = (v) => {
     if (typeof window === "undefined") return;
-    window[k] = !!v;
+    window.__TOUCH_LOOKING__ = !!v;
   };
 
-  const setGlobalDragging = useCallback((v) => {
-    setGlobal("__TOUCH_LOOKING__", v);
-  }, []);
-
-  const shouldIgnoreLook = useCallback(() => {
-    
-    if (getGlobal("__JOYSTICK_ACTIVE__")) return true;
-
-    if (getGlobal("__UI_ACTIVE__")) return true;
-
-    return false;
-  }, []);
+  const uiBlocksLook = () => {
+    if (typeof window === "undefined") return false;
+    return !!window.__UI_ACTIVE__ || !!window.__JOYSTICK_ACTIVE__;
+  };
 
   useEffect(() => {
     const e = new THREE.Euler().setFromQuaternion(camera.quaternion, "YXZ");
@@ -49,94 +42,82 @@ export default function TouchController({
 
   useEffect(() => {
     const el = gl.domElement;
-    if (!el) return;
 
-    const onTouchStart = (e) => {
+    const onPointerDown = (e) => {
       if (!enabled) return;
-      if (lockWhileInteracting) return;
+      if (e.pointerType !== "touch") return;
 
-      if (shouldIgnoreLook()) return;
+     
+      if (uiBlocksLook()) return;
 
-      const t = e.touches?.[0];
-      if (!t) return;
+      pointerDown.current = true;
+      dragging.current = false;
 
-      dragging.current = true;
-      dragMoved.current = false;
-      start.current = { x: t.clientX, y: t.clientY };
-      last.current = { x: t.clientX, y: t.clientY };
+      start.current = { x: e.clientX, y: e.clientY };
+      last.current = { x: e.clientX, y: e.clientY };
 
-      e.preventDefault?.();
     };
 
-    const onTouchMove = (e) => {
+    const onPointerMove = (e) => {
       if (!enabled) return;
-      if (!dragging.current) return;
+      if (e.pointerType !== "touch") return;
+      if (!pointerDown.current) return;
 
-      if (shouldIgnoreLook()) {
-        dragging.current = false;
-        dragMoved.current = false;
-        setGlobalDragging(false);
-        return;
-      }
+      const dxTotal = e.clientX - start.current.x;
+      const dyTotal = e.clientY - start.current.y;
 
-      const t = e.touches?.[0];
-      if (!t) return;
-
-      const dxTotal = t.clientX - start.current.x;
-      const dyTotal = t.clientY - start.current.y;
-
-      if (!dragMoved.current) {
+      if (!dragging.current) {
         const dist = Math.hypot(dxTotal, dyTotal);
         if (dist >= dragThresholdPx) {
-          dragMoved.current = true;
-          setGlobalDragging(true);
+          dragging.current = true;
+          setGlobalLooking(true);
+        } else {
+         
+          return;
         }
       }
 
-      if (dragMoved.current) {
-        const dx = t.clientX - last.current.x;
-        const dy = t.clientY - last.current.y;
-
-        last.current = { x: t.clientX, y: t.clientY };
-
-        yaw.current -= dx * lookSpeed;
-        pitch.current -= dy * lookSpeed;
-
-        const limit = Math.PI / 2 - 0.08;
-        if (pitch.current > limit) pitch.current = limit;
-        if (pitch.current < -limit) pitch.current = -limit;
-      }
-
+    
       e.preventDefault?.();
+
+      const dx = e.clientX - last.current.x;
+      const dy = e.clientY - last.current.y;
+      last.current = { x: e.clientX, y: e.clientY };
+
+      yaw.current -= dx * lookSpeed;
+      pitch.current -= dy * lookSpeed;
+
+      const limit = Math.PI / 2 - 0.08;
+      if (pitch.current > limit) pitch.current = limit;
+      if (pitch.current < -limit) pitch.current = -limit;
     };
 
-    const end = (e) => {
-      dragging.current = false;
+    const onPointerUp = () => {
+      pointerDown.current = false;
 
-      if (dragMoved.current) {
-        dragMoved.current = false;
+      if (dragging.current) {
+        dragging.current = false;
        
-        setTimeout(() => setGlobalDragging(false), 120);
+        setTimeout(() => setGlobalLooking(false), 120);
       } else {
-        setGlobalDragging(false);
+     
+        setGlobalLooking(false);
       }
-
-      e?.preventDefault?.();
     };
 
-    el.addEventListener("touchstart", onTouchStart, { passive: false });
-    el.addEventListener("touchmove", onTouchMove, { passive: false });
-    el.addEventListener("touchend", end, { passive: false });
-    el.addEventListener("touchcancel", end, { passive: false });
+    el.addEventListener("pointerdown", onPointerDown, { passive: true });
+    el.addEventListener("pointermove", onPointerMove, { passive: false });
+    el.addEventListener("pointerup", onPointerUp, { passive: true });
+    el.addEventListener("pointercancel", onPointerUp, { passive: true });
 
     return () => {
-      el.removeEventListener("touchstart", onTouchStart);
-      el.removeEventListener("touchmove", onTouchMove);
-      el.removeEventListener("touchend", end);
-      el.removeEventListener("touchcancel", end);
-      setGlobalDragging(false);
+      el.removeEventListener("pointerdown", onPointerDown);
+      el.removeEventListener("pointermove", onPointerMove);
+      el.removeEventListener("pointerup", onPointerUp);
+      el.removeEventListener("pointercancel", onPointerUp);
+      setGlobalLooking(false);
     };
-  }, [enabled, gl, lookSpeed, lockWhileInteracting, dragThresholdPx, shouldIgnoreLook, setGlobalDragging]);
+  }, [enabled, gl, lookSpeed, dragThresholdPx]);
 
   const forwardDir = useRef(new THREE.Vector3());
   const moveVec = useRef(new THREE.Vector3());
@@ -160,8 +141,31 @@ export default function TouchController({
       moveVec.current.copy(forwardDir.current).multiplyScalar(move * speed * dt);
       camera.position.add(moveVec.current);
 
+      
       camera.position.x = Math.max(bounds.minX, Math.min(bounds.maxX, camera.position.x));
       camera.position.z = Math.max(bounds.minZ, Math.min(bounds.maxZ, camera.position.z));
+
+    
+      if (enableShelfCollision) {
+        
+        const centers = [-6.2, 0, 6.2];
+        const halfW = 2.35;
+
+        
+        const stopZ = -6.05;
+
+        const z = camera.position.z;
+        const x = camera.position.x;
+
+        if (z < stopZ) {
+          const insideAny =
+            centers.some((cx) => x > cx - halfW && x < cx + halfW);
+
+          if (insideAny) {
+            camera.position.z = stopZ;
+          }
+        }
+      }
     }
   });
 
