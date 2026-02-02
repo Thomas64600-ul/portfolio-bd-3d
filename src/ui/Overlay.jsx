@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { SECTIONS } from "../data/sections";
+import MobileJoystick from "./MobileJoystick";
 
 function resolveRowAndIndex(itemId, rowCounts) {
   if (itemId == null || Number.isNaN(Number(itemId))) return null;
@@ -43,7 +44,6 @@ export default function Overlay({
   openItemId = null,
   onClosePanel,
 
-  // ✅ mobile controls
   onMobileForwardDown,
   onMobileForwardUp,
   onMobileBackDown,
@@ -51,12 +51,12 @@ export default function Overlay({
 }) {
   const section = openSectionId ? SECTIONS[openSectionId] : null;
 
-  // Doit matcher tes ROW_COUNTS dans LibraryScene / BookcaseUnit
+ 
   const rowCounts = [24, 22, 20];
 
   const [selectedRow, setSelectedRow] = useState(null);
 
-  // ✅ Suggestion paysage (non bloquante)
+  
   const [isPortrait, setIsPortrait] = useState(false);
   const [dismissRotateHint, setDismissRotateHint] = useState(false);
 
@@ -64,7 +64,7 @@ export default function Overlay({
     setSelectedRow(null);
   }, [openSectionId]);
 
-  // Reset du “dismiss” quand on quitte/revient (ou reload)
+ 
   useEffect(() => {
     setDismissRotateHint(false);
   }, [isMobile]);
@@ -73,7 +73,7 @@ export default function Overlay({
     if (!isMobile) return;
 
     const compute = () => {
-      // portrait = hauteur > largeur
+    
       const portrait = window.innerHeight > window.innerWidth;
       setIsPortrait(portrait);
     };
@@ -127,7 +127,7 @@ export default function Overlay({
     if (canvas?.requestPointerLock) canvas.requestPointerLock();
   }, [onRequestLock]);
 
-  // ✅ On montre le hint seulement si : mobile + portrait + pas de panel + pas dismiss
+  
   const showRotateHint = isMobile && isPortrait && !section && !dismissRotateHint;
 
   return (
@@ -321,49 +321,28 @@ export default function Overlay({
         </div>
       )}
 
-      {/* ✅ Mobile movement buttons (only when no panel is open) */}
-      {/* ✅ Mobile movement buttons (only when no panel is open) */}
 {isMobile && !section && (
-  <div
-    style={{
-      position: "absolute",
-      left: 14,
-      bottom: showRotateHint ? 156 : 86,
-      display: "flex",
-      flexDirection: "column",
-      gap: 10,
-      zIndex: 20,
-    }}
-  >
-    <button
-      className="btn"
-      style={{ padding: "14px 16px", borderRadius: 14, fontSize: 16 }}
-      onTouchStart={() => onMobileForwardDown?.()}
-      onTouchEnd={() => onMobileForwardUp?.()}
-      onTouchCancel={() => onMobileForwardUp?.()}   // ✅ sécurité
-      onMouseDown={() => onMobileForwardDown?.()}
-      onMouseUp={() => onMobileForwardUp?.()}
-      onMouseLeave={() => onMobileForwardUp?.()}   // ✅ sécurité
-    >
-      ⬆ Avancer
-    </button>
+  <MobileJoystick
+    enabled={true}
+    onMove={({ y }) => {
+  
+      const forward = y < -0.18;
+      const back = y > 0.18;
 
-    <button
-      className="btn"
-      style={{ padding: "14px 16px", borderRadius: 14, fontSize: 16 }}
-      onTouchStart={() => onMobileBackDown?.()}
-      onTouchEnd={() => onMobileBackUp?.()}
-      onTouchCancel={() => onMobileBackUp?.()}     // ✅ sécurité
-      onMouseDown={() => onMobileBackDown?.()}
-      onMouseUp={() => onMobileBackUp?.()}
-      onMouseLeave={() => onMobileBackUp?.()}     // ✅ sécurité
-    >
-      ⬇ Reculer
-    </button>
-  </div>
+      if (forward) onMobileForwardDown?.();
+      else onMobileForwardUp?.();
+
+      if (back) onMobileBackDown?.();
+      else onMobileBackUp?.();
+    }}
+    onEnd={() => {
+    
+      onMobileForwardUp?.();
+      onMobileBackUp?.();
+    }}
+  />
 )}
 
-      {/* ✅ Suggestion paysage (non bloquante) */}
       {showRotateHint && (
         <div
           style={{
@@ -415,9 +394,6 @@ export default function Overlay({
     </div>
   );
 
-  // -----------------------------
-  // Render helpers
-  // -----------------------------
   function renderCareerItem(it, idx) {
     return (
       <div
