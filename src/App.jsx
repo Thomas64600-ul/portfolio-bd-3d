@@ -30,8 +30,6 @@ export default function App() {
   const [openSectionId, setOpenSectionId] = useState(null);
 
   const isMobile = useMemo(() => detectMobile(), []);
-
- 
   const [isPortrait, setIsPortrait] = useState(() => (isMobile ? detectPortrait() : false));
 
   useEffect(() => {
@@ -88,7 +86,6 @@ export default function App() {
     }));
   }, []);
 
-  
   useEffect(() => {
     if (typeof document === "undefined") return;
 
@@ -138,6 +135,8 @@ export default function App() {
 
   const handleOpenSection = useCallback(
     (id, itemId = null) => {
+      
+
       setOpenSectionId(id);
 
       if (typeof document !== "undefined" && document.pointerLockElement) {
@@ -148,16 +147,15 @@ export default function App() {
         }
       }
 
-    
       setGlobalFlag("__UI_ACTIVE__", true);
-
       setControlsEnabled(false);
       stopMobileMove();
 
       setFocus((f) => ({
         ...f,
         sectionId: id,
-        itemId: itemId ?? f?.itemId ?? null,
+        
+        itemId: itemId == null ? null : itemId,
       }));
     },
     [stopMobileMove]
@@ -225,9 +223,7 @@ export default function App() {
         onMobileBackUp={() => (mobileBackRef.current = false)}
       />
 
-      {openSectionId === "travels" && (
-        <TravelCard itemId={focus?.itemId ?? null} onClose={closePanel} />
-      )}
+      {openSectionId === "travels" && <TravelCard itemId={focus?.itemId ?? null} onClose={closePanel} />}
     </>
   );
 }
