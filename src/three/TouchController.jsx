@@ -54,40 +54,39 @@ export default function TouchController({
   useEffect(() => {
     const el = gl.domElement;
 
-    const clearCooldownTimer = () => {
+    const clearCooldown = () => {
       if (cooldownTimer.current) {
         clearTimeout(cooldownTimer.current);
         cooldownTimer.current = null;
       }
+      setTouchCooldown(false);
     };
 
-    const hardStopTouch = (e) => {
+    const hardStop = (e) => {
       pointerDown.current = false;
       dragging.current = false;
       activePointerId.current = null;
 
-      clearCooldownTimer();
+      clearCooldown();
       setGlobalLooking(false);
-      setTouchCooldown(false);
 
       try {
         if (e?.pointerId != null) el.releasePointerCapture?.(e.pointerId);
-      } catch {
-        // ignore
-      }
+      } catch {}
     };
 
     const onPointerDown = (e) => {
       if (!enabled) return;
       if (e.pointerType !== "touch") return;
 
-   
       if (isMapMode()) {
-        hardStopTouch(e);
+        hardStop(e);
         return;
       }
 
       if (uiBlocksLook()) return;
+
+      e.preventDefault?.();
 
       pointerDown.current = true;
       dragging.current = false;
@@ -98,12 +97,9 @@ export default function TouchController({
 
       try {
         el.setPointerCapture?.(e.pointerId);
-      } catch {
-        // ignore
-      }
+      } catch {}
 
-      clearCooldownTimer();
-      setTouchCooldown(false);
+      clearCooldown();
       setGlobalLooking(false);
     };
 
@@ -114,42 +110,36 @@ export default function TouchController({
       if (activePointerId.current != null && e.pointerId !== activePointerId.current) return;
 
       if (isMapMode()) {
-        hardStopTouch(e);
+        hardStop(e);
         return;
       }
 
-      const dxTotal = e.clientX - start.current.x;
-      const dyTotal = e.clientY - start.current.y;
+      const dxT = e.clientX - start.current.x;
+      const dyT = e.clientY - start.current.y;
 
       if (!dragging.current) {
-        const dist = Math.hypot(dxTotal, dyTotal);
-        if (dist >= dragThresholdPx) {
+        if (Math.hypot(dxT, dyT) >= dragThresholdPx) {
           dragging.current = true;
           setGlobalLooking(true);
-        } else {
-          return;
-        }
+        } else return;
       }
 
       e.preventDefault?.();
 
       const dx = e.clientX - last.current.x;
       const dy = e.clientY - last.current.y;
+
       last.current = { x: e.clientX, y: e.clientY };
 
       yaw.current += dx * lookSpeed;
-pitch.current += dy * lookSpeed;
-
+      pitch.current += dy * lookSpeed;
 
       const limit = Math.PI / 2 - 0.08;
-      if (pitch.current > limit) pitch.current = limit;
-      if (pitch.current < -limit) pitch.current = -limit;
+      pitch.current = Math.max(-limit, Math.min(limit, pitch.current));
     };
 
-    const endTouch = (e) => {
-      if (activePointerId.current != null && e?.pointerId != null && e.pointerId !== activePointerId.current) {
-        return;
-      }
+    const onPointerEnd = (e) => {
+      if (activePointerId.current != null && e?.pointerId !== activePointerId.current) return;
 
       pointerDown.current = false;
       activePointerId.current = null;
@@ -158,32 +148,34 @@ pitch.current += dy * lookSpeed;
 
       if (dragging.current) {
         dragging.current = false;
+
         setTouchCooldown(true);
-        clearCooldownTimer();
-        cooldownTimer.current = setTimeout(() => setTouchCooldown(false), 140);
+        clearTimeout(cooldownTimer.current);
+
+       
+        cooldownTimer.current = setTimeout(() => {
+          setTouchCooldown(false);
+        }, 70);
       }
 
       try {
         if (e?.pointerId != null) el.releasePointerCapture?.(e.pointerId);
-      } catch {
-        // ignore
-      }
+      } catch {}
     };
 
-    el.addEventListener("pointerdown", onPointerDown, { passive: true });
+    el.addEventListener("pointerdown", onPointerDown, { passive: false });
     el.addEventListener("pointermove", onPointerMove, { passive: false });
-    el.addEventListener("pointerup", endTouch, { passive: true });
-    el.addEventListener("pointercancel", endTouch, { passive: true });
+    el.addEventListener("pointerup", onPointerEnd);
+    el.addEventListener("pointercancel", onPointerEnd);
 
     return () => {
       el.removeEventListener("pointerdown", onPointerDown);
       el.removeEventListener("pointermove", onPointerMove);
-      el.removeEventListener("pointerup", endTouch);
-      el.removeEventListener("pointercancel", endTouch);
+      el.removeEventListener("pointerup", onPointerEnd);
+      el.removeEventListener("pointercancel", onPointerEnd);
 
-      clearCooldownTimer();
+      clearCooldown();
       setGlobalLooking(false);
-      setTouchCooldown(false);
     };
   }, [enabled, gl, lookSpeed, dragThresholdPx]);
 
@@ -199,6 +191,7 @@ pitch.current += dy * lookSpeed;
 
     const fwd = !!forwardRef?.current;
     const back = !!backRef?.current;
+
     const move = (fwd ? 1 : 0) + (back ? -1 : 0);
 
     if (move !== 0) {
@@ -206,7 +199,10 @@ pitch.current += dy * lookSpeed;
       forwardDir.current.y = 0;
       forwardDir.current.normalize();
 
-      moveVec.current.copy(forwardDir.current).multiplyScalar(move * speed * dt);
+      moveVec.current
+        .copy(forwardDir.current)
+        .multiplyScalar(move * speed * dt);
+
       camera.position.add(moveVec.current);
 
       camera.position.x = Math.max(bounds.minX, Math.min(bounds.maxX, camera.position.x));
@@ -217,12 +213,12 @@ pitch.current += dy * lookSpeed;
         const halfW = 2.35;
         const stopZ = -6.05;
 
-        const z = camera.position.z;
-        const x = camera.position.x;
+        if (camera.position.z < stopZ) {
+          const inside = centers.some(
+            (cx) => camera.position.x > cx - halfW && camera.position.x < cx + halfW
+          );
 
-        if (z < stopZ) {
-          const insideAny = centers.some((cx) => x > cx - halfW && x < cx + halfW);
-          if (insideAny) camera.position.z = stopZ;
+          if (inside) camera.position.z = stopZ;
         }
       }
     }
@@ -230,4 +226,3 @@ pitch.current += dy * lookSpeed;
 
   return null;
 }
-
