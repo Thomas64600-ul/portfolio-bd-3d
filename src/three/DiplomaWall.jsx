@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useCallback } from "react";
+import { useMemo, useEffect } from "react";
 import { useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import FrameInteractive from "./FrameInteractive";
@@ -15,14 +15,7 @@ const DIPLOMA_TEXTURES = [
   "/textures/diplomas/bac.jpg",
 ];
 
-function canPickNow() {
-  if (typeof window === "undefined") return true;
-  if (window.__TOUCH_LOOKING__) return false; 
-  if (window.__JOYSTICK_ACTIVE__) return false;
-  return true;
-}
-
-function DiplomaFrameContent({ size = SIZE, textureUrl, onPick }) {
+function DiplomaFrameContent({ size = SIZE, textureUrl }) {
   const diplomaTex = useTexture(textureUrl);
 
   useEffect(() => {
@@ -48,8 +41,8 @@ function DiplomaFrameContent({ size = SIZE, textureUrl, onPick }) {
   const paperMat = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
-        color: new THREE.Color("#e6dfd4"),
-        roughness: 0.92,
+        color: new THREE.Color("#f0eadf"),
+        roughness: 0.9,
         metalness: 0.0,
       }),
     []
@@ -59,44 +52,30 @@ function DiplomaFrameContent({ size = SIZE, textureUrl, onPick }) {
     () =>
       new THREE.MeshStandardMaterial({
         map: diplomaTex,
-        roughness: 0.95,
+        roughness: 0.78,
         metalness: 0.0,
         toneMapped: true,
+        emissive: new THREE.Color("#ffffff"),
+        emissiveIntensity: 0.16, 
       }),
     [diplomaTex]
   );
 
-  const handlePointerDown = useCallback((e) => {
-    e.stopPropagation?.(); 
-  }, []);
-
-  const handlePointerUp = useCallback(
-    (e) => {
-      e.stopPropagation?.();
-      if (!canPickNow()) return;
-      onPick?.();
-    },
-    [onPick]
-  );
-
   return (
     <group>
-   
+     
       <mesh raycast={() => null}>
         <boxGeometry args={[size[0] + 0.12, size[1] + 0.12, 0.05]} />
         <primitive object={inkMat} attach="material" />
       </mesh>
 
+   
       <mesh position={[0, 0, 0.035]} raycast={() => null}>
         <boxGeometry args={[size[0], size[1], 0.01]} />
         <primitive object={paperMat} attach="material" />
       </mesh>
 
-      <mesh
-        position={[0, 0, 0.055]}
-        onPointerDown={handlePointerDown}
-        onPointerUp={handlePointerUp}
-      >
+      <mesh position={[0, 0, 0.055]} raycast={() => null}>
         <planeGeometry args={[size[0] * 0.98, size[1] * 0.98]} />
         <primitive object={imageMat} attach="material" />
       </mesh>
@@ -130,11 +109,7 @@ export default function DiplomaWall({ onPickDiplomas, activeIndex }) {
           hitbox={[SIZE[0] + 0.35, SIZE[1] + 0.35, 0.35]}
           hitboxZ={0.12}
         >
-          <DiplomaFrameContent
-            size={SIZE}
-            textureUrl={DIPLOMA_TEXTURES[i]}
-            onPick={() => onPickDiplomas?.(i)}
-          />
+          <DiplomaFrameContent size={SIZE} textureUrl={DIPLOMA_TEXTURES[i]} />
         </FrameInteractive>
       ))}
 
@@ -152,3 +127,4 @@ export default function DiplomaWall({ onPickDiplomas, activeIndex }) {
     </group>
   );
 }
+
