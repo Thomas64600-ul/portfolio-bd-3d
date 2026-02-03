@@ -42,6 +42,7 @@ function setGlobalFlag(key, value) {
 
 export default function Overlay({
   isMobile,
+  isPortrait: isPortraitProp, 
   isLocked,
   onRequestLock,
   onReleaseLock,
@@ -57,13 +58,15 @@ export default function Overlay({
   const section = openSectionId ? SECTIONS[openSectionId] : null;
   const panelOpen = Boolean(openSectionId);
 
-  const rowCounts = BOOK_LAYOUT?.rowCounts ?? [24, 22, 20];
-
+  const rowCounts = BOOK_LAYOUT.rowCounts;
   const [selectedRow, setSelectedRow] = useState(null);
 
-  
-  const [isPortrait, setIsPortrait] = useState(false);
+ 
+  const [isPortraitLocal, setIsPortraitLocal] = useState(false);
+  const isPortrait = typeof isPortraitProp === "boolean" ? isPortraitProp : isPortraitLocal;
+
   const [dismissRotateHint, setDismissRotateHint] = useState(false);
+  const [isMapMode, setIsMapMode] = useState(false);
 
   useEffect(() => {
     setSelectedRow(null);
@@ -76,38 +79,36 @@ export default function Overlay({
   useEffect(() => {
     if (!isMobile) return;
     if (typeof window === "undefined") return;
+    if (typeof isPortraitProp === "boolean") return;
 
-    const compute = () => {
-      const portrait = window.innerHeight > window.innerWidth;
-      setIsPortrait(portrait);
-    };
-
+    const compute = () => setIsPortraitLocal(window.innerHeight > window.innerWidth);
     compute();
     window.addEventListener("resize", compute);
     window.addEventListener("orientationchange", compute);
-
     return () => {
       window.removeEventListener("resize", compute);
       window.removeEventListener("orientationchange", compute);
     };
-  }, [isMobile]);
+  }, [isMobile, isPortraitProp]);
 
-  
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const tick = () => {
+      const v = !!window.__MAP_MODE__;
+      setIsMapMode(v);
+    };
+
+    tick();
+    const id = window.setInterval(tick, 120);
+    return () => window.clearInterval(id);
+  }, []);
+
   useEffect(() => {
     if (openSectionId && !section) {
       console.warn("[Overlay] openSectionId inconnu (pas dans SECTIONS):", openSectionId);
     }
   }, [openSectionId, section]);
-
-
-  useEffect(() => {
-    
-    setGlobalFlag("__UI_ACTIVE__", panelOpen);
-    return () => {
-      
-      setGlobalFlag("__UI_ACTIVE__", false);
-    };
-  }, [panelOpen]);
 
   const rowInfo = useMemo(() => {
     if (!section?.rows) return null;
@@ -144,14 +145,13 @@ export default function Overlay({
 
   const handleRequestLock = useCallback(() => {
     onRequestLock?.();
-
     if (typeof document === "undefined") return;
     const canvas = document.querySelector("canvas");
     if (canvas?.requestPointerLock) canvas.requestPointerLock();
   }, [onRequestLock]);
 
-  
-  const showRotateHint = isMobile && isPortrait && !panelOpen && !dismissRotateHint;
+ 
+  const showRotateHint = isMobile && isPortrait && !section && !dismissRotateHint && !isMapMode;
 
   const setMobileMove = useCallback(
     ({ forward, back }) => {
@@ -172,23 +172,27 @@ export default function Overlay({
     onMobileBackUp?.();
   }, [onMobileForwardUp, onMobileBackUp]);
 
-
-  const mobileHintBottom = 220; 
-  const desktopHintBottom = 14;
-
- 
-  const showHint = !showRotateHint;
-
- 
-  const rotateHintBottom = 220;
-
   return (
     <div className="hud">
+    
       <div className="topbar">
         {panelOpen ? (
-          <button className="btn" onClick={handleTakeBackControl}>
-            ⎋ Quitter (reprendre le contrôle)
-          </button>
+          <>
+            <button className="btn" onClick={handleTakeBackControl}>
+              ⎋ Quitter (reprendre le contrôle)
+            </button>
+
+            <button className="btn" onClick={handleOpenCV}>
+              📄 Voir le CV
+            </button>
+            <button className="btn" onClick={handleDownloadCV}>
+              ⬇ Télécharger
+            </button>
+
+            <button className="btn" onClick={onClosePanel}>
+              ✖ Fermer
+            </button>
+          </>
         ) : !isLocked ? (
           !isMobile ? (
             <button className="btn btn-lock" onClick={handleRequestLock}>
@@ -204,44 +208,11 @@ export default function Overlay({
             ⎋ Libérer la souris
           </button>
         )}
-
-       
-        {panelOpen && (
-          <>
-            <button className="btn" onClick={handleOpenCV}>
-              📄 Voir le CV
-            </button>
-            <button className="btn" onClick={handleDownloadCV}>
-              ⬇ Télécharger
-            </button>
-            <button className="btn" onClick={onClosePanel}>
-              ✖ Fermer
-            </button>
-          </>
-        )}
       </div>
-
-      
-      {panelOpen && !section && (
-        <div className="panel">
-          <h2>Oups</h2>
-          <p style={{ whiteSpace: "pre-line" }}>
-            Cette section n’existe pas dans SECTIONS :{" "}
-            <strong style={{ color: "var(--text)" }}>{String(openSectionId)}</strong>
-            {"\n\n"}Clique “Fermer” pour revenir.
-          </p>
-        </div>
-      )}
 
       {section && !hidePanelForSection && (
         <div className="panel">
-          <h2 style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-            <span>{section.title}</span>
-           
-            <button className="btn" onClick={onClosePanel} style={{ padding: "8px 10px", borderRadius: 10 }}>
-              ✖ Fermer
-            </button>
-          </h2>
+          <h2>{section.title}</h2>
 
           {section.description && <p style={{ whiteSpace: "pre-line" }}>{section.description}</p>}
 
@@ -352,7 +323,9 @@ export default function Overlay({
                   </div>
 
                   {section.rows[selectedRow].items?.length > 0 ? (
-                    <div>{section.rows[selectedRow].items.map((it, idx) => renderItemSmart(it, idx))}</div>
+                    <div>
+                      {section.rows[selectedRow].items.map((it, idx) => renderItemSmart(it, idx))}
+                    </div>
                   ) : (
                     <div
                       style={{
@@ -374,12 +347,14 @@ export default function Overlay({
           )}
 
           {!section.rows && section.items?.length > 0 && (
-            <div style={{ marginTop: 12 }}>{section.items.map((it, idx) => renderItemSmart(it, idx))}</div>
+            <div style={{ marginTop: 12 }}>
+              {section.items.map((it, idx) => renderItemSmart(it, idx))}
+            </div>
           )}
         </div>
       )}
 
-      {isMobile && !panelOpen && (
+      {isMobile && !section && !isMapMode && (
         <MobileJoystick
           enabled={true}
           onMove={({ y }) => {
@@ -387,19 +362,56 @@ export default function Overlay({
             const back = y > 0.18;
             setMobileMove({ forward, back });
           }}
-          onEnd={() => {
-            stopMobileMove();
-          }}
+          onEnd={() => stopMobileMove()}
         />
       )}
 
+     
+      {isMobile && !section && isMapMode && (
+        <div
+          style={{
+            position: "absolute",
+            left: 14,
+            right: 14,
+            bottom: `calc(14px + var(--safe-bottom))`,
+            zIndex: 26,
+            padding: 12,
+            borderRadius: 14,
+            border: "1px solid rgba(255,255,255,0.12)",
+            background: "rgba(0,0,0,0.55)",
+            backdropFilter: "blur(6px)",
+            pointerEvents: "auto",
+          }}
+        >
+          <div style={{ color: "var(--text)", fontWeight: 800, marginBottom: 6 }}>
+            🗺️ Mode carte
+          </div>
+          <div style={{ color: "var(--muted)", fontSize: 13, lineHeight: 1.35 }}>
+            Tape sur un <strong style={{ color: "var(--text)" }}>pin</strong> pour ouvrir le détail.
+          </div>
+          <div style={{ marginTop: 10, display: "flex", gap: 10 }}>
+            <button
+              className="btn"
+              onClick={() => {
+               
+                setGlobalFlag("__MAP_MODE__", false);
+              }}
+              style={{ padding: "10px 12px", borderRadius: 12 }}
+            >
+              Fermer
+            </button>
+          </div>
+        </div>
+      )}
+
+      
       {showRotateHint && (
         <div
           style={{
             position: "absolute",
             left: 14,
             right: 14,
-            bottom: rotateHintBottom,
+            bottom: `calc(160px + var(--safe-bottom))`, 
             zIndex: 25,
             padding: 12,
             borderRadius: 14,
@@ -414,7 +426,6 @@ export default function Overlay({
           <div style={{ color: "var(--muted)", fontSize: 13, lineHeight: 1.35 }}>
             Tourne ton téléphone pour profiter d’un champ de vision plus large et d’une navigation plus confortable.
           </div>
-
           <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
             <button
               className="btn"
@@ -427,11 +438,13 @@ export default function Overlay({
         </div>
       )}
 
-      {showHint && (
+     
+      {!panelOpen && !isMapMode && (
         <div
           className="hint"
           style={{
-            bottom: isMobile ? mobileHintBottom : desktopHintBottom,
+           
+            marginBottom: isMobile && isPortrait ? 64 : 0,
           }}
         >
           {!isMobile ? (
@@ -467,18 +480,8 @@ export default function Overlay({
         {(it.company || it.location || it.period) && (
           <div style={{ color: "var(--muted)", fontSize: 13, marginTop: 2 }}>
             {it.company ? <span>{it.company}</span> : null}
-            {it.location ? (
-              <span>
-                {it.company ? " • " : ""}
-                {it.location}
-              </span>
-            ) : null}
-            {it.period ? (
-              <span>
-                {(it.company || it.location) ? " • " : ""}
-                {it.period}
-              </span>
-            ) : null}
+            {it.location ? <span>{it.company ? " • " : ""}{it.location}</span> : null}
+            {it.period ? <span>{(it.company || it.location) ? " • " : ""}{it.period}</span> : null}
           </div>
         )}
 

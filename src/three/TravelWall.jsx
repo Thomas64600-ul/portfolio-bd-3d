@@ -1,5 +1,5 @@
 import { useMemo, useEffect, useRef, useCallback } from "react";
-import { useLoader, useThree } from "@react-three/fiber";
+import { useLoader, useThree, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { SECTIONS } from "../data/sections";
 import InteractiveItem from "./InteractiveItem";
@@ -23,8 +23,23 @@ const PINS = [
   { label: "Pays de Galles", itemIndex: 7, uv: [0.4436, 0.3327] },
 ];
 
+function setGlobalFlag(key, value) {
+  if (typeof window === "undefined") return;
+  window[key] = !!value;
+}
+
+function setGlobalNumber(key, value) {
+  if (typeof window === "undefined") return;
+  window[key] = Number(value) || 0;
+}
+
 function isBlockedByUX() {
   if (typeof window === "undefined") return false;
+
+  const now = Date.now();
+  const until = Number(window.__MAP_INTERACT_UNTIL__ || 0);
+  if (now < until) return true; 
+
   return !!window.__TOUCH_LOOKING__ || !!window.__JOYSTICK_ACTIVE__ || !!window.__UI_ACTIVE__;
 }
 
@@ -46,7 +61,6 @@ export default function TravelWall({
 
   useEffect(() => {
     if (!mapTex) return;
-
     mapTex.colorSpace = THREE.SRGBColorSpace;
     mapTex.anisotropy = 8;
     mapTex.wrapS = THREE.ClampToEdgeWrapping;
@@ -56,14 +70,16 @@ export default function TravelWall({
 
   useEffect(() => {
     if (!DEBUG_PINS) return;
-    if (document.pointerLockElement) document.exitPointerLock();
+    if (typeof document !== "undefined" && document.pointerLockElement) {
+      document.exitPointerLock();
+    }
   }, []);
 
   const mapMat = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
         map: mapTex,
-        roughness: 0.9,
+        roughness: 0.92,
         metalness: 0,
         side: THREE.DoubleSide,
       }),
@@ -80,8 +96,10 @@ export default function TravelWall({
     return [x, y];
   }, []);
 
-  
-  const canInteractWithMap = useCallback(() => {
+ 
+  const isInMapZoneRef = useRef(false);
+
+  const computeCanInteract = useCallback(() => {
     const mesh = mapRef.current;
     if (!mesh) return false;
 
@@ -92,28 +110,41 @@ export default function TravelWall({
     mesh.getWorldQuaternion(q);
 
     const normal = new THREE.Vector3(0, 0, 1).applyQuaternion(q).normalize();
-    const dist = camera.position.distanceTo(mapWorldPos);
 
+    const dist = camera.position.distanceTo(mapWorldPos);
     const camToMap = mapWorldPos.clone().sub(camera.position).normalize();
-    const facing = camToMap.dot(normal);
 
    
-    const maxDist = 6.0;    
-    const minFacing = 0.55;  
+    const facing = Math.abs(camToMap.dot(normal));
+
+   
+    const maxDist = 6.8;
+    const minFacing = 0.28;
 
     return dist <= maxDist && facing >= minFacing;
   }, [camera]);
 
+  
+  useFrame(() => {
+    const ok = computeCanInteract();
+    if (ok !== isInMapZoneRef.current) {
+      isInMapZoneRef.current = ok;
+
+     
+      setGlobalFlag("__MAP_MODE__", ok);
+
+     
+      if (ok) {
+        setGlobalNumber("__MAP_INTERACT_UNTIL__", Date.now() + 250);
+      }
+    }
+  });
+
+  
   const handlePickDebugUV = useCallback(
     (e) => {
       if (!DEBUG_PINS) return;
       e.stopPropagation();
-
-      if (document.pointerLockElement) {
-        document.exitPointerLock();
-        console.warn("🔒 PointerLock actif -> libère la souris puis reclique.");
-        return;
-      }
 
       const mesh = mapRef.current;
       if (!mesh) return;
@@ -147,45 +178,46 @@ export default function TravelWall({
   const handlePickWall = useCallback(
     (e) => {
       if (DEBUG_PINS) return;
-      e?.stopPropagation?.();
+      e.stopPropagation();
 
       if (isBlockedByUX()) return;
-      if (!canInteractWithMap()) return;
+      if (!isInMapZoneRef.current) return;
+
+      
+      setGlobalNumber("__MAP_INTERACT_UNTIL__", Date.now() + 300);
 
       onPickWall?.();
     },
-    [onPickWall, canInteractWithMap]
+    [onPickWall]
   );
 
   const pickPin = useCallback(
     (itemIndex, e) => {
-      e?.stopPropagation?.();
+      e.stopPropagation();
 
       if (isBlockedByUX()) return;
-      if (!canInteractWithMap()) return;
+      if (!isInMapZoneRef.current) return;
+
+     
+      setGlobalNumber("__MAP_INTERACT_UNTIL__", Date.now() + 350);
 
       onPickPin?.(itemIndex);
     },
-    [onPickPin, canInteractWithMap]
+    [onPickPin]
   );
 
   return (
     <group position={position} rotation={rotation}>
      
-      <InteractiveItem
-        disabled={DEBUG_PINS}
-        onPick={(e) => {
-          
-          if (DEBUG_PINS) handlePickDebugUV(e);
-          else handlePickWall(e);
-        }}
+      <mesh
+        ref={mapRef}
+        position={[0, 0, MAP_Z]}
+        material={mapMat}
+        onPointerDown={DEBUG_PINS ? handlePickDebugUV : handlePickWall}
       >
-        <mesh ref={mapRef} position={[0, 0, MAP_Z]} material={mapMat}>
-          <planeGeometry args={[MAP_W, MAP_H]} />
-        </mesh>
-      </InteractiveItem>
+        <planeGeometry args={[MAP_W, MAP_H]} />
+      </mesh>
 
-    
       {!DEBUG_PINS &&
         PINS.map((p) => {
           const isActive = activeIndex === p.itemIndex;
@@ -206,7 +238,6 @@ export default function TravelWall({
                     pick: () => onPickPin?.(p.itemIndex),
                   }}
                 >
-                
                   <mesh>
                     <sphereGeometry args={[PIN_SIZE, 20, 20]} />
                     <meshStandardMaterial
@@ -216,10 +247,15 @@ export default function TravelWall({
                     />
                   </mesh>
 
-                 
+        
                   <mesh>
-                    <sphereGeometry args={[PIN_SIZE * 2.2, 12, 12]} />
-                    <meshBasicMaterial transparent opacity={0.001} depthWrite={false} depthTest={false} />
+                    <sphereGeometry args={[PIN_SIZE * 2.6, 12, 12]} />
+                    <meshBasicMaterial
+                      transparent
+                      opacity={0.001}
+                      depthWrite={false}
+                      depthTest={false}
+                    />
                   </mesh>
                 </group>
               </InteractiveItem>
@@ -229,4 +265,5 @@ export default function TravelWall({
     </group>
   );
 }
+
 
