@@ -137,8 +137,9 @@ export default function TouchController({
       const dy = e.clientY - last.current.y;
       last.current = { x: e.clientX, y: e.clientY };
 
-      yaw.current -= dx * lookSpeed;
-      pitch.current -= dy * lookSpeed;
+      yaw.current += dx * lookSpeed;
+pitch.current += dy * lookSpeed;
+
 
       const limit = Math.PI / 2 - 0.08;
       if (pitch.current > limit) pitch.current = limit;
