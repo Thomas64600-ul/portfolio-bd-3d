@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, useCallback } from "react";
-import { SECTIONS } from "../data/sections";
+import { SECTIONS, BOOK_LAYOUT } from "../data/sections";
 import MobileJoystick from "./MobileJoystick";
 
 function resolveRowAndIndex(itemId, rowCounts) {
@@ -58,7 +58,8 @@ export default function Overlay({
 
   const panelOpen = Boolean(openSectionId);
 
-  const rowCounts = [24, 22, 20];
+ const rowCounts = BOOK_LAYOUT.rowCounts;
+
   const [selectedRow, setSelectedRow] = useState(null);
 
   const [isPortrait, setIsPortrait] = useState(false);
