@@ -42,7 +42,7 @@ function setGlobalFlag(key, value) {
 
 export default function Overlay({
   isMobile,
-  isPortrait: isPortraitProp, 
+  isPortrait: isPortraitProp,
   isLocked,
   onRequestLock,
   onReleaseLock,
@@ -72,10 +72,12 @@ export default function Overlay({
     setSelectedRow(null);
   }, [openSectionId]);
 
+
   useEffect(() => {
     setDismissRotateHint(false);
   }, [isMobile]);
 
+ 
   useEffect(() => {
     if (!isMobile) return;
     if (typeof window === "undefined") return;
@@ -85,18 +87,19 @@ export default function Overlay({
     compute();
     window.addEventListener("resize", compute);
     window.addEventListener("orientationchange", compute);
+
     return () => {
       window.removeEventListener("resize", compute);
       window.removeEventListener("orientationchange", compute);
     };
   }, [isMobile, isPortraitProp]);
 
+ 
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     const tick = () => {
-      const v = !!window.__MAP_MODE__;
-      setIsMapMode(v);
+      setIsMapMode(!!window.__MAP_MODE__);
     };
 
     tick();
@@ -121,17 +124,12 @@ export default function Overlay({
   const hidePanelForSection =
     openSectionId === "diplomas" || openSectionId === "travels" || openSectionId === "about";
 
-  const handleTakeBackControl = useCallback(() => {
-    onReleaseLock?.();
-    onClosePanel?.();
-  }, [onReleaseLock, onClosePanel]);
-
   const CV_URL = "/cv/Thomas-DeTraversay-CV.pdf";
 
   const handleOpenCV = useCallback(() => {
     if (typeof window === "undefined") return;
     window.open(CV_URL, "_blank", "noopener,noreferrer");
-  }, [CV_URL]);
+  }, []);
 
   const handleDownloadCV = useCallback(() => {
     if (typeof document === "undefined") return;
@@ -141,7 +139,7 @@ export default function Overlay({
     document.body.appendChild(a);
     a.click();
     a.remove();
-  }, [CV_URL]);
+  }, []);
 
   const handleRequestLock = useCallback(() => {
     onRequestLock?.();
@@ -150,11 +148,25 @@ export default function Overlay({
     if (canvas?.requestPointerLock) canvas.requestPointerLock();
   }, [onRequestLock]);
 
+
+  const handleCloseEverything = useCallback(() => {
+    
+    setGlobalFlag("__UI_ACTIVE__", false);
+    onMobileForwardUp?.();
+    onMobileBackUp?.();
+
+   
+    onReleaseLock?.();
+   
+    onClosePanel?.();
+  }, [onClosePanel, onReleaseLock, onMobileForwardUp, onMobileBackUp]);
+
  
-  const showRotateHint = isMobile && isPortrait && !section && !dismissRotateHint && !isMapMode;
+  const showRotateHint = isMobile && isPortrait && !panelOpen && !dismissRotateHint && !isMapMode;
 
   const setMobileMove = useCallback(
     ({ forward, back }) => {
+     
       setGlobalFlag("__UI_ACTIVE__", forward || back);
 
       if (forward) onMobileForwardDown?.();
@@ -173,12 +185,16 @@ export default function Overlay({
   }, [onMobileForwardUp, onMobileBackUp]);
 
   return (
-    <div className="hud">
-    
+    <div
+      className="hud"
+      data-rotatehint={showRotateHint ? "1" : "0"}
+      data-panelopen={panelOpen ? "1" : "0"}
+    >
+     
       <div className="topbar">
         {panelOpen ? (
           <>
-            <button className="btn" onClick={handleTakeBackControl}>
+            <button className="btn" onClick={handleCloseEverything}>
               ⎋ Quitter (reprendre le contrôle)
             </button>
 
@@ -189,6 +205,7 @@ export default function Overlay({
               ⬇ Télécharger
             </button>
 
+           
             <button className="btn" onClick={onClosePanel}>
               ✖ Fermer
             </button>
@@ -210,6 +227,7 @@ export default function Overlay({
         )}
       </div>
 
+   
       {section && !hidePanelForSection && (
         <div className="panel">
           <h2>{section.title}</h2>
@@ -224,6 +242,7 @@ export default function Overlay({
             ))}
           </div>
 
+       
           {section.rows && openItemId != null && (
             <div style={{ marginTop: 14 }}>
               <div style={{ color: "var(--muted)", fontSize: 12, marginBottom: 8 }}>
@@ -285,6 +304,7 @@ export default function Overlay({
             </div>
           )}
 
+      
           {section.rows && openItemId == null && (
             <div style={{ marginTop: 14 }}>
               <div style={{ color: "var(--muted)", fontSize: 12, marginBottom: 6 }}>
@@ -323,9 +343,7 @@ export default function Overlay({
                   </div>
 
                   {section.rows[selectedRow].items?.length > 0 ? (
-                    <div>
-                      {section.rows[selectedRow].items.map((it, idx) => renderItemSmart(it, idx))}
-                    </div>
+                    <div>{section.rows[selectedRow].items.map((it, idx) => renderItemSmart(it, idx))}</div>
                   ) : (
                     <div
                       style={{
@@ -347,14 +365,12 @@ export default function Overlay({
           )}
 
           {!section.rows && section.items?.length > 0 && (
-            <div style={{ marginTop: 12 }}>
-              {section.items.map((it, idx) => renderItemSmart(it, idx))}
-            </div>
+            <div style={{ marginTop: 12 }}>{section.items.map((it, idx) => renderItemSmart(it, idx))}</div>
           )}
         </div>
       )}
 
-      {isMobile && !section && !isMapMode && (
+      {isMobile && !panelOpen && !isMapMode && (
         <MobileJoystick
           enabled={true}
           onMove={({ y }) => {
@@ -366,8 +382,8 @@ export default function Overlay({
         />
       )}
 
-     
-      {isMobile && !section && isMapMode && (
+  
+      {isMobile && !panelOpen && isMapMode && (
         <div
           style={{
             position: "absolute",
@@ -383,19 +399,15 @@ export default function Overlay({
             pointerEvents: "auto",
           }}
         >
-          <div style={{ color: "var(--text)", fontWeight: 800, marginBottom: 6 }}>
-            🗺️ Mode carte
-          </div>
+          <div style={{ color: "var(--text)", fontWeight: 800, marginBottom: 6 }}>🗺️ Mode carte</div>
           <div style={{ color: "var(--muted)", fontSize: 13, lineHeight: 1.35 }}>
             Tape sur un <strong style={{ color: "var(--text)" }}>pin</strong> pour ouvrir le détail.
           </div>
+
           <div style={{ marginTop: 10, display: "flex", gap: 10 }}>
             <button
               className="btn"
-              onClick={() => {
-               
-                setGlobalFlag("__MAP_MODE__", false);
-              }}
+              onClick={() => setGlobalFlag("__MAP_MODE__", false)}
               style={{ padding: "10px 12px", borderRadius: 12 }}
             >
               Fermer
@@ -404,20 +416,20 @@ export default function Overlay({
         </div>
       )}
 
-      
       {showRotateHint && (
         <div
           style={{
             position: "absolute",
             left: 14,
             right: 14,
-            bottom: `calc(160px + var(--safe-bottom))`, 
+            bottom: `calc(160px + var(--safe-bottom))`,
             zIndex: 25,
             padding: 12,
             borderRadius: 14,
             border: "1px solid rgba(255,255,255,0.12)",
             background: "rgba(0,0,0,0.55)",
             backdropFilter: "blur(6px)",
+            pointerEvents: "auto",
           }}
         >
           <div style={{ color: "var(--text)", fontWeight: 800, marginBottom: 6 }}>
@@ -426,6 +438,7 @@ export default function Overlay({
           <div style={{ color: "var(--muted)", fontSize: 13, lineHeight: 1.35 }}>
             Tourne ton téléphone pour profiter d’un champ de vision plus large et d’une navigation plus confortable.
           </div>
+
           <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
             <button
               className="btn"
@@ -438,15 +451,8 @@ export default function Overlay({
         </div>
       )}
 
-     
       {!panelOpen && !isMapMode && (
-        <div
-          className="hint"
-          style={{
-           
-            marginBottom: isMobile && isPortrait ? 64 : 0,
-          }}
-        >
+        <div className="hint">
           {!isMobile ? (
             <>
               <div>WASD / Flèches = se déplacer • Souris = regarder • Clic = interagir</div>
