@@ -2,6 +2,7 @@ import { useMemo, useEffect, useRef, useCallback } from "react";
 import { useLoader, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { SECTIONS } from "../data/sections";
+import InteractiveItem from "./InteractiveItem";
 
 const DEBUG_PINS = false;
 
@@ -79,27 +80,26 @@ export default function TravelWall({
     return [x, y];
   }, []);
 
- 
+  
   const canInteractWithMap = useCallback(() => {
     const mesh = mapRef.current;
     if (!mesh) return false;
 
-    
     const mapWorldPos = new THREE.Vector3();
     mesh.getWorldPosition(mapWorldPos);
 
-    
-    const normal = new THREE.Vector3(0, 0, 1).applyQuaternion(mesh.getWorldQuaternion(new THREE.Quaternion())).normalize();
+    const q = new THREE.Quaternion();
+    mesh.getWorldQuaternion(q);
 
-  
+    const normal = new THREE.Vector3(0, 0, 1).applyQuaternion(q).normalize();
     const dist = camera.position.distanceTo(mapWorldPos);
 
-    
     const camToMap = mapWorldPos.clone().sub(camera.position).normalize();
-    const facing = camToMap.dot(normal); 
+    const facing = camToMap.dot(normal);
 
-    const maxDist = 4.4;             
-    const minFacing = 0.78;         
+   
+    const maxDist = 6.0;    
+    const minFacing = 0.55;  
 
     return dist <= maxDist && facing >= minFacing;
   }, [camera]);
@@ -147,12 +147,9 @@ export default function TravelWall({
   const handlePickWall = useCallback(
     (e) => {
       if (DEBUG_PINS) return;
-      e.stopPropagation();
+      e?.stopPropagation?.();
 
-   
       if (isBlockedByUX()) return;
-
-   
       if (!canInteractWithMap()) return;
 
       onPickWall?.();
@@ -162,9 +159,11 @@ export default function TravelWall({
 
   const pickPin = useCallback(
     (itemIndex, e) => {
-      e.stopPropagation();
+      e?.stopPropagation?.();
+
       if (isBlockedByUX()) return;
       if (!canInteractWithMap()) return;
+
       onPickPin?.(itemIndex);
     },
     [onPickPin, canInteractWithMap]
@@ -172,15 +171,21 @@ export default function TravelWall({
 
   return (
     <group position={position} rotation={rotation}>
-      <mesh
-        ref={mapRef}
-        position={[0, 0, MAP_Z]}
-        material={mapMat}
-        onPointerDown={DEBUG_PINS ? handlePickDebugUV : handlePickWall}
+     
+      <InteractiveItem
+        disabled={DEBUG_PINS}
+        onPick={(e) => {
+          
+          if (DEBUG_PINS) handlePickDebugUV(e);
+          else handlePickWall(e);
+        }}
       >
-        <planeGeometry args={[MAP_W, MAP_H]} />
-      </mesh>
+        <mesh ref={mapRef} position={[0, 0, MAP_Z]} material={mapMat}>
+          <planeGeometry args={[MAP_W, MAP_H]} />
+        </mesh>
+      </InteractiveItem>
 
+    
       {!DEBUG_PINS &&
         PINS.map((p) => {
           const isActive = activeIndex === p.itemIndex;
@@ -190,25 +195,35 @@ export default function TravelWall({
           const [x, y] = uvToXY(p.uv[0], p.uv[1]);
 
           return (
-            <mesh
-              key={`${p.label}-${p.itemIndex}`}
-              position={[x, y, PIN_Z]}
-              onPointerDown={(e) => pickPin(p.itemIndex, e)}
-              userData={{
-                type: "pin",
-                label: p.label,
-                itemIndex: p.itemIndex,
-                title,
-                pick: () => onPickPin?.(p.itemIndex),
-              }}
-            >
-              <sphereGeometry args={[PIN_SIZE, 20, 20]} />
-              <meshStandardMaterial
-                color={isActive ? "#ff6b8a" : "#ff7a9a"}
-                roughness={0.35}
-                metalness={0.1}
-              />
-            </mesh>
+            <group key={`${p.label}-${p.itemIndex}`} position={[x, y, PIN_Z]}>
+              <InteractiveItem onPick={(e) => pickPin(p.itemIndex, e)}>
+                <group
+                  userData={{
+                    type: "pin",
+                    label: p.label,
+                    itemIndex: p.itemIndex,
+                    title,
+                    pick: () => onPickPin?.(p.itemIndex),
+                  }}
+                >
+                
+                  <mesh>
+                    <sphereGeometry args={[PIN_SIZE, 20, 20]} />
+                    <meshStandardMaterial
+                      color={isActive ? "#ff6b8a" : "#ff7a9a"}
+                      roughness={0.35}
+                      metalness={0.1}
+                    />
+                  </mesh>
+
+                 
+                  <mesh>
+                    <sphereGeometry args={[PIN_SIZE * 2.2, 12, 12]} />
+                    <meshBasicMaterial transparent opacity={0.001} depthWrite={false} depthTest={false} />
+                  </mesh>
+                </group>
+              </InteractiveItem>
+            </group>
           );
         })}
     </group>
