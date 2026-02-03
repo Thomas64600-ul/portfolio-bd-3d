@@ -1,3 +1,4 @@
+// src/ui/Overlay.jsx
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { SECTIONS, BOOK_LAYOUT } from "../data/sections";
 import MobileJoystick from "./MobileJoystick";
@@ -58,7 +59,7 @@ export default function Overlay({
 
   const panelOpen = Boolean(openSectionId);
 
- const rowCounts = BOOK_LAYOUT.rowCounts;
+  const rowCounts = BOOK_LAYOUT.rowCounts;
 
   const [selectedRow, setSelectedRow] = useState(null);
 
@@ -92,10 +93,8 @@ export default function Overlay({
     };
   }, [isMobile]);
 
-
   useEffect(() => {
     if (openSectionId && !section) {
-     
       console.warn("[Overlay] openSectionId inconnu (pas dans SECTIONS):", openSectionId);
     }
   }, [openSectionId, section]);
@@ -142,6 +141,13 @@ export default function Overlay({
   }, [onRequestLock]);
 
   const showRotateHint = isMobile && isPortrait && !section && !dismissRotateHint;
+
+  // ✅ évite la superposition en portrait : on remonte le bloc "hint"
+  const hintBottom = useMemo(() => {
+    if (!isMobile) return undefined; // desktop: inchangé
+    if (!isPortrait) return 18; // mobile paysage: léger lift
+    return showRotateHint ? 190 : 110; // portrait: plus haut (et encore + si rotate hint visible)
+  }, [isMobile, isPortrait, showRotateHint]);
 
   const setMobileMove = useCallback(
     ({ forward, back }) => {
@@ -313,7 +319,9 @@ export default function Overlay({
                   </div>
 
                   {section.rows[selectedRow].items?.length > 0 ? (
-                    <div>{section.rows[selectedRow].items.map((it, idx) => renderItemSmart(it, idx))}</div>
+                    <div>
+                      {section.rows[selectedRow].items.map((it, idx) => renderItemSmart(it, idx))}
+                    </div>
                   ) : (
                     <div
                       style={{
@@ -335,7 +343,9 @@ export default function Overlay({
           )}
 
           {!section.rows && section.items?.length > 0 && (
-            <div style={{ marginTop: 12 }}>{section.items.map((it, idx) => renderItemSmart(it, idx))}</div>
+            <div style={{ marginTop: 12 }}>
+              {section.items.map((it, idx) => renderItemSmart(it, idx))}
+            </div>
           )}
         </div>
       )}
@@ -388,7 +398,7 @@ export default function Overlay({
         </div>
       )}
 
-      <div className="hint">
+      <div className="hint" style={hintBottom != null ? { bottom: hintBottom } : undefined}>
         {!isMobile ? (
           <>
             <div>WASD / Flèches = se déplacer • Souris = regarder • Clic = interagir</div>
@@ -473,7 +483,11 @@ export default function Overlay({
 
   function renderItemSmart(it, idx) {
     const isCareerItem =
-      Boolean(it.company) || Boolean(it.period) || Boolean(it.location) || Array.isArray(it.bullets);
+      Boolean(it.company) ||
+      Boolean(it.period) ||
+      Boolean(it.location) ||
+      Array.isArray(it.bullets);
+
     return isCareerItem ? renderCareerItem(it, idx) : renderStandardItem(it, idx);
   }
 }
