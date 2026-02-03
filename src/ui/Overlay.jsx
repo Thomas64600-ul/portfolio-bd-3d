@@ -2,6 +2,8 @@ import { useMemo, useState, useEffect, useCallback } from "react";
 import { SECTIONS, BOOK_LAYOUT } from "../data/sections";
 import MobileJoystick from "./MobileJoystick";
 
+
+
 function resolveRowAndIndex(itemId, rowCounts) {
   if (itemId == null || Number.isNaN(Number(itemId))) return null;
 
@@ -14,31 +16,19 @@ function resolveRowAndIndex(itemId, rowCounts) {
   return null;
 }
 
-function RowButton({ idx, title, selected, onSelect }) {
-  return (
-    <button
-      className="btn"
-      style={{
-        marginRight: 8,
-        marginTop: 8,
-        padding: "8px 10px",
-        borderRadius: 10,
-        border: "1px solid rgba(255,255,255,0.12)",
-        background: selected ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.15)",
-        color: "var(--text)",
-        cursor: "pointer",
-      }}
-      onClick={() => onSelect(idx)}
-    >
-      {title || `Rangée ${idx + 1}`}
-    </button>
-  );
-}
-
 function setGlobalFlag(key, value) {
   if (typeof window === "undefined") return;
   window[key] = !!value;
 }
+
+function resetGlobalControls() {
+  if (typeof window === "undefined") return;
+
+  window.__UI_ACTIVE__ = false;
+  window.__JOYSTICK_ACTIVE__ = false;
+}
+
+
 
 export default function Overlay({
   isMobile,
@@ -61,30 +51,33 @@ export default function Overlay({
   const rowCounts = BOOK_LAYOUT.rowCounts;
   const [selectedRow, setSelectedRow] = useState(null);
 
- 
   const [isPortraitLocal, setIsPortraitLocal] = useState(false);
   const isPortrait = typeof isPortraitProp === "boolean" ? isPortraitProp : isPortraitLocal;
 
   const [dismissRotateHint, setDismissRotateHint] = useState(false);
   const [isMapMode, setIsMapMode] = useState(false);
 
+
+
   useEffect(() => {
     setSelectedRow(null);
   }, [openSectionId]);
-
 
   useEffect(() => {
     setDismissRotateHint(false);
   }, [isMobile]);
 
  
+
   useEffect(() => {
     if (!isMobile) return;
     if (typeof window === "undefined") return;
     if (typeof isPortraitProp === "boolean") return;
 
     const compute = () => setIsPortraitLocal(window.innerHeight > window.innerWidth);
+
     compute();
+
     window.addEventListener("resize", compute);
     window.addEventListener("orientationchange", compute);
 
@@ -94,80 +87,62 @@ export default function Overlay({
     };
   }, [isMobile, isPortraitProp]);
 
- 
+  
+
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     const tick = () => {
-      setIsMapMode(!!window.__MAP_MODE__);
+      const map = !!window.__MAP_MODE__;
+      setIsMapMode(map);
+
+      
+      if (map) resetGlobalControls();
     };
 
     tick();
+
     const id = window.setInterval(tick, 120);
     return () => window.clearInterval(id);
   }, []);
 
+
+
   useEffect(() => {
-    if (openSectionId && !section) {
-      console.warn("[Overlay] openSectionId inconnu (pas dans SECTIONS):", openSectionId);
+    
+    if (panelOpen) {
+      resetGlobalControls();
+      onMobileForwardUp?.();
+      onMobileBackUp?.();
     }
-  }, [openSectionId, section]);
+  }, [panelOpen, onMobileForwardUp, onMobileBackUp]);
 
-  const rowInfo = useMemo(() => {
-    if (!section?.rows) return null;
-    return resolveRowAndIndex(openItemId, rowCounts);
-  }, [section, openItemId, rowCounts]);
-
-  const activeRow = rowInfo ? section?.rows?.[rowInfo.rowIndex] : null;
-  const activeItem = rowInfo ? activeRow?.items?.[rowInfo.bookIndex] : null;
-
-  const hidePanelForSection =
-    openSectionId === "diplomas" || openSectionId === "travels" || openSectionId === "about";
-
-  const CV_URL = "/cv/Thomas-DeTraversay-CV.pdf";
-
-  const handleOpenCV = useCallback(() => {
-    if (typeof window === "undefined") return;
-    window.open(CV_URL, "_blank", "noopener,noreferrer");
-  }, []);
-
-  const handleDownloadCV = useCallback(() => {
-    if (typeof document === "undefined") return;
-    const a = document.createElement("a");
-    a.href = CV_URL;
-    a.download = "Thomas-DeTraversay-CV.pdf";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  }, []);
+ 
 
   const handleRequestLock = useCallback(() => {
     onRequestLock?.();
+
     if (typeof document === "undefined") return;
+
     const canvas = document.querySelector("canvas");
     if (canvas?.requestPointerLock) canvas.requestPointerLock();
   }, [onRequestLock]);
 
-
   const handleCloseEverything = useCallback(() => {
-    
-    setGlobalFlag("__UI_ACTIVE__", false);
+    resetGlobalControls();
+
     onMobileForwardUp?.();
     onMobileBackUp?.();
 
-   
     onReleaseLock?.();
-   
     onClosePanel?.();
   }, [onClosePanel, onReleaseLock, onMobileForwardUp, onMobileBackUp]);
 
- 
-  const showRotateHint = isMobile && isPortrait && !panelOpen && !dismissRotateHint && !isMapMode;
-
   const setMobileMove = useCallback(
     ({ forward, back }) => {
-     
-      setGlobalFlag("__UI_ACTIVE__", forward || back);
+      const active = forward || back;
+
+      setGlobalFlag("__UI_ACTIVE__", active);
 
       if (forward) onMobileForwardDown?.();
       else onMobileForwardUp?.();
@@ -179,10 +154,18 @@ export default function Overlay({
   );
 
   const stopMobileMove = useCallback(() => {
-    setGlobalFlag("__UI_ACTIVE__", false);
+    resetGlobalControls();
+
     onMobileForwardUp?.();
     onMobileBackUp?.();
   }, [onMobileForwardUp, onMobileBackUp]);
+
+  
+
+  const showRotateHint =
+    isMobile && isPortrait && !panelOpen && !dismissRotateHint && !isMapMode;
+
+
 
   return (
     <div
@@ -190,22 +173,19 @@ export default function Overlay({
       data-rotatehint={showRotateHint ? "1" : "0"}
       data-panelopen={panelOpen ? "1" : "0"}
     >
-     
+   
+
       <div className="topbar">
         {panelOpen ? (
           <>
             <button className="btn" onClick={handleCloseEverything}>
-              ⎋ Quitter (reprendre le contrôle)
+              ⎋ Quitter
             </button>
 
-            <button className="btn" onClick={handleOpenCV}>
+            <button className="btn" onClick={() => window.open("/cv/Thomas-DeTraversay-CV.pdf")}>
               📄 Voir le CV
             </button>
-            <button className="btn" onClick={handleDownloadCV}>
-              ⬇ Télécharger
-            </button>
 
-           
             <button className="btn" onClick={onClosePanel}>
               ✖ Fermer
             </button>
@@ -213,176 +193,37 @@ export default function Overlay({
         ) : !isLocked ? (
           !isMobile ? (
             <button className="btn btn-lock" onClick={handleRequestLock}>
-              🎮 Entrer (clic pour contrôler)
+              🎮 Entrer
             </button>
           ) : (
-            <button className="btn" disabled style={{ opacity: 0.6, cursor: "not-allowed" }}>
+            <button className="btn" disabled>
               📱 Mode mobile
             </button>
           )
         ) : (
           <button className="btn" onClick={onReleaseLock}>
-            ⎋ Libérer la souris
+            ⎋ Libérer souris
           </button>
         )}
       </div>
 
-   
-      {section && !hidePanelForSection && (
-        <div className="panel">
-          <h2>{section.title}</h2>
-
-          {section.description && <p style={{ whiteSpace: "pre-line" }}>{section.description}</p>}
-
-          <div>
-            {section.tags?.map((t) => (
-              <span key={t} className="badge">
-                {t}
-              </span>
-            ))}
-          </div>
-
-       
-          {section.rows && openItemId != null && (
-            <div style={{ marginTop: 14 }}>
-              <div style={{ color: "var(--muted)", fontSize: 12, marginBottom: 8 }}>
-                Livre sélectionné : <strong style={{ color: "var(--text)" }}>#{openItemId}</strong>
-              </div>
-
-              {rowInfo && activeRow ? (
-                <>
-                  <div
-                    style={{
-                      marginBottom: 10,
-                      padding: "8px 10px",
-                      borderRadius: 10,
-                      border: "1px solid rgba(255,255,255,0.10)",
-                      background: "rgba(0,0,0,0.18)",
-                    }}
-                  >
-                    <div style={{ color: "var(--text)", fontWeight: 700 }}>
-                      {activeRow.title || `Rangée ${rowInfo.rowIndex + 1}`}
-                    </div>
-                    <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 2 }}>
-                      Index dans la rangée : {rowInfo.bookIndex}
-                    </div>
-                  </div>
-
-                  {activeItem ? (
-                    <div>{renderItemSmart(activeItem, rowInfo.bookIndex)}</div>
-                  ) : (
-                    <div
-                      style={{
-                        marginTop: 10,
-                        padding: 12,
-                        borderRadius: 10,
-                        border: "1px dashed rgba(255,255,255,0.25)",
-                        background: "rgba(0,0,0,0.12)",
-                        color: "var(--muted)",
-                        fontSize: 13,
-                      }}
-                    >
-                      Emplacement réservé (aucun contenu pour ce livre pour l’instant).
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div
-                  style={{
-                    marginTop: 10,
-                    padding: 12,
-                    borderRadius: 10,
-                    border: "1px dashed rgba(255,255,255,0.25)",
-                    background: "rgba(0,0,0,0.12)",
-                    color: "var(--muted)",
-                    fontSize: 13,
-                  }}
-                >
-                  Livre hors plage (index non reconnu).
-                </div>
-              )}
-            </div>
-          )}
-
-      
-          {section.rows && openItemId == null && (
-            <div style={{ marginTop: 14 }}>
-              <div style={{ color: "var(--muted)", fontSize: 12, marginBottom: 6 }}>
-                Choisis une rangée (ou clique un livre pour un item précis).
-              </div>
-
-              <div style={{ display: "flex", flexWrap: "wrap" }}>
-                {section.rows.map((r, idx) => (
-                  <RowButton
-                    key={idx}
-                    idx={idx}
-                    title={r.title}
-                    selected={selectedRow === idx}
-                    onSelect={setSelectedRow}
-                  />
-                ))}
-              </div>
-
-              {selectedRow != null && section.rows[selectedRow] && (
-                <div style={{ marginTop: 14 }}>
-                  <div
-                    style={{
-                      marginBottom: 10,
-                      padding: "8px 10px",
-                      borderRadius: 10,
-                      border: "1px solid rgba(255,255,255,0.10)",
-                      background: "rgba(0,0,0,0.18)",
-                    }}
-                  >
-                    <div style={{ color: "var(--text)", fontWeight: 700 }}>
-                      {section.rows[selectedRow].title || `Rangée ${selectedRow + 1}`}
-                    </div>
-                    <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 2 }}>
-                      Livres disponibles : {section.rows[selectedRow].items?.length || 0}
-                    </div>
-                  </div>
-
-                  {section.rows[selectedRow].items?.length > 0 ? (
-                    <div>{section.rows[selectedRow].items.map((it, idx) => renderItemSmart(it, idx))}</div>
-                  ) : (
-                    <div
-                      style={{
-                        marginTop: 10,
-                        padding: 12,
-                        borderRadius: 10,
-                        border: "1px dashed rgba(255,255,255,0.25)",
-                        background: "rgba(0,0,0,0.12)",
-                        color: "var(--muted)",
-                        fontSize: 13,
-                      }}
-                    >
-                      Rangée vide pour l’instant.
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          {!section.rows && section.items?.length > 0 && (
-            <div style={{ marginTop: 12 }}>{section.items.map((it, idx) => renderItemSmart(it, idx))}</div>
-          )}
-        </div>
-      )}
+     
 
       {isMobile && !panelOpen && !isMapMode && (
         <MobileJoystick
-          enabled={true}
+          enabled
           onMove={({ y }) => {
             const forward = y < -0.18;
             const back = y > 0.18;
+
             setMobileMove({ forward, back });
           }}
-          onEnd={() => stopMobileMove()}
+          onEnd={stopMobileMove}
         />
       )}
 
-  
+     
+
       {isMobile && !panelOpen && isMapMode && (
         <div
           style={{
@@ -396,25 +237,28 @@ export default function Overlay({
             border: "1px solid rgba(255,255,255,0.12)",
             background: "rgba(0,0,0,0.55)",
             backdropFilter: "blur(6px)",
-            pointerEvents: "auto",
           }}
         >
-          <div style={{ color: "var(--text)", fontWeight: 800, marginBottom: 6 }}>🗺️ Mode carte</div>
-          <div style={{ color: "var(--muted)", fontSize: 13, lineHeight: 1.35 }}>
-            Tape sur un <strong style={{ color: "var(--text)" }}>pin</strong> pour ouvrir le détail.
+          <div style={{ fontWeight: 800 }}>🗺️ Mode carte</div>
+
+          <div style={{ fontSize: 13, opacity: 0.85 }}>
+            Tape sur un pin pour ouvrir le détail.
           </div>
 
-          <div style={{ marginTop: 10, display: "flex", gap: 10 }}>
-            <button
-              className="btn"
-              onClick={() => setGlobalFlag("__MAP_MODE__", false)}
-              style={{ padding: "10px 12px", borderRadius: 12 }}
-            >
-              Fermer
-            </button>
-          </div>
+          <button
+            className="btn"
+            style={{ marginTop: 10 }}
+            onClick={() => {
+              setGlobalFlag("__MAP_MODE__", false);
+              resetGlobalControls();
+            }}
+          >
+            Fermer
+          </button>
         </div>
       )}
+
+   
 
       {showRotateHint && (
         <div
@@ -428,106 +272,35 @@ export default function Overlay({
             borderRadius: 14,
             border: "1px solid rgba(255,255,255,0.12)",
             background: "rgba(0,0,0,0.55)",
-            backdropFilter: "blur(6px)",
-            pointerEvents: "auto",
           }}
         >
-          <div style={{ color: "var(--text)", fontWeight: 800, marginBottom: 6 }}>
-            📱 Meilleure expérience en paysage
-          </div>
-          <div style={{ color: "var(--muted)", fontSize: 13, lineHeight: 1.35 }}>
-            Tourne ton téléphone pour profiter d’un champ de vision plus large et d’une navigation plus confortable.
+          <div style={{ fontWeight: 800 }}>📱 Passe en paysage</div>
+
+          <div style={{ fontSize: 13, opacity: 0.85 }}>
+            Pour une meilleure navigation.
           </div>
 
-          <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-            <button
-              className="btn"
-              onClick={() => setDismissRotateHint(true)}
-              style={{ padding: "10px 12px", borderRadius: 12 }}
-            >
-              Continuer quand même
-            </button>
-          </div>
+          <button
+            className="btn"
+            style={{ marginTop: 10 }}
+            onClick={() => setDismissRotateHint(true)}
+          >
+            Continuer
+          </button>
         </div>
       )}
+
+    
 
       {!panelOpen && !isMapMode && (
         <div className="hint">
           {!isMobile ? (
-            <>
-              <div>WASD / Flèches = se déplacer • Souris = regarder • Clic = interagir</div>
-              <div>Astuce : clique un objet (livre, poster) pour zoom + panneau</div>
-            </>
+            <div>WASD / Souris / Clic</div>
           ) : (
-            <>
-              <div>📱 Glisse pour regarder • Joystick = avancer/reculer • Tap = interagir</div>
-              <div>Astuce : tap un objet (livre, poster) pour zoom + panneau</div>
-            </>
+            <div>Joystick + Tap</div>
           )}
         </div>
       )}
     </div>
   );
-
-  function renderCareerItem(it, idx) {
-    return (
-      <div
-        key={`${it.name}-${idx}`}
-        style={{
-          marginBottom: 12,
-          padding: 10,
-          border: "1px solid rgba(255,255,255,0.10)",
-          borderRadius: 10,
-          background: "rgba(0,0,0,0.20)",
-        }}
-      >
-        <div style={{ color: "var(--text)", fontWeight: 700 }}>{it.name}</div>
-
-        {(it.company || it.location || it.period) && (
-          <div style={{ color: "var(--muted)", fontSize: 13, marginTop: 2 }}>
-            {it.company ? <span>{it.company}</span> : null}
-            {it.location ? <span>{it.company ? " • " : ""}{it.location}</span> : null}
-            {it.period ? <span>{(it.company || it.location) ? " • " : ""}{it.period}</span> : null}
-          </div>
-        )}
-
-        {it.desc && <div style={{ color: "var(--muted)", fontSize: 13, marginTop: 6 }}>{it.desc}</div>}
-
-        {Array.isArray(it.bullets) && it.bullets.length > 0 && (
-          <ul style={{ margin: "8px 0 0 16px", color: "var(--text)", fontSize: 13 }}>
-            {it.bullets.map((b, i) => (
-              <li key={i} style={{ marginBottom: 4, opacity: 0.9 }}>
-                {b}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    );
-  }
-
-  function renderStandardItem(it, idx) {
-    return (
-      <div key={`${it.name}-${idx}`} style={{ marginBottom: 10 }}>
-        <div style={{ color: "var(--text)", fontWeight: 600 }}>
-          {it.href ? (
-            <a className="link" href={it.href} target="_blank" rel="noreferrer">
-              {it.name}
-            </a>
-          ) : (
-            it.name
-          )}
-        </div>
-
-        {it.desc && <div style={{ color: "var(--muted)", fontSize: 13 }}>{it.desc}</div>}
-        {it.year && <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 2 }}>{it.year}</div>}
-      </div>
-    );
-  }
-
-  function renderItemSmart(it, idx) {
-    const isCareerItem =
-      Boolean(it.company) || Boolean(it.period) || Boolean(it.location) || Array.isArray(it.bullets);
-    return isCareerItem ? renderCareerItem(it, idx) : renderStandardItem(it, idx);
-  }
 }
