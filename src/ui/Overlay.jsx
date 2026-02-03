@@ -1,4 +1,3 @@
-// src/ui/Overlay.jsx
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { SECTIONS, BOOK_LAYOUT } from "../data/sections";
 import MobileJoystick from "./MobileJoystick";
@@ -56,13 +55,13 @@ export default function Overlay({
   onMobileBackUp,
 }) {
   const section = openSectionId ? SECTIONS[openSectionId] : null;
-
   const panelOpen = Boolean(openSectionId);
 
-  const rowCounts = BOOK_LAYOUT.rowCounts;
+  const rowCounts = BOOK_LAYOUT?.rowCounts ?? [24, 22, 20];
 
   const [selectedRow, setSelectedRow] = useState(null);
 
+  
   const [isPortrait, setIsPortrait] = useState(false);
   const [dismissRotateHint, setDismissRotateHint] = useState(false);
 
@@ -93,11 +92,22 @@ export default function Overlay({
     };
   }, [isMobile]);
 
+  
   useEffect(() => {
     if (openSectionId && !section) {
       console.warn("[Overlay] openSectionId inconnu (pas dans SECTIONS):", openSectionId);
     }
   }, [openSectionId, section]);
+
+
+  useEffect(() => {
+    
+    setGlobalFlag("__UI_ACTIVE__", panelOpen);
+    return () => {
+      
+      setGlobalFlag("__UI_ACTIVE__", false);
+    };
+  }, [panelOpen]);
 
   const rowInfo = useMemo(() => {
     if (!section?.rows) return null;
@@ -140,14 +150,8 @@ export default function Overlay({
     if (canvas?.requestPointerLock) canvas.requestPointerLock();
   }, [onRequestLock]);
 
-  const showRotateHint = isMobile && isPortrait && !section && !dismissRotateHint;
-
-  // ✅ évite la superposition en portrait : on remonte le bloc "hint"
-  const hintBottom = useMemo(() => {
-    if (!isMobile) return undefined; // desktop: inchangé
-    if (!isPortrait) return 18; // mobile paysage: léger lift
-    return showRotateHint ? 190 : 110; // portrait: plus haut (et encore + si rotate hint visible)
-  }, [isMobile, isPortrait, showRotateHint]);
+  
+  const showRotateHint = isMobile && isPortrait && !panelOpen && !dismissRotateHint;
 
   const setMobileMove = useCallback(
     ({ forward, back }) => {
@@ -167,6 +171,16 @@ export default function Overlay({
     onMobileForwardUp?.();
     onMobileBackUp?.();
   }, [onMobileForwardUp, onMobileBackUp]);
+
+
+  const mobileHintBottom = 220; 
+  const desktopHintBottom = 14;
+
+ 
+  const showHint = !showRotateHint;
+
+ 
+  const rotateHintBottom = 220;
 
   return (
     <div className="hud">
@@ -191,6 +205,7 @@ export default function Overlay({
           </button>
         )}
 
+       
         {panelOpen && (
           <>
             <button className="btn" onClick={handleOpenCV}>
@@ -206,9 +221,27 @@ export default function Overlay({
         )}
       </div>
 
+      
+      {panelOpen && !section && (
+        <div className="panel">
+          <h2>Oups</h2>
+          <p style={{ whiteSpace: "pre-line" }}>
+            Cette section n’existe pas dans SECTIONS :{" "}
+            <strong style={{ color: "var(--text)" }}>{String(openSectionId)}</strong>
+            {"\n\n"}Clique “Fermer” pour revenir.
+          </p>
+        </div>
+      )}
+
       {section && !hidePanelForSection && (
         <div className="panel">
-          <h2>{section.title}</h2>
+          <h2 style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+            <span>{section.title}</span>
+           
+            <button className="btn" onClick={onClosePanel} style={{ padding: "8px 10px", borderRadius: 10 }}>
+              ✖ Fermer
+            </button>
+          </h2>
 
           {section.description && <p style={{ whiteSpace: "pre-line" }}>{section.description}</p>}
 
@@ -319,9 +352,7 @@ export default function Overlay({
                   </div>
 
                   {section.rows[selectedRow].items?.length > 0 ? (
-                    <div>
-                      {section.rows[selectedRow].items.map((it, idx) => renderItemSmart(it, idx))}
-                    </div>
+                    <div>{section.rows[selectedRow].items.map((it, idx) => renderItemSmart(it, idx))}</div>
                   ) : (
                     <div
                       style={{
@@ -343,14 +374,12 @@ export default function Overlay({
           )}
 
           {!section.rows && section.items?.length > 0 && (
-            <div style={{ marginTop: 12 }}>
-              {section.items.map((it, idx) => renderItemSmart(it, idx))}
-            </div>
+            <div style={{ marginTop: 12 }}>{section.items.map((it, idx) => renderItemSmart(it, idx))}</div>
           )}
         </div>
       )}
 
-      {isMobile && !section && (
+      {isMobile && !panelOpen && (
         <MobileJoystick
           enabled={true}
           onMove={({ y }) => {
@@ -370,7 +399,7 @@ export default function Overlay({
             position: "absolute",
             left: 14,
             right: 14,
-            bottom: 14,
+            bottom: rotateHintBottom,
             zIndex: 25,
             padding: 12,
             borderRadius: 14,
@@ -398,19 +427,26 @@ export default function Overlay({
         </div>
       )}
 
-      <div className="hint" style={hintBottom != null ? { bottom: hintBottom } : undefined}>
-        {!isMobile ? (
-          <>
-            <div>WASD / Flèches = se déplacer • Souris = regarder • Clic = interagir</div>
-            <div>Astuce : clique un objet (livre, poster) pour zoom + panneau</div>
-          </>
-        ) : (
-          <>
-            <div>📱 Glisse pour regarder • Joystick = avancer/reculer • Tap = interagir</div>
-            <div>Astuce : tap un objet (livre, poster) pour zoom + panneau</div>
-          </>
-        )}
-      </div>
+      {showHint && (
+        <div
+          className="hint"
+          style={{
+            bottom: isMobile ? mobileHintBottom : desktopHintBottom,
+          }}
+        >
+          {!isMobile ? (
+            <>
+              <div>WASD / Flèches = se déplacer • Souris = regarder • Clic = interagir</div>
+              <div>Astuce : clique un objet (livre, poster) pour zoom + panneau</div>
+            </>
+          ) : (
+            <>
+              <div>📱 Glisse pour regarder • Joystick = avancer/reculer • Tap = interagir</div>
+              <div>Astuce : tap un objet (livre, poster) pour zoom + panneau</div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 
@@ -475,7 +511,6 @@ export default function Overlay({
         </div>
 
         {it.desc && <div style={{ color: "var(--muted)", fontSize: 13 }}>{it.desc}</div>}
-
         {it.year && <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 2 }}>{it.year}</div>}
       </div>
     );
@@ -483,12 +518,7 @@ export default function Overlay({
 
   function renderItemSmart(it, idx) {
     const isCareerItem =
-      Boolean(it.company) ||
-      Boolean(it.period) ||
-      Boolean(it.location) ||
-      Array.isArray(it.bullets);
-
+      Boolean(it.company) || Boolean(it.period) || Boolean(it.location) || Array.isArray(it.bullets);
     return isCareerItem ? renderCareerItem(it, idx) : renderStandardItem(it, idx);
   }
 }
-
