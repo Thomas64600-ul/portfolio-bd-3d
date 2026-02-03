@@ -6,12 +6,10 @@ export default function TouchController({
   enabled = true,
   forwardRef,
   backRef,
-  speed = 4.2,           
-  lookSpeed = 0.0045,       
+  speed = 4.2,
+  lookSpeed = 0.0045,
   bounds = { minX: -8, maxX: 8, minZ: -10, maxZ: 6 },
   dragThresholdPx = 10,
-
-  
   enableShelfCollision = true,
 }) {
   const { camera, gl } = useThree();
@@ -24,9 +22,16 @@ export default function TouchController({
   const start = useRef({ x: 0, y: 0 });
   const last = useRef({ x: 0, y: 0 });
 
+  const cooldownTimer = useRef(null);
+
   const setGlobalLooking = (v) => {
     if (typeof window === "undefined") return;
     window.__TOUCH_LOOKING__ = !!v;
+  };
+
+  const setTouchCooldown = (v) => {
+    if (typeof window === "undefined") return;
+    window.__TOUCH_LOOKING_COOLDOWN__ = !!v;
   };
 
   const uiBlocksLook = () => {
@@ -43,11 +48,17 @@ export default function TouchController({
   useEffect(() => {
     const el = gl.domElement;
 
+    const clearCooldownTimer = () => {
+      if (cooldownTimer.current) {
+        clearTimeout(cooldownTimer.current);
+        cooldownTimer.current = null;
+      }
+    };
+
     const onPointerDown = (e) => {
       if (!enabled) return;
       if (e.pointerType !== "touch") return;
 
-     
       if (uiBlocksLook()) return;
 
       pointerDown.current = true;
@@ -56,6 +67,17 @@ export default function TouchController({
       start.current = { x: e.clientX, y: e.clientY };
       last.current = { x: e.clientX, y: e.clientY };
 
+      
+      try {
+        el.setPointerCapture?.(e.pointerId);
+      } catch {
+        // ignore
+      }
+
+      
+      clearCooldownTimer();
+      setTouchCooldown(false);
+      setGlobalLooking(false);
     };
 
     const onPointerMove = (e) => {
@@ -72,12 +94,10 @@ export default function TouchController({
           dragging.current = true;
           setGlobalLooking(true);
         } else {
-         
           return;
         }
       }
 
-    
       e.preventDefault?.();
 
       const dx = e.clientX - last.current.x;
@@ -92,30 +112,43 @@ export default function TouchController({
       if (pitch.current < -limit) pitch.current = -limit;
     };
 
-    const onPointerUp = () => {
+    const endTouch = (e) => {
       pointerDown.current = false;
 
+    
+      setGlobalLooking(false);
+
+    
       if (dragging.current) {
         dragging.current = false;
-       
-        setTimeout(() => setGlobalLooking(false), 120);
-      } else {
-     
-        setGlobalLooking(false);
+        setTouchCooldown(true);
+        clearCooldownTimer();
+        cooldownTimer.current = setTimeout(() => {
+          setTouchCooldown(false);
+        }, 140);
+      }
+
+      try {
+        if (e?.pointerId != null) el.releasePointerCapture?.(e.pointerId);
+      } catch {
+        // ignore
       }
     };
 
     el.addEventListener("pointerdown", onPointerDown, { passive: true });
     el.addEventListener("pointermove", onPointerMove, { passive: false });
-    el.addEventListener("pointerup", onPointerUp, { passive: true });
-    el.addEventListener("pointercancel", onPointerUp, { passive: true });
+    el.addEventListener("pointerup", endTouch, { passive: true });
+    el.addEventListener("pointercancel", endTouch, { passive: true });
 
     return () => {
       el.removeEventListener("pointerdown", onPointerDown);
       el.removeEventListener("pointermove", onPointerMove);
-      el.removeEventListener("pointerup", onPointerUp);
-      el.removeEventListener("pointercancel", onPointerUp);
+      el.removeEventListener("pointerup", endTouch);
+      el.removeEventListener("pointercancel", endTouch);
+
+      clearCooldownTimer();
       setGlobalLooking(false);
+      setTouchCooldown(false);
     };
   }, [enabled, gl, lookSpeed, dragThresholdPx]);
 
@@ -141,29 +174,20 @@ export default function TouchController({
       moveVec.current.copy(forwardDir.current).multiplyScalar(move * speed * dt);
       camera.position.add(moveVec.current);
 
-      
       camera.position.x = Math.max(bounds.minX, Math.min(bounds.maxX, camera.position.x));
       camera.position.z = Math.max(bounds.minZ, Math.min(bounds.maxZ, camera.position.z));
 
-    
       if (enableShelfCollision) {
-        
         const centers = [-6.2, 0, 6.2];
         const halfW = 2.35;
-
-        
         const stopZ = -6.05;
 
         const z = camera.position.z;
         const x = camera.position.x;
 
         if (z < stopZ) {
-          const insideAny =
-            centers.some((cx) => x > cx - halfW && x < cx + halfW);
-
-          if (insideAny) {
-            camera.position.z = stopZ;
-          }
+          const insideAny = centers.some((cx) => x > cx - halfW && x < cx + halfW);
+          if (insideAny) camera.position.z = stopZ;
         }
       }
     }

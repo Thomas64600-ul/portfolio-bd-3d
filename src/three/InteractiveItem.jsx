@@ -10,9 +10,10 @@ export default function InteractiveItem({ children, onPick, disabled = false }) 
   useCursor(hovered && !disabled);
 
   const isTouchLooking = () => {
-    if (typeof window === "undefined") return false;
-    return !!window.__TOUCH_LOOKING__;
-  };
+  if (typeof window === "undefined") return false;
+  return !!window.__TOUCH_LOOKING__ || !!window.__TOUCH_LOOKING_COOLDOWN__;
+};
+
 
   const isJoystickOrUIActive = () => {
     if (typeof window === "undefined") return false;
