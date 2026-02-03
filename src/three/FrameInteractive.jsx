@@ -27,7 +27,6 @@ export default function FrameInteractive({
   }, [baseRot]);
 
   const isOpen = selectedId === id;
-
   const tmpTarget = useMemo(() => new THREE.Vector3(), []);
 
   useFrame((_, dt) => {
@@ -45,19 +44,28 @@ export default function FrameInteractive({
   return (
     <group ref={ref} position={position} rotation={rotation}>
       <InteractiveItem disabled={disabled} onPick={() => onPick?.(id)}>
-      
         <group>
-          {children}
-
+        
           {enableHitbox && (
-            <mesh position={[0, 0, hitboxZ]}>
+            <mesh
+              name={`hitbox:${id}`}
+              position={[0, 0, hitboxZ]}
+              renderOrder={-10}
+            >
               <boxGeometry args={hitbox} />
-             
-              <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+              <meshBasicMaterial
+                transparent
+                opacity={0.001}     
+                depthWrite={false}
+                depthTest={false}   
+              />
             </mesh>
           )}
+
+          <group name={`frame:${id}`}>{children}</group>
         </group>
       </InteractiveItem>
     </group>
   );
 }
+
