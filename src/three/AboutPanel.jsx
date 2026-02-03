@@ -59,6 +59,17 @@ function makeChalkboardTexture(size = 512) {
   return tex;
 }
 
+function isPortraitMobile() {
+  if (typeof window === "undefined") return false;
+  return !!window.__IS_PORTRAIT__;
+}
+
+function clipText(str, maxChars) {
+  const s = (str || "").trim();
+  if (s.length <= maxChars) return s;
+  return s.slice(0, Math.max(0, maxChars - 1)).trimEnd() + "…";
+}
+
 export default function AboutPanel({
   onPick,
   enabled = true,
@@ -74,11 +85,7 @@ export default function AboutPanel({
 
   useEffect(() => {
     baseYRef.current =
-      typeof baseY === "number"
-        ? baseY
-        : Array.isArray(position)
-        ? position[1]
-        : 0;
+      typeof baseY === "number" ? baseY : Array.isArray(position) ? position[1] : 0;
   }, [baseY, position]);
 
   useFrame(({ clock }) => {
@@ -100,12 +107,29 @@ export default function AboutPanel({
   const description = about?.description || "";
   const tags = about?.tags || [];
 
+  const portrait = useMemo(() => isPortraitMobile(), []);
+
   const lines = useMemo(() => {
     const paras = description
       .split("\n\n")
       .map((p) => p.trim())
       .filter(Boolean);
 
+    if (portrait) {
+      const merged = paras.join(" • ");
+      const clipped = clipText(merged, 520);
+     
+      const approxLineLen = 46;
+      const out = [];
+      let cursor = 0;
+      while (cursor < clipped.length && out.length < 8) {
+        out.push(clipped.slice(cursor, cursor + approxLineLen));
+        cursor += approxLineLen;
+      }
+      return out;
+    }
+
+   
     const out = [];
     for (const p of paras) {
       out.push(p);
@@ -113,7 +137,7 @@ export default function AboutPanel({
     }
     if (out.length && out[out.length - 1] === "") out.pop();
     return out;
-  }, [description]);
+  }, [description, portrait]);
 
   const lineJitter = useMemo(() => {
     const seed = (n) => {
@@ -128,7 +152,6 @@ export default function AboutPanel({
   }, []);
 
   const boardTex = useMemo(() => makeChalkboardTexture(512), []);
-
   const boardMat = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
@@ -153,18 +176,18 @@ export default function AboutPanel({
   const titleY = H / 2 - 0.30;
   const textTopY = titleY - 0.30;
 
-  const fontSize = 0.062;    
-  const lineGap = 0.135;    
-  const bottomSafeY = -H / 2 + 0.34;
+  const fontSize = portrait ? 0.074 : 0.062; 
+  const lineGap = portrait ? 0.155 : 0.135;
+  const bottomSafeY = portrait ? -H / 2 + 0.46 : -H / 2 + 0.34;
 
-  const maxLines = Math.max(
-    6,
-    Math.floor((textTopY - bottomSafeY) / lineGap)
-  );
+  const maxLines = Math.max(6, Math.floor((textTopY - bottomSafeY) / lineGap));
+
+  const outlineTitle = portrait ? 0.0062 : 0.0045;
+  const outlineText = portrait ? 0.0046 : 0.0032;
 
   return (
     <group ref={groupRef} position={position} rotation={rotation} visible={enabled}>
-    
+      
       <mesh position={[0, 0, OUT]} raycast={() => null}>
         <boxGeometry args={[W + 0.14, H + 0.14, 0.04]} />
         <primitive object={woodMat} attach="material" />
@@ -180,16 +203,23 @@ export default function AboutPanel({
         <primitive object={woodMat} attach="material" />
       </mesh>
 
+      {portrait && (
+        <mesh position={[0, 0.04, OUT + 0.085]} raycast={() => null}>
+          <boxGeometry args={[W * 0.96, H * 0.80, 0.01]} />
+          <meshBasicMaterial transparent opacity={0.18} color="#000000" depthWrite={false} />
+        </mesh>
+      )}
+
       <Text
         position={[0, titleY, OUT + 0.095]}
         font={CHALK_FONT}
-        fontSize={0.11}
-        maxWidth={W * 0.76}
+        fontSize={portrait ? 0.125 : 0.11}
+        maxWidth={W * 0.80}
         anchorX="center"
         anchorY="middle"
         color={CHALK_COLOR}
-        outlineWidth={0.0045}
-        outlineOpacity={0.16}
+        outlineWidth={outlineTitle}
+        outlineOpacity={portrait ? 0.2 : 0.16}
         outlineColor="#ffffff"
         raycast={() => null}
       >
@@ -200,20 +230,24 @@ export default function AboutPanel({
         if (t === "") return null;
         const j = lineJitter[i] || { dx: 0, rot: 0, scale: 1 };
 
+        const dx = portrait ? j.dx * 0.25 : j.dx;
+        const rot = portrait ? j.rot * 0.25 : j.rot;
+        const scl = portrait ? 1 : j.scale;
+
         return (
           <Text
             key={i}
-            position={[-W / 2 + 0.18 + j.dx, textTopY - i * lineGap, OUT + 0.095]}
-            rotation={[0, 0, j.rot]}
+            position={[-W / 2 + 0.18 + dx, textTopY - i * lineGap, OUT + 0.095]}
+            rotation={[0, 0, rot]}
             font={CHALK_FONT}
-            fontSize={fontSize * j.scale}
-            lineHeight={1.16}
-            maxWidth={W * 0.90}
+            fontSize={fontSize * scl}
+            lineHeight={portrait ? 1.22 : 1.16}
+            maxWidth={portrait ? W * 0.86 : W * 0.90}
             anchorX="left"
             anchorY="top"
             color={CHALK_COLOR}
-            outlineWidth={0.0032}
-            outlineOpacity={0.12}
+            outlineWidth={outlineText}
+            outlineOpacity={portrait ? 0.18 : 0.12}
             outlineColor="#ffffff"
             raycast={() => null}
           >
@@ -225,15 +259,15 @@ export default function AboutPanel({
       {tags.slice(0, 3).map((tg, i) => (
         <Text
           key={tg}
-          position={[-W / 2 + 0.2 + i * 0.86, -H / 2 + 0.20, OUT + 0.095]}
+          position={[-W / 2 + 0.2 + i * 0.86, portrait ? -H / 2 + 0.28 : -H / 2 + 0.20, OUT + 0.095]}
           font={CHALK_FONT}
-          fontSize={0.058}
+          fontSize={portrait ? 0.062 : 0.058}
           maxWidth={0.9}
           anchorX="left"
           anchorY="middle"
           color={CHALK_COLOR}
-          outlineWidth={0.003}
-          outlineOpacity={0.1}
+          outlineWidth={portrait ? 0.0036 : 0.003}
+          outlineOpacity={portrait ? 0.14 : 0.1}
           outlineColor="#ffffff"
           raycast={() => null}
         >
@@ -244,12 +278,13 @@ export default function AboutPanel({
       <InteractiveItem onPick={onPick}>
         <mesh position={[0, 0, OUT + 0.11]}>
           <boxGeometry args={[W + 0.35, H + 0.35, 0.18]} />
-          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+          <meshBasicMaterial transparent opacity={0.001} depthWrite={false} depthTest={false} />
         </mesh>
       </InteractiveItem>
     </group>
   );
 }
+
 
 
 
