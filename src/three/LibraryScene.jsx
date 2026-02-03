@@ -465,7 +465,7 @@ function SceneInner({
   const cameraTarget = useRef(new THREE.Vector3());
   const lookTarget = useRef(new THREE.Vector3());
 
-  const fovTarget = useRef(65); 
+  const fovTarget = useRef(65);
   const woodMap = useLoader(THREE.TextureLoader, "/textures/wood_floor.jpg");
   const stoneMap = useLoader(THREE.TextureLoader, "/textures/stone_wall.jpg");
 
@@ -568,10 +568,11 @@ function SceneInner({
   );
 
   useFrame((state, dt) => {
-    
+    // ✅ FIX: maath easing.damp doit recevoir un objet + une propriété
     const baseFov = 65;
     const desiredFov = isMobile && isPortrait ? fovTarget.current : baseFov;
-    state.camera.fov = easing.damp(state.camera.fov, desiredFov, 0.22, dt);
+
+    easing.damp(state.camera, "fov", desiredFov, 0.22, dt);
     state.camera.updateProjectionMatrix();
 
     if (!focus?.active) return;
@@ -597,20 +598,15 @@ function SceneInner({
       unlockPointer();
       setMapEditMode(false);
 
-    
       if (mobileForwardRef?.current !== undefined) mobileForwardRef.current = false;
       if (mobileBackRef?.current !== undefined) mobileBackRef.current = false;
 
-      
       let finalPos = pos;
       let finalLook = look;
 
       if (isMobile && isPortrait && (sectionId === "travels" || sectionId === "about")) {
-        
         finalPos = [pos[0] - 0.55, pos[1] + 0.05, pos[2]];
         finalLook = [look[0], look[1], look[2]];
-
-        
         fovTarget.current = 78;
       } else {
         fovTarget.current = 65;
@@ -650,8 +646,8 @@ function SceneInner({
           enabled={true}
           forwardRef={mobileForwardRef}
           backRef={mobileBackRef}
-          speed={3.6}         
-          lookSpeed={0.0042}   
+          speed={3.6}
+          lookSpeed={0.0042}
           bounds={{ minX: -8, maxX: 8, minZ: -10, maxZ: 6 }}
         />
       )}
