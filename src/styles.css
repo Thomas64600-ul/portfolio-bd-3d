@@ -316,3 +316,33 @@ canvas {
 .hint {
   touch-action: manipulation;
 }
+
+:root {
+
+  --joy-safe: 190px;
+}
+
+@media (max-width: 640px) {
+  .hint {
+    bottom: calc(14px + var(--safe-bottom) + var(--joy-safe));
+    left: calc(14px + var(--safe-left));
+    right: calc(14px + var(--safe-right));
+    z-index: 70; 
+  }
+}
+
+.hud[data-rotatehint="1"] .hint {
+  display: none;
+}
+
+.hud[data-panelopen="1"] .hint {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .topbar {
+    top: calc(12px + var(--safe-top));
+    left: calc(12px + var(--safe-left));
+    max-width: calc(100% - 24px - var(--safe-left) - var(--safe-right));
+  }
+}
