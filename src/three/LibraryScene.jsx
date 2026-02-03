@@ -22,7 +22,7 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
   const palette = useMemo(() => {
     if (theme === "comics") return ["#ffd166", "#ef476f", "#06d6a0", "#118ab2"];
     if (theme === "manga") return ["#f4f4f4", "#d9d9d9", "#a8a8a8", "#1f1f1f"];
-    return ["#78d6ff", "#ff7a9a", "#e9d36b", "#7CFF8D"]; // BD
+    return ["#78d6ff", "#ff7a9a", "#e9d36b", "#7CFF8D"]; 
   }, [theme]);
 
   const label = theme === "comics" ? "COMICS" : theme === "manga" ? "MANGA" : "BD";
@@ -568,7 +568,7 @@ function SceneInner({
   );
 
   useFrame((state, dt) => {
-    // ✅ FIX: maath easing.damp doit recevoir un objet + une propriété
+    
     const baseFov = 65;
     const desiredFov = isMobile && isPortrait ? fovTarget.current : baseFov;
 
@@ -604,13 +604,23 @@ function SceneInner({
       let finalPos = pos;
       let finalLook = look;
 
-      if (isMobile && isPortrait && (sectionId === "travels" || sectionId === "about")) {
-        finalPos = [pos[0] - 0.55, pos[1] + 0.05, pos[2]];
-        finalLook = [look[0], look[1], look[2]];
-        fovTarget.current = 78;
-      } else {
-        fovTarget.current = 65;
-      }
+    if (isMobile && isPortrait && sectionId === "travels") {
+ 
+  finalPos = [pos[0] - 1.35, pos[1] + 0.10, pos[2]];
+  finalLook = [look[0], look[1], look[2]];
+  fovTarget.current = 86;
+
+} else if (isMobile && isPortrait && sectionId === "about") {
+
+  finalPos = [pos[0] - 0.55, pos[1] + 0.05, pos[2]];
+  finalLook = [look[0], look[1], look[2]];
+  fovTarget.current = 78;
+
+} else {
+ 
+  fovTarget.current = 65;
+}
+
 
       setFocus({ active: true, opened: false, sectionId, itemId, pos: finalPos, look: finalLook });
     },
