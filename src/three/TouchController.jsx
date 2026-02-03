@@ -23,6 +23,7 @@ export default function TouchController({
   const last = useRef({ x: 0, y: 0 });
 
   const cooldownTimer = useRef(null);
+  const activePointerId = useRef(null);
 
   const setGlobalLooking = (v) => {
     if (typeof window === "undefined") return;
@@ -37,6 +38,11 @@ export default function TouchController({
   const uiBlocksLook = () => {
     if (typeof window === "undefined") return false;
     return !!window.__UI_ACTIVE__ || !!window.__JOYSTICK_ACTIVE__;
+  };
+
+  const isMapMode = () => {
+    if (typeof window === "undefined") return false;
+    return !!window.__MAP_MODE__;
   };
 
   useEffect(() => {
@@ -55,26 +61,47 @@ export default function TouchController({
       }
     };
 
+    const hardStopTouch = (e) => {
+      pointerDown.current = false;
+      dragging.current = false;
+      activePointerId.current = null;
+
+      clearCooldownTimer();
+      setGlobalLooking(false);
+      setTouchCooldown(false);
+
+      try {
+        if (e?.pointerId != null) el.releasePointerCapture?.(e.pointerId);
+      } catch {
+        // ignore
+      }
+    };
+
     const onPointerDown = (e) => {
       if (!enabled) return;
       if (e.pointerType !== "touch") return;
+
+   
+      if (isMapMode()) {
+        hardStopTouch(e);
+        return;
+      }
 
       if (uiBlocksLook()) return;
 
       pointerDown.current = true;
       dragging.current = false;
+      activePointerId.current = e.pointerId ?? null;
 
       start.current = { x: e.clientX, y: e.clientY };
       last.current = { x: e.clientX, y: e.clientY };
 
-      
       try {
         el.setPointerCapture?.(e.pointerId);
       } catch {
         // ignore
       }
 
-      
       clearCooldownTimer();
       setTouchCooldown(false);
       setGlobalLooking(false);
@@ -84,6 +111,12 @@ export default function TouchController({
       if (!enabled) return;
       if (e.pointerType !== "touch") return;
       if (!pointerDown.current) return;
+      if (activePointerId.current != null && e.pointerId !== activePointerId.current) return;
+
+      if (isMapMode()) {
+        hardStopTouch(e);
+        return;
+      }
 
       const dxTotal = e.clientX - start.current.x;
       const dyTotal = e.clientY - start.current.y;
@@ -113,19 +146,20 @@ export default function TouchController({
     };
 
     const endTouch = (e) => {
-      pointerDown.current = false;
+      if (activePointerId.current != null && e?.pointerId != null && e.pointerId !== activePointerId.current) {
+        return;
+      }
 
-    
+      pointerDown.current = false;
+      activePointerId.current = null;
+
       setGlobalLooking(false);
 
-    
       if (dragging.current) {
         dragging.current = false;
         setTouchCooldown(true);
         clearCooldownTimer();
-        cooldownTimer.current = setTimeout(() => {
-          setTouchCooldown(false);
-        }, 140);
+        cooldownTimer.current = setTimeout(() => setTouchCooldown(false), 140);
       }
 
       try {
