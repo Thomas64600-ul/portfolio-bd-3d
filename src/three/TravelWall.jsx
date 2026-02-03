@@ -33,14 +33,14 @@ function setGlobalNumber(key, value) {
   window[key] = Number(value) || 0;
 }
 
-function isBlockedByUX() {
+function isBlockedForMap() {
   if (typeof window === "undefined") return false;
 
   const now = Date.now();
   const until = Number(window.__MAP_INTERACT_UNTIL__ || 0);
-  if (now < until) return true; 
+  if (now < until) return true;
 
-  return !!window.__TOUCH_LOOKING__ || !!window.__JOYSTICK_ACTIVE__ || !!window.__UI_ACTIVE__;
+  return !!window.__TOUCH_LOOKING__ || !!window.__JOYSTICK_ACTIVE__;
 }
 
 export default function TravelWall({
@@ -51,7 +51,7 @@ export default function TravelWall({
   onPickPin,
   onPickWall,
 }) {
-  const mapRef = useRef();
+  const mapRef = useRef(null);
   const raycasterRef = useRef(new THREE.Raycaster());
 
   const mapTex = useLoader(THREE.TextureLoader, mapUrl);
@@ -99,7 +99,7 @@ export default function TravelWall({
  
   const isInMapZoneRef = useRef(false);
 
-  const computeCanInteract = useCallback(() => {
+  const computeInMapZone = useCallback(() => {
     const mesh = mapRef.current;
     if (!mesh) return false;
 
@@ -112,44 +112,40 @@ export default function TravelWall({
     const normal = new THREE.Vector3(0, 0, 1).applyQuaternion(q).normalize();
 
     const dist = camera.position.distanceTo(mapWorldPos);
+
     const camToMap = mapWorldPos.clone().sub(camera.position).normalize();
 
-   
-    const facing = Math.abs(camToMap.dot(normal));
+    const facing = camToMap.dot(normal); 
 
-   
-    const maxDist = 6.8;
-    const minFacing = 0.28;
+    const maxDist = 6.6;
+    const minFacing = 0.35;
 
     return dist <= maxDist && facing >= minFacing;
   }, [camera]);
 
-  
   useFrame(() => {
-    const ok = computeCanInteract();
+    const ok = computeInMapZone();
+
     if (ok !== isInMapZoneRef.current) {
       isInMapZoneRef.current = ok;
 
-     
       setGlobalFlag("__MAP_MODE__", ok);
 
-     
-      if (ok) {
-        setGlobalNumber("__MAP_INTERACT_UNTIL__", Date.now() + 250);
-      }
+      if (ok) setGlobalNumber("__MAP_INTERACT_UNTIL__", Date.now() + 220);
+      else setGlobalNumber("__MAP_INTERACT_UNTIL__", Date.now() + 80);
     }
   });
 
-  
   const handlePickDebugUV = useCallback(
     (e) => {
       if (!DEBUG_PINS) return;
-      e.stopPropagation();
 
       const mesh = mapRef.current;
       if (!mesh) return;
 
-      const native = e.nativeEvent;
+      const native = e?.nativeEvent;
+      if (!native) return;
+
       const rect = gl.domElement.getBoundingClientRect();
 
       const ndc = new THREE.Vector2(
@@ -175,16 +171,17 @@ export default function TravelWall({
     [camera, gl]
   );
 
-  const handlePickWall = useCallback(
+  
+  const pickWall = useCallback(
     (e) => {
       if (DEBUG_PINS) return;
-      e.stopPropagation();
 
-      if (isBlockedByUX()) return;
+      e?.stopPropagation?.();
+
+      if (isBlockedForMap()) return;
       if (!isInMapZoneRef.current) return;
 
-      
-      setGlobalNumber("__MAP_INTERACT_UNTIL__", Date.now() + 300);
+      setGlobalNumber("__MAP_INTERACT_UNTIL__", Date.now() + 260);
 
       onPickWall?.();
     },
@@ -193,13 +190,12 @@ export default function TravelWall({
 
   const pickPin = useCallback(
     (itemIndex, e) => {
-      e.stopPropagation();
+      e?.stopPropagation?.();
 
-      if (isBlockedByUX()) return;
+      if (isBlockedForMap()) return;
       if (!isInMapZoneRef.current) return;
 
-     
-      setGlobalNumber("__MAP_INTERACT_UNTIL__", Date.now() + 350);
+      setGlobalNumber("__MAP_INTERACT_UNTIL__", Date.now() + 300);
 
       onPickPin?.(itemIndex);
     },
@@ -209,14 +205,17 @@ export default function TravelWall({
   return (
     <group position={position} rotation={rotation}>
      
-      <mesh
-        ref={mapRef}
-        position={[0, 0, MAP_Z]}
-        material={mapMat}
-        onPointerDown={DEBUG_PINS ? handlePickDebugUV : handlePickWall}
+      <InteractiveItem
+        disabled={false}
+        onPick={(e) => {
+          if (DEBUG_PINS) handlePickDebugUV(e);
+          else pickWall(e);
+        }}
       >
-        <planeGeometry args={[MAP_W, MAP_H]} />
-      </mesh>
+        <mesh ref={mapRef} position={[0, 0, MAP_Z]} material={mapMat}>
+          <planeGeometry args={[MAP_W, MAP_H]} />
+        </mesh>
+      </InteractiveItem>
 
       {!DEBUG_PINS &&
         PINS.map((p) => {
@@ -238,6 +237,7 @@ export default function TravelWall({
                     pick: () => onPickPin?.(p.itemIndex),
                   }}
                 >
+              
                   <mesh>
                     <sphereGeometry args={[PIN_SIZE, 20, 20]} />
                     <meshStandardMaterial
@@ -247,7 +247,6 @@ export default function TravelWall({
                     />
                   </mesh>
 
-        
                   <mesh>
                     <sphereGeometry args={[PIN_SIZE * 2.6, 12, 12]} />
                     <meshBasicMaterial
