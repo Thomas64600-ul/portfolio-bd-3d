@@ -56,12 +56,11 @@ export default function Overlay({
 }) {
   const section = openSectionId ? SECTIONS[openSectionId] : null;
 
+  const panelOpen = Boolean(openSectionId);
 
   const rowCounts = [24, 22, 20];
-
   const [selectedRow, setSelectedRow] = useState(null);
 
-  
   const [isPortrait, setIsPortrait] = useState(false);
   const [dismissRotateHint, setDismissRotateHint] = useState(false);
 
@@ -92,6 +91,14 @@ export default function Overlay({
     };
   }, [isMobile]);
 
+
+  useEffect(() => {
+    if (openSectionId && !section) {
+     
+      console.warn("[Overlay] openSectionId inconnu (pas dans SECTIONS):", openSectionId);
+    }
+  }, [openSectionId, section]);
+
   const rowInfo = useMemo(() => {
     if (!section?.rows) return null;
     return resolveRowAndIndex(openItemId, rowCounts);
@@ -101,9 +108,7 @@ export default function Overlay({
   const activeItem = rowInfo ? activeRow?.items?.[rowInfo.bookIndex] : null;
 
   const hidePanelForSection =
-    openSectionId === "diplomas" ||
-    openSectionId === "travels" ||
-    openSectionId === "about";
+    openSectionId === "diplomas" || openSectionId === "travels" || openSectionId === "about";
 
   const handleTakeBackControl = useCallback(() => {
     onReleaseLock?.();
@@ -130,7 +135,6 @@ export default function Overlay({
   const handleRequestLock = useCallback(() => {
     onRequestLock?.();
 
-  
     if (typeof document === "undefined") return;
     const canvas = document.querySelector("canvas");
     if (canvas?.requestPointerLock) canvas.requestPointerLock();
@@ -140,7 +144,6 @@ export default function Overlay({
 
   const setMobileMove = useCallback(
     ({ forward, back }) => {
-     
       setGlobalFlag("__UI_ACTIVE__", forward || back);
 
       if (forward) onMobileForwardDown?.();
@@ -161,7 +164,7 @@ export default function Overlay({
   return (
     <div className="hud">
       <div className="topbar">
-        {section ? (
+        {panelOpen ? (
           <button className="btn" onClick={handleTakeBackControl}>
             ⎋ Quitter (reprendre le contrôle)
           </button>
@@ -181,7 +184,7 @@ export default function Overlay({
           </button>
         )}
 
-        {section && (
+        {panelOpen && (
           <>
             <button className="btn" onClick={handleOpenCV}>
               📄 Voir le CV
@@ -309,9 +312,7 @@ export default function Overlay({
                   </div>
 
                   {section.rows[selectedRow].items?.length > 0 ? (
-                    <div>
-                      {section.rows[selectedRow].items.map((it, idx) => renderItemSmart(it, idx))}
-                    </div>
+                    <div>{section.rows[selectedRow].items.map((it, idx) => renderItemSmart(it, idx))}</div>
                   ) : (
                     <div
                       style={{
@@ -333,9 +334,7 @@ export default function Overlay({
           )}
 
           {!section.rows && section.items?.length > 0 && (
-            <div style={{ marginTop: 12 }}>
-              {section.items.map((it, idx) => renderItemSmart(it, idx))}
-            </div>
+            <div style={{ marginTop: 12 }}>{section.items.map((it, idx) => renderItemSmart(it, idx))}</div>
           )}
         </div>
       )}
@@ -373,8 +372,7 @@ export default function Overlay({
             📱 Meilleure expérience en paysage
           </div>
           <div style={{ color: "var(--muted)", fontSize: 13, lineHeight: 1.35 }}>
-            Tourne ton téléphone pour profiter d’un champ de vision plus large et d’une navigation plus
-            confortable.
+            Tourne ton téléphone pour profiter d’un champ de vision plus large et d’une navigation plus confortable.
           </div>
 
           <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
@@ -437,9 +435,7 @@ export default function Overlay({
           </div>
         )}
 
-        {it.desc && (
-          <div style={{ color: "var(--muted)", fontSize: 13, marginTop: 6 }}>{it.desc}</div>
-        )}
+        {it.desc && <div style={{ color: "var(--muted)", fontSize: 13, marginTop: 6 }}>{it.desc}</div>}
 
         {Array.isArray(it.bullets) && it.bullets.length > 0 && (
           <ul style={{ margin: "8px 0 0 16px", color: "var(--text)", fontSize: 13 }}>
@@ -469,19 +465,15 @@ export default function Overlay({
 
         {it.desc && <div style={{ color: "var(--muted)", fontSize: 13 }}>{it.desc}</div>}
 
-        {it.year && (
-          <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 2 }}>{it.year}</div>
-        )}
+        {it.year && <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 2 }}>{it.year}</div>}
       </div>
     );
   }
 
   function renderItemSmart(it, idx) {
     const isCareerItem =
-      Boolean(it.company) ||
-      Boolean(it.period) ||
-      Boolean(it.location) ||
-      Array.isArray(it.bullets);
+      Boolean(it.company) || Boolean(it.period) || Boolean(it.location) || Array.isArray(it.bullets);
     return isCareerItem ? renderCareerItem(it, idx) : renderStandardItem(it, idx);
   }
 }
+
