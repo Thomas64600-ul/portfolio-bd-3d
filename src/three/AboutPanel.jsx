@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Text } from "@react-three/drei";
 import * as THREE from "three";
@@ -45,10 +45,10 @@ function makeChalkboardTexture(size = 512) {
   ctx.strokeStyle = "#ffffff";
   ctx.lineWidth = 1;
   for (let i = 0; i < 18; i++) {
-    const y = (i / 18) * size + (Math.random() - 0.5) * 6;
+    const yy = (i / 18) * size + (Math.random() - 0.5) * 6;
     ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(size, y + (Math.random() - 0.5) * 3);
+    ctx.moveTo(0, yy);
+    ctx.lineTo(size, yy + (Math.random() - 0.5) * 3);
     ctx.stroke();
   }
   ctx.globalAlpha = 1;
@@ -59,15 +59,37 @@ function makeChalkboardTexture(size = 512) {
   return tex;
 }
 
-function isPortraitMobile() {
-  if (typeof window === "undefined") return false;
-  return !!window.__IS_PORTRAIT__;
-}
+function wrapByWords(text, maxCharsPerLine, maxLines) {
+  const cleaned = (text || "").replace(/\s+/g, " ").trim();
+  if (!cleaned) return [];
 
-function clipText(str, maxChars) {
-  const s = (str || "").trim();
-  if (s.length <= maxChars) return s;
-  return s.slice(0, Math.max(0, maxChars - 1)).trimEnd() + "…";
+  const words = cleaned.split(" ");
+  const lines = [];
+  let cur = "";
+
+  for (const w of words) {
+    const next = cur ? `${cur} ${w}` : w;
+
+    if (next.length <= maxCharsPerLine) {
+      cur = next;
+      continue;
+    }
+
+    if (cur) lines.push(cur);
+    cur = w;
+
+    if (lines.length >= maxLines) break;
+  }
+
+  if (lines.length < maxLines && cur) lines.push(cur);
+
+  
+  const joined = lines.join(" ");
+  if (joined.length < cleaned.length && lines.length) {
+    lines[lines.length - 1] = lines[lines.length - 1].replace(/\.*$/, "") + "…";
+  }
+
+  return lines;
 }
 
 export default function AboutPanel({
@@ -88,6 +110,20 @@ export default function AboutPanel({
       typeof baseY === "number" ? baseY : Array.isArray(position) ? position[1] : 0;
   }, [baseY, position]);
 
+ 
+  const [portrait, setPortrait] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const compute = () => setPortrait(window.innerHeight > window.innerWidth);
+    compute();
+    window.addEventListener("resize", compute);
+    window.addEventListener("orientationchange", compute);
+    return () => {
+      window.removeEventListener("resize", compute);
+      window.removeEventListener("orientationchange", compute);
+    };
+  }, []);
+
   useFrame(({ clock }) => {
     if (!enabled || !groupRef.current) return;
 
@@ -107,49 +143,30 @@ export default function AboutPanel({
   const description = about?.description || "";
   const tags = about?.tags || [];
 
-  const portrait = useMemo(() => isPortraitMobile(), []);
+ 
+  const titleY = H / 2 - 0.30;
+  const textTopY = titleY - 0.34;
+
+ 
+  const fontSize = portrait ? 0.078 : 0.062;
+  const lineGap = portrait ? 0.155 : 0.135;
+  const bottomSafeY = portrait ? -H / 2 + 0.50 : -H / 2 + 0.34;
+
+  const maxLines = Math.max(6, Math.floor((textTopY - bottomSafeY) / lineGap));
+  const maxCharsPerLine = portrait ? 34 : 52;
 
   const lines = useMemo(() => {
+    
     const paras = description
       .split("\n\n")
       .map((p) => p.trim())
       .filter(Boolean);
 
-    if (portrait) {
-      const merged = paras.join(" • ");
-      const clipped = clipText(merged, 520);
-     
-      const approxLineLen = 46;
-      const out = [];
-      let cursor = 0;
-      while (cursor < clipped.length && out.length < 8) {
-        out.push(clipped.slice(cursor, cursor + approxLineLen));
-        cursor += approxLineLen;
-      }
-      return out;
-    }
+    const full = paras.join(" ");
+    return wrapByWords(full, maxCharsPerLine, maxLines);
+  }, [description, maxCharsPerLine, maxLines]);
 
-   
-    const out = [];
-    for (const p of paras) {
-      out.push(p);
-      out.push("");
-    }
-    if (out.length && out[out.length - 1] === "") out.pop();
-    return out;
-  }, [description, portrait]);
-
-  const lineJitter = useMemo(() => {
-    const seed = (n) => {
-      const x = Math.sin(n * 999) * 10000;
-      return x - Math.floor(x);
-    };
-    return Array.from({ length: 32 }).map((_, i) => ({
-      dx: (seed(i + 1) - 0.5) * 0.012,
-      rot: (seed(i + 17) - 0.5) * 0.006,
-      scale: 0.99 + seed(i + 33) * 0.015,
-    }));
-  }, []);
+  const bodyText = useMemo(() => lines.join("\n"), [lines]);
 
   const boardTex = useMemo(() => makeChalkboardTexture(512), []);
   const boardMat = useMemo(
@@ -172,22 +189,12 @@ export default function AboutPanel({
     []
   );
 
- 
-  const titleY = H / 2 - 0.30;
-  const textTopY = titleY - 0.30;
-
-  const fontSize = portrait ? 0.074 : 0.062; 
-  const lineGap = portrait ? 0.155 : 0.135;
-  const bottomSafeY = portrait ? -H / 2 + 0.46 : -H / 2 + 0.34;
-
-  const maxLines = Math.max(6, Math.floor((textTopY - bottomSafeY) / lineGap));
-
   const outlineTitle = portrait ? 0.0062 : 0.0045;
-  const outlineText = portrait ? 0.0046 : 0.0032;
+  const outlineText = portrait ? 0.0048 : 0.0032;
 
   return (
     <group ref={groupRef} position={position} rotation={rotation} visible={enabled}>
-      
+   
       <mesh position={[0, 0, OUT]} raycast={() => null}>
         <boxGeometry args={[W + 0.14, H + 0.14, 0.04]} />
         <primitive object={woodMat} attach="material" />
@@ -210,6 +217,7 @@ export default function AboutPanel({
         </mesh>
       )}
 
+   
       <Text
         position={[0, titleY, OUT + 0.095]}
         font={CHALK_FONT}
@@ -226,40 +234,33 @@ export default function AboutPanel({
         {title}
       </Text>
 
-      {lines.slice(0, maxLines).map((t, i) => {
-        if (t === "") return null;
-        const j = lineJitter[i] || { dx: 0, rot: 0, scale: 1 };
+      
+      <Text
+        position={[-W / 2 + 0.18, textTopY, OUT + 0.095]}
+        font={CHALK_FONT}
+        fontSize={fontSize}
+        lineHeight={portrait ? 1.22 : 1.16}
+        maxWidth={portrait ? W * 0.88 : W * 0.92}
+        anchorX="left"
+        anchorY="top"
+        color={CHALK_COLOR}
+        outlineWidth={outlineText}
+        outlineOpacity={portrait ? 0.18 : 0.12}
+        outlineColor="#ffffff"
+        raycast={() => null}
+      >
+        {bodyText}
+      </Text>
 
-        const dx = portrait ? j.dx * 0.25 : j.dx;
-        const rot = portrait ? j.rot * 0.25 : j.rot;
-        const scl = portrait ? 1 : j.scale;
-
-        return (
-          <Text
-            key={i}
-            position={[-W / 2 + 0.18 + dx, textTopY - i * lineGap, OUT + 0.095]}
-            rotation={[0, 0, rot]}
-            font={CHALK_FONT}
-            fontSize={fontSize * scl}
-            lineHeight={portrait ? 1.22 : 1.16}
-            maxWidth={portrait ? W * 0.86 : W * 0.90}
-            anchorX="left"
-            anchorY="top"
-            color={CHALK_COLOR}
-            outlineWidth={outlineText}
-            outlineOpacity={portrait ? 0.18 : 0.12}
-            outlineColor="#ffffff"
-            raycast={() => null}
-          >
-            {t}
-          </Text>
-        );
-      })}
-
+    
       {tags.slice(0, 3).map((tg, i) => (
         <Text
           key={tg}
-          position={[-W / 2 + 0.2 + i * 0.86, portrait ? -H / 2 + 0.28 : -H / 2 + 0.20, OUT + 0.095]}
+          position={[
+            -W / 2 + 0.2 + i * 0.86,
+            portrait ? -H / 2 + 0.28 : -H / 2 + 0.20,
+            OUT + 0.095,
+          ]}
           font={CHALK_FONT}
           fontSize={portrait ? 0.062 : 0.058}
           maxWidth={0.9}
