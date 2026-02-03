@@ -14,7 +14,7 @@ const FLIP_V = true;
 
 const PINS = [
   { label: "Inde", itemIndex: 0, uv: [0.6436, 0.5154] },
-  { label: "Vietnam", itemIndex: 1, uv: [0.7250, 0.535] },
+  { label: "Vietnam", itemIndex: 1, uv: [0.725, 0.535] },
   { label: "Cambodge", itemIndex: 2, uv: [0.715, 0.545] },
   { label: "Nouvelle-Calédonie", itemIndex: 3, uv: [0.8905, 0.6894] },
   { label: "Sud du Portugal", itemIndex: 4, uv: [0.429, 0.4045] },
@@ -59,8 +59,11 @@ export default function TravelWall({
 
   const items = SECTIONS?.travels?.items || [];
 
+
+
   useEffect(() => {
     if (!mapTex) return;
+
     mapTex.colorSpace = THREE.SRGBColorSpace;
     mapTex.anisotropy = 8;
     mapTex.wrapS = THREE.ClampToEdgeWrapping;
@@ -68,12 +71,7 @@ export default function TravelWall({
     mapTex.needsUpdate = true;
   }, [mapTex]);
 
-  useEffect(() => {
-    if (!DEBUG_PINS) return;
-    if (typeof document !== "undefined" && document.pointerLockElement) {
-      document.exitPointerLock();
-    }
-  }, []);
+  
 
   const mapMat = useMemo(
     () =>
@@ -89,6 +87,8 @@ export default function TravelWall({
   const MAP_Z = 0;
   const PIN_Z = 0.15;
 
+ 
+
   const uvToXY = useCallback((u, v) => {
     const vv = FLIP_V ? 1 - v : v;
     const x = (u - 0.5) * MAP_W;
@@ -96,29 +96,31 @@ export default function TravelWall({
     return [x, y];
   }, []);
 
- 
+
   const isInMapZoneRef = useRef(false);
 
   const computeInMapZone = useCallback(() => {
     const mesh = mapRef.current;
     if (!mesh) return false;
 
-    const mapWorldPos = new THREE.Vector3();
-    mesh.getWorldPosition(mapWorldPos);
+    const mapPos = new THREE.Vector3();
+    mesh.getWorldPosition(mapPos);
 
-    const q = new THREE.Quaternion();
-    mesh.getWorldQuaternion(q);
+    
+    const camToMap = mapPos.clone().sub(camera.position).normalize();
 
-    const normal = new THREE.Vector3(0, 0, 1).applyQuaternion(q).normalize();
+   
+    const normal = new THREE.Vector3(0, 0, 1)
+      .applyQuaternion(mesh.getWorldQuaternion(new THREE.Quaternion()))
+      .normalize();
 
-    const dist = camera.position.distanceTo(mapWorldPos);
+   
+    const facing = Math.abs(camToMap.dot(normal));
 
-    const camToMap = mapWorldPos.clone().sub(camera.position).normalize();
+    const dist = camera.position.distanceTo(mapPos);
 
-    const facing = camToMap.dot(normal); 
-
-    const maxDist = 6.6;
-    const minFacing = 0.35;
+    const maxDist = 7.2;     
+    const minFacing = 0.22; 
 
     return dist <= maxDist && facing >= minFacing;
   }, [camera]);
@@ -135,6 +137,8 @@ export default function TravelWall({
       else setGlobalNumber("__MAP_INTERACT_UNTIL__", Date.now() + 80);
     }
   });
+
+ 
 
   const handlePickDebugUV = useCallback(
     (e) => {
@@ -166,12 +170,13 @@ export default function TravelWall({
       const vRaw = Number(hit.uv.y.toFixed(4));
       const v = FLIP_V ? Number((1 - vRaw).toFixed(4)) : vRaw;
 
-      console.log("🧭 UV STABLE A COLLER :", [u, v]);
+      console.log("🧭 UV :", [u, v]);
     },
     [camera, gl]
   );
 
-  
+ 
+
   const pickWall = useCallback(
     (e) => {
       if (DEBUG_PINS) return;
@@ -202,6 +207,8 @@ export default function TravelWall({
     [onPickPin]
   );
 
+
+
   return (
     <group position={position} rotation={rotation}>
      
@@ -217,27 +224,17 @@ export default function TravelWall({
         </mesh>
       </InteractiveItem>
 
+     
       {!DEBUG_PINS &&
         PINS.map((p) => {
           const isActive = activeIndex === p.itemIndex;
-          const item = items?.[p.itemIndex];
-          const title = item?.title || item?.name || p.label;
 
           const [x, y] = uvToXY(p.uv[0], p.uv[1]);
 
           return (
             <group key={`${p.label}-${p.itemIndex}`} position={[x, y, PIN_Z]}>
               <InteractiveItem onPick={(e) => pickPin(p.itemIndex, e)}>
-                <group
-                  userData={{
-                    type: "pin",
-                    label: p.label,
-                    itemIndex: p.itemIndex,
-                    title,
-                    pick: () => onPickPin?.(p.itemIndex),
-                  }}
-                >
-              
+                <group>
                   <mesh>
                     <sphereGeometry args={[PIN_SIZE, 20, 20]} />
                     <meshStandardMaterial
@@ -247,6 +244,7 @@ export default function TravelWall({
                     />
                   </mesh>
 
+             
                   <mesh>
                     <sphereGeometry args={[PIN_SIZE * 2.6, 12, 12]} />
                     <meshBasicMaterial
