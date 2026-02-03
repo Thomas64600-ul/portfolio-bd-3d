@@ -14,12 +14,16 @@ export default function InteractiveItem({ children, onPick, disabled = false }) 
     return !!window.__TOUCH_LOOKING__;
   };
 
-  const isJoystickActive = () => {
+  const isJoystickOrUIActive = () => {
     if (typeof window === "undefined") return false;
-    return !!window.__JOYSTICK_ACTIVE__;
+    return !!window.__JOYSTICK_ACTIVE__ || !!window.__UI_ACTIVE__;
   };
 
-  const canPickNow = () => !disabled && !isTouchLooking() && !isJoystickActive();
+  const canPickNow = () => !disabled && !isTouchLooking() && !isJoystickOrUIActive();
+
+  const resetDown = () => {
+    down.current = { x: 0, y: 0, id: null, moved: false };
+  };
 
   function handleOver(e) {
     e.stopPropagation();
@@ -36,9 +40,8 @@ export default function InteractiveItem({ children, onPick, disabled = false }) 
     if (e.preventDefault) e.preventDefault();
     if (!canPickNow()) return;
 
-    // Pointer capture (safe)
     const target = e.currentTarget;
-    if (target && typeof target.setPointerCapture === "function") {
+    if (target && typeof target.setPointerCapture === "function" && e.pointerId != null) {
       try {
         target.setPointerCapture(e.pointerId);
       } catch {
@@ -65,16 +68,29 @@ export default function InteractiveItem({ children, onPick, disabled = false }) 
 
   function handleUp(e) {
     e.stopPropagation();
-    // On ne déclenche rien ici : on laisse `onClick` gérer, mais
-    // on s’assure que si l’utilisateur a “drag”, ça ne pick pas.
+    if (!canPickNow()) {
+      resetDown();
+      return;
+    }
+
+    const hadDown = down.current.id != null;
+    const samePointer = hadDown ? e.pointerId === down.current.id : true;
+
+    if (hadDown && samePointer && !down.current.moved) {
+      onPick?.(e);
+    }
+
+    resetDown();
   }
 
   function handleClick(e) {
+   
     e.stopPropagation();
     if (!canPickNow()) return;
     if (down.current.moved) return;
 
     onPick?.(e);
+    resetDown();
   }
 
   return (
