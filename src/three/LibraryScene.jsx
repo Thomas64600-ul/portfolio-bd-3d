@@ -734,6 +734,8 @@ function SceneInner({
 
       <AboutPanel
         enabled={true}
+        isMobile={isMobile}
+        isPortrait={isPortrait}
         position={[10.92, 2.55, -2.8]}
         rotation={[0, -Math.PI / 2, 0]}
         baseY={2.55}
