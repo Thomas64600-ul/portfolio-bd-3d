@@ -18,11 +18,17 @@ function setGlobalFlag(key, value) {
   window[key] = !!value;
 }
 
-function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
+function BookcaseUnit({
+  theme = "bd",
+  walnutMat,
+  onPickItem,
+  onPickShelf,
+  isMobile = false, 
+}) {
   const palette = useMemo(() => {
     if (theme === "comics") return ["#ffd166", "#ef476f", "#06d6a0", "#118ab2"];
     if (theme === "manga") return ["#f4f4f4", "#d9d9d9", "#a8a8a8", "#1f1f1f"];
-    return ["#78d6ff", "#ff7a9a", "#e9d36b", "#7CFF8D"]; 
+    return ["#78d6ff", "#ff7a9a", "#e9d36b", "#7CFF8D"];
   }, [theme]);
 
   const label = theme === "comics" ? "COMICS" : theme === "manga" ? "MANGA" : "BD";
@@ -150,8 +156,14 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
         : "#2a2a2a"
       : palette[(variant + 1) % palette.length];
 
+   
+    const handlePick = () => {
+      if (isMobile) onPickShelf?.();
+      else onPickItem?.(itemId);
+    };
+
     return (
-      <InteractiveItem onPick={() => onPickItem?.(itemId)}>
+      <InteractiveItem onPick={handlePick}>
         <group position={[x + xNudge, y + yNudge, bookZ + zNudge]} rotation={[0, 0, tilt]}>
           <mesh castShadow receiveShadow>
             <boxGeometry args={[w, h, 0.07]} />
@@ -267,7 +279,8 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
               const lastBlock = Math.max(1, Math.round((count * SERIES.lastman) / total));
               const gunnmBlock = Math.max(1, count - lastBlock);
 
-              if (i < lastBlock) spineTex = pickSlice(mangaTextures[3], i, lastBlock, SERIES.lastman);
+              if (i < lastBlock)
+                spineTex = pickSlice(mangaTextures[3], i, lastBlock, SERIES.lastman);
               else spineTex = pickSlice(mangaTextures[4], i - lastBlock, gunnmBlock, SERIES.gunnm);
             }
           }
@@ -287,7 +300,8 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
               const used = preacherBlock + sincityBlock;
               const lastBlock = Math.max(1, count - used);
 
-              if (i < preacherBlock) spineTex = pickSlice(comicsTextures[2], i, preacherBlock, SERIES.preacher);
+              if (i < preacherBlock)
+                spineTex = pickSlice(comicsTextures[2], i, preacherBlock, SERIES.preacher);
               else if (i < preacherBlock + sincityBlock)
                 spineTex = pickSlice(comicsTextures[3], i - preacherBlock, sincityBlock, SERIES.sincity);
               else spineTex = pickSlice(comicsTextures[0], 0, lastBlock, SERIES.t300);
@@ -322,7 +336,8 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
 
               if (i < largoBlock)
                 spineTex = pickSlice(bdTextures[3], i, largoBlock, SERIES.largo, ...TRIM.largo);
-              else spineTex = pickSlice(bdTextures[0], i - largoBlock, signeBlock, SERIES.signe, ...TRIM.signe);
+              else
+                spineTex = pickSlice(bdTextures[0], i - largoBlock, signeBlock, SERIES.signe, ...TRIM.signe);
             }
 
             if (rowIndex === 1) {
@@ -332,7 +347,8 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
 
               if (i < murenaBlock)
                 spineTex = pickSlice(bdTextures[6], i, murenaBlock, SERIES.murena, ...TRIM.murena);
-              else spineTex = pickSlice(bdTextures[4], i - murenaBlock, aiglesBlock, SERIES.aigles, ...TRIM.aigles);
+              else
+                spineTex = pickSlice(bdTextures[4], i - murenaBlock, aiglesBlock, SERIES.aigles, ...TRIM.aigles);
             }
 
             if (rowIndex === 0) {
@@ -381,6 +397,7 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
 
   return (
     <group>
+      
       {onPickShelf && (
         <InteractiveItem onPick={onPickShelf}>
           <mesh position={[0, H / 2, frontZ - 0.02]}>
@@ -414,7 +431,7 @@ function BookcaseUnit({ theme = "bd", walnutMat, onPickItem, onPickShelf }) {
 
       {[0.95, 1.55, 2.15].map((yy, idx) => (
         <mesh key={idx} position={[0, yy, 0.02]} castShadow receiveShadow>
-          <boxGeometry args={[W - frameT * 1.2, 0.08, D - 0.1]} />
+          <boxGeometry args={[W - frameT * 1.2, shelfT, D - 0.1]} />
           <primitive object={walnutMat} attach="material" />
         </mesh>
       ))}
@@ -568,7 +585,6 @@ function SceneInner({
   );
 
   useFrame((state, dt) => {
-    
     const baseFov = 65;
     const desiredFov = isMobile && isPortrait ? fovTarget.current : baseFov;
 
@@ -604,29 +620,23 @@ function SceneInner({
       let finalPos = pos;
       let finalLook = look;
 
-    if (isMobile && isPortrait && sectionId === "travels") {
- 
-  const dx = pos[0] - look[0];
-  const dy = pos[1] - look[1];
-  const dz = pos[2] - look[2];
+      if (isMobile && isPortrait && sectionId === "travels") {
+        const dx = pos[0] - look[0];
+        const dy = pos[1] - look[1];
+        const dz = pos[2] - look[2];
 
-  const k = 1.45; 
-  finalPos = [look[0] + dx * k, look[1] + dy * k, look[2] + dz * k];
-  finalLook = [look[0], look[1], look[2]];
+        const k = 1.45;
+        finalPos = [look[0] + dx * k, look[1] + dy * k, look[2] + dz * k];
+        finalLook = [look[0], look[1], look[2]];
 
-  fovTarget.current = 82; 
-}
- else if (isMobile && isPortrait && sectionId === "about") {
-
-  finalPos = [pos[0] - 0.55, pos[1] + 0.05, pos[2]];
-  finalLook = [look[0], look[1], look[2]];
-  fovTarget.current = 78;
-
-} else {
- 
-  fovTarget.current = 65;
-}
-
+        fovTarget.current = 82;
+      } else if (isMobile && isPortrait && sectionId === "about") {
+        finalPos = [pos[0] - 0.55, pos[1] + 0.05, pos[2]];
+        finalLook = [look[0], look[1], look[2]];
+        fovTarget.current = 78;
+      } else {
+        fovTarget.current = 65;
+      }
 
       setFocus({ active: true, opened: false, sectionId, itemId, pos: finalPos, look: finalLook });
     },
@@ -753,6 +763,7 @@ function SceneInner({
         <BookcaseUnit
           theme="comics"
           walnutMat={walnutMat}
+          isMobile={isMobile}
           onPickShelf={() => {
             const { pos, look } = focusForShelf(-6.2);
             pick("career", pos, look);
@@ -768,6 +779,7 @@ function SceneInner({
         <BookcaseUnit
           theme="bd"
           walnutMat={walnutMat}
+          isMobile={isMobile}
           onPickShelf={() => {
             const { pos, look } = focusForShelf(0);
             pick("projects", pos, look);
@@ -783,6 +795,7 @@ function SceneInner({
         <BookcaseUnit
           theme="manga"
           walnutMat={walnutMat}
+          isMobile={isMobile}
           onPickShelf={() => {
             const { pos, look } = focusForShelf(6.2);
             pick("stack", pos, look);
