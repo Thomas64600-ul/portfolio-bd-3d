@@ -1,7 +1,9 @@
-import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef, lazy, Suspense } from "react";
 import LibraryScene from "./three/LibraryScene";
 import Overlay from "./ui/Overlay";
-import TravelCard from "./ui/TravelCard";
+
+
+const TravelCard = lazy(() => import("./ui/TravelCard"));
 
 function detectMobile() {
   if (typeof window === "undefined") return false;
@@ -89,10 +91,7 @@ export default function App() {
   useEffect(() => {
     if (typeof document === "undefined") return;
 
-    const onChange = () => {
-      setIsLocked(Boolean(document.pointerLockElement));
-    };
-
+    const onChange = () => setIsLocked(Boolean(document.pointerLockElement));
     document.addEventListener("pointerlockchange", onChange);
     onChange();
 
@@ -125,7 +124,7 @@ export default function App() {
     setControlsEnabled(false);
     stopMobileMove();
 
-    
+  
     setGlobalFlag("__UI_ACTIVE__", false);
   }, [stopMobileMove]);
 
@@ -135,15 +134,12 @@ export default function App() {
     setControlsEnabled(true);
     stopMobileMove();
 
-  
     setGlobalFlag("__UI_ACTIVE__", false);
   }, [cancelFocus, stopMobileMove]);
 
   const handleOpenSection = useCallback(
     (id, itemId = null) => {
-      
       stopMobileMove();
-
       setOpenSectionId(id);
 
       if (typeof document !== "undefined" && document.pointerLockElement) {
@@ -155,7 +151,6 @@ export default function App() {
       }
 
       setGlobalFlag("__UI_ACTIVE__", true);
-
       setControlsEnabled(false);
 
       setFocus((f) => ({
@@ -166,6 +161,12 @@ export default function App() {
     },
     [stopMobileMove]
   );
+
+  useEffect(() => {
+    if (openSectionId === "travels") {
+      import("./ui/TravelCard");
+    }
+  }, [openSectionId]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -230,7 +231,11 @@ export default function App() {
         onMobileBackUp={() => (mobileBackRef.current = false)}
       />
 
-      {openSectionId === "travels" && <TravelCard itemId={focus?.itemId ?? null} onClose={closePanel} />}
+      {openSectionId === "travels" && (
+        <Suspense fallback={null}>
+          <TravelCard itemId={focus?.itemId ?? null} onClose={closePanel} />
+        </Suspense>
+      )}
     </>
   );
 }
