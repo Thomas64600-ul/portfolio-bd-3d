@@ -606,11 +606,17 @@ function SceneInner({
 
     if (isMobile && isPortrait && sectionId === "travels") {
  
-  finalPos = [pos[0] - 1.35, pos[1] + 0.10, pos[2]];
-  finalLook = [look[0], look[1], look[2]];
-  fovTarget.current = 86;
+  const dx = pos[0] - look[0];
+  const dy = pos[1] - look[1];
+  const dz = pos[2] - look[2];
 
-} else if (isMobile && isPortrait && sectionId === "about") {
+  const k = 1.45; 
+  finalPos = [look[0] + dx * k, look[1] + dy * k, look[2] + dz * k];
+  finalLook = [look[0], look[1], look[2]];
+
+  fovTarget.current = 82; 
+}
+ else if (isMobile && isPortrait && sectionId === "about") {
 
   finalPos = [pos[0] - 0.55, pos[1] + 0.05, pos[2]];
   finalLook = [look[0], look[1], look[2]];
