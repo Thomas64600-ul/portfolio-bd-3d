@@ -158,9 +158,10 @@ function BookcaseUnit({
 
    
     const handlePick = () => {
-      if (isMobile) onPickShelf?.();
-      else onPickItem?.(itemId);
-    };
+  
+  onPickShelf?.();
+};
+
 
     return (
       <InteractiveItem onPick={handlePick}>
