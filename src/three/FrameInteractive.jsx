@@ -43,9 +43,12 @@ export default function FrameInteractive({
 
   return (
     <group ref={ref} position={position} rotation={rotation}>
-      <InteractiveItem disabled={disabled} onPick={() => onPick?.(id)}>
+      <InteractiveItem
+        disabled={disabled}
+        allowWhenUIActive
+        onPick={() => onPick?.(id)}
+      >
         <group>
-        
           {enableHitbox && (
             <mesh
               name={`hitbox:${id}`}
@@ -55,9 +58,9 @@ export default function FrameInteractive({
               <boxGeometry args={hitbox} />
               <meshBasicMaterial
                 transparent
-                opacity={0.001}     
+                opacity={0.001}
                 depthWrite={false}
-                depthTest={false}   
+                depthTest={false}
               />
             </mesh>
           )}

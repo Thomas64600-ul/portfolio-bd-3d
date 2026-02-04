@@ -1,13 +1,15 @@
 import { useRef, useState } from "react";
 import { useCursor } from "@react-three/drei";
 
-export default function InteractiveItem({ children, onPick, disabled = false }) {
+export default function InteractiveItem({
+  children,
+  onPick,
+  disabled = false,
+  allowWhenUIActive = false, 
+}) {
   const [hovered, setHovered] = useState(false);
 
-  
   const down = useRef({ x: 0, y: 0, id: null, moved: false });
-
- 
   const didPickRef = useRef(false);
 
   const DRAG_PX = 10;
@@ -21,6 +23,10 @@ export default function InteractiveItem({ children, onPick, disabled = false }) 
 
   const isJoystickOrUIActive = () => {
     if (typeof window === "undefined") return false;
+
+    
+    if (allowWhenUIActive) return !!window.__JOYSTICK_ACTIVE__;
+
     return !!window.__JOYSTICK_ACTIVE__ || !!window.__UI_ACTIVE__;
   };
 
@@ -88,7 +94,6 @@ export default function InteractiveItem({ children, onPick, disabled = false }) 
 
   function handleUp(e) {
     e.stopPropagation();
-   
     tryPick(e);
     resetDown();
   }
@@ -100,7 +105,6 @@ export default function InteractiveItem({ children, onPick, disabled = false }) 
   }
 
   function handleClick(e) {
-    
     e.stopPropagation();
     if (didPickRef.current) return;
     if (!canPickNow()) return;
