@@ -3,8 +3,6 @@ import LibraryScene from "./three/LibraryScene";
 import Overlay from "./ui/Overlay";
 import TravelCard from "./ui/TravelCard";
 
-
-
 function detectMobile() {
   if (typeof window === "undefined") return false;
 
@@ -26,13 +24,13 @@ function setGlobalFlag(key, value) {
 }
 
 
+const OVERLAY_SECTIONS = ["projects", "stack", "career"];
 
 export default function App() {
   const [isLocked, setIsLocked] = useState(false);
   const [controlsEnabled, setControlsEnabled] = useState(true);
   const [openSectionId, setOpenSectionId] = useState(null);
 
- 
   const isMobile = useMemo(() => detectMobile(), []);
   const [isPortrait, setIsPortrait] = useState(() =>
     isMobile ? detectPortrait() : false
@@ -62,10 +60,8 @@ export default function App() {
     };
   }, [isMobile]);
 
-  
   const mobileForwardRef = useRef(false);
   const mobileBackRef = useRef(false);
-
 
   const [focus, setFocus] = useState({
     active: false,
@@ -75,7 +71,6 @@ export default function App() {
     pos: [0, 1.6, 4],
     look: [0, 1.6, 0],
   });
-
 
   const stopMobileMove = useCallback(() => {
     mobileForwardRef.current = false;
@@ -100,8 +95,6 @@ export default function App() {
     }));
   }, []);
 
-
-
   useEffect(() => {
     const onChange = () => {
       setIsLocked(Boolean(document.pointerLockElement));
@@ -110,15 +103,13 @@ export default function App() {
     document.addEventListener("pointerlockchange", onChange);
     onChange();
 
-    return () =>
-      document.removeEventListener("pointerlockchange", onChange);
+    return () => document.removeEventListener("pointerlockchange", onChange);
   }, []);
 
   const requestLock = useCallback(() => {
     setControlsEnabled(true);
 
     const canvas = document.querySelector("canvas");
-
     if (canvas && !document.pointerLockElement) {
       canvas.requestPointerLock?.();
     }
@@ -133,7 +124,6 @@ export default function App() {
     resetUI();
   }, [resetUI]);
 
-
   const closePanel = useCallback(() => {
     setOpenSectionId(null);
 
@@ -144,7 +134,6 @@ export default function App() {
 
   const handleOpenSection = useCallback(
     (id, itemId = null) => {
-      
       resetUI();
 
       setOpenSectionId(id);
@@ -165,7 +154,6 @@ export default function App() {
     [resetUI]
   );
 
-
   useEffect(() => {
     const onKeyDown = (e) => {
       if (e.key !== "Escape") return;
@@ -179,12 +167,13 @@ export default function App() {
     };
 
     window.addEventListener("keydown", onKeyDown);
-
-    return () =>
-      window.removeEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
   }, [focus.active, openSectionId, closePanel, releaseLock]);
 
-
+  
+  const overlaySectionId = useMemo(() => {
+    return OVERLAY_SECTIONS.includes(openSectionId) ? openSectionId : null;
+  }, [openSectionId]);
 
   return (
     <>
@@ -206,7 +195,7 @@ export default function App() {
         isLocked={isLocked}
         onRequestLock={requestLock}
         onReleaseLock={releaseLock}
-        openSectionId={openSectionId}
+        openSectionId={overlaySectionId}
         openItemId={focus?.itemId ?? null}
         onClosePanel={closePanel}
         onMobileForwardDown={() => (mobileForwardRef.current = true)}
@@ -216,10 +205,7 @@ export default function App() {
       />
 
       {openSectionId === "travels" && (
-        <TravelCard
-          itemId={focus?.itemId ?? null}
-          onClose={closePanel}
-        />
+        <TravelCard itemId={focus?.itemId ?? null} onClose={closePanel} />
       )}
     </>
   );
