@@ -59,9 +59,9 @@ function makeChalkboardTexture(size = 512) {
   return tex;
 }
 
-function wrapByWords(text, maxCharsPerLine, maxLines) {
+function wrapByWordsInfo(text, maxCharsPerLine, maxLines) {
   const cleaned = (text || "").replace(/\s+/g, " ").trim();
-  if (!cleaned) return [];
+  if (!cleaned) return { lines: [], truncated: false };
 
   const words = cleaned.split(" ");
   const lines = [];
@@ -84,11 +84,9 @@ function wrapByWords(text, maxCharsPerLine, maxLines) {
   if (lines.length < maxLines && cur) lines.push(cur);
 
   const joined = lines.join(" ");
-  if (joined.length < cleaned.length && lines.length) {
-    lines[lines.length - 1] = lines[lines.length - 1].replace(/\.*$/, "") + "…";
-  }
+  const truncated = joined.length < cleaned.length;
 
-  return lines;
+  return { lines, truncated };
 }
 
 export default function AboutPanel({
@@ -97,10 +95,6 @@ export default function AboutPanel({
   position = [10.85, 2.6, -2.9],
   rotation = [0, -Math.PI / 2, 0],
   baseY,
-
-  
-  isMobile: isMobileProp,
-  isPortrait: isPortraitProp,
 }) {
   const groupRef = useRef();
 
@@ -114,22 +108,10 @@ export default function AboutPanel({
   }, [baseY, position]);
 
   
-  const [portraitLocal, setPortraitLocal] = useState(false);
-  const [mobileLocal, setMobileLocal] = useState(false);
-
+  const [portrait, setPortrait] = useState(false);
   useEffect(() => {
     if (typeof window === "undefined") return;
-
-    const compute = () => {
-      const p = window.innerHeight > window.innerWidth;
-      setPortraitLocal(p);
-
-      const coarse = window.matchMedia?.("(pointer: coarse)")?.matches ?? false;
-      const ua = navigator.userAgent || "";
-      const uaMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(ua);
-      setMobileLocal(coarse || uaMobile || window.innerWidth < 768);
-    };
-
+    const compute = () => setPortrait(window.innerHeight > window.innerWidth);
     compute();
     window.addEventListener("resize", compute);
     window.addEventListener("orientationchange", compute);
@@ -139,12 +121,6 @@ export default function AboutPanel({
     };
   }, []);
 
-  const isPortrait = typeof isPortraitProp === "boolean" ? isPortraitProp : portraitLocal;
-  const isMobile = typeof isMobileProp === "boolean" ? isMobileProp : mobileLocal;
-
- 
-  const portraitUX = isMobile && isPortrait;
-
   useFrame(({ clock }) => {
     if (!enabled || !groupRef.current) return;
 
@@ -152,13 +128,10 @@ export default function AboutPanel({
     groupRef.current.position.y = baseYRef.current + Math.sin(t * 0.8) * 0.01;
 
     const s = 1 + Math.sin(t * 0.9) * 0.0045;
-  
-    const k = portraitUX ? 0.88 : 1.0;
-    groupRef.current.scale.set(s * k, s * k, 1);
+    groupRef.current.scale.set(s, s, 1);
   });
 
   const OUT = 0.06;
-
   const W = 2.55;
   const H = 2.85;
 
@@ -170,32 +143,57 @@ export default function AboutPanel({
   const titleY = H / 2 - 0.30;
   const textTopY = titleY - 0.34;
 
- 
-  const fontSize = portraitUX ? 0.082 : 0.062;
-  const lineGap = portraitUX ? 0.165 : 0.135;
 
- 
-  const bottomSafeY = portraitUX ? -H / 2 + 0.62 : -H / 2 + 0.34;
+  const layout = useMemo(() => {
+    const isPortrait = portrait;
 
-  const maxLines = Math.max(portraitUX ? 7 : 6, Math.floor((textTopY - bottomSafeY) / lineGap));
-  const maxCharsPerLine = portraitUX ? 30 : 52;
+  
+    let fontSize = isPortrait ? 0.078 : 0.060; 
+    let lineGap = isPortrait ? 0.155 : 0.125;  
+    let bottomSafeY = isPortrait ? -H / 2 + 0.50 : -H / 2 + 0.20; 
+    let maxCharsPerLine = isPortrait ? 34 : 58;
 
-  const bodyText = useMemo(() => {
-    const cleaned = (description || "").trim();
+   
+    const computeMaxLines = (gap) => {
+      const maxLines = Math.floor((textTopY - bottomSafeY) / gap);
+      return Math.max(8, maxLines);
+    };
 
-    
-    const portraitMaxChars = 320;
-    const source = portraitUX ? cleaned.slice(0, portraitMaxChars) : cleaned;
-
-    const paras = source
+    const minSize = isPortrait ? 0.070 : 0.046;
+    const full = description
       .split("\n\n")
       .map((p) => p.trim())
-      .filter(Boolean);
+      .filter(Boolean)
+      .join(" ");
 
-    const full = paras.join(" ");
-    const lines = wrapByWords(full, maxCharsPerLine, maxLines);
-    return lines.join("\n");
-  }, [description, portraitUX, maxCharsPerLine, maxLines]);
+    let maxLines = computeMaxLines(lineGap);
+    let wrapped = wrapByWordsInfo(full, maxCharsPerLine, maxLines);
+
+    for (let k = 0; k < 6 && wrapped.truncated && fontSize > minSize; k++) {
+      fontSize = Math.max(minSize, fontSize - (isPortrait ? 0.002 : 0.003));
+      lineGap = Math.max(isPortrait ? 0.14 : 0.105, lineGap - (isPortrait ? 0.004 : 0.006));
+      maxCharsPerLine += isPortrait ? 0 : 2; // desktop gagne un peu en largeur utile
+
+      maxLines = computeMaxLines(lineGap);
+      wrapped = wrapByWordsInfo(full, maxCharsPerLine, maxLines);
+    }
+
+    const lines = wrapped.lines.slice();
+    if (wrapped.truncated && lines.length) {
+      lines[lines.length - 1] = lines[lines.length - 1].replace(/\.*$/, "") + "…";
+    }
+
+    return {
+      fontSize,
+      lineHeight: isPortrait ? 1.22 : 1.10,
+      maxWidth: isPortrait ? W * 0.88 : W * 0.94,
+      bottomTagsY: isPortrait ? -H / 2 + 0.28 : -H / 2 + 0.20,
+      outlineTitle: isPortrait ? 0.0062 : 0.0045,
+      outlineText: isPortrait ? 0.0048 : 0.0032,
+      bodyText: lines.join("\n"),
+      isPortrait,
+    };
+  }, [portrait, description]);
 
   const boardTex = useMemo(() => makeChalkboardTexture(512), []);
   const boardMat = useMemo(
@@ -218,9 +216,6 @@ export default function AboutPanel({
     []
   );
 
-  const outlineTitle = portraitUX ? 0.0062 : 0.0045;
-  const outlineText = portraitUX ? 0.0048 : 0.0032;
-
   return (
     <group ref={groupRef} position={position} rotation={rotation} visible={enabled}>
       <mesh position={[0, 0, OUT]} raycast={() => null}>
@@ -238,24 +233,23 @@ export default function AboutPanel({
         <primitive object={woodMat} attach="material" />
       </mesh>
 
-     
-      {portraitUX && (
-        <mesh position={[0, 0.06, OUT + 0.085]} raycast={() => null}>
-          <boxGeometry args={[W * 0.96, H * 0.82, 0.01]} />
-          <meshBasicMaterial transparent opacity={0.22} color="#000000" depthWrite={false} />
+      {layout.isPortrait && (
+        <mesh position={[0, 0.04, OUT + 0.085]} raycast={() => null}>
+          <boxGeometry args={[W * 0.96, H * 0.80, 0.01]} />
+          <meshBasicMaterial transparent opacity={0.18} color="#000000" depthWrite={false} />
         </mesh>
       )}
 
       <Text
         position={[0, titleY, OUT + 0.095]}
         font={CHALK_FONT}
-        fontSize={portraitUX ? 0.13 : 0.11}
+        fontSize={layout.isPortrait ? 0.125 : 0.11}
         maxWidth={W * 0.80}
         anchorX="center"
         anchorY="middle"
         color={CHALK_COLOR}
-        outlineWidth={outlineTitle}
-        outlineOpacity={portraitUX ? 0.2 : 0.16}
+        outlineWidth={layout.outlineTitle}
+        outlineOpacity={layout.isPortrait ? 0.2 : 0.16}
         outlineColor="#ffffff"
         raycast={() => null}
       >
@@ -263,42 +257,34 @@ export default function AboutPanel({
       </Text>
 
       <Text
-        position={[
-          -W / 2 + (portraitUX ? 0.22 : 0.18),
-          textTopY,
-          OUT + 0.095,
-        ]}
+        position={[-W / 2 + 0.18, textTopY, OUT + 0.095]}
         font={CHALK_FONT}
-        fontSize={fontSize}
-        lineHeight={portraitUX ? 1.24 : 1.16}
-        maxWidth={portraitUX ? W * 0.86 : W * 0.92}
+        fontSize={layout.fontSize}
+        lineHeight={layout.lineHeight}
+        maxWidth={layout.maxWidth}
         anchorX="left"
         anchorY="top"
         color={CHALK_COLOR}
-        outlineWidth={outlineText}
-        outlineOpacity={portraitUX ? 0.18 : 0.12}
+        outlineWidth={layout.outlineText}
+        outlineOpacity={layout.isPortrait ? 0.18 : 0.12}
         outlineColor="#ffffff"
         raycast={() => null}
       >
-        {bodyText}
+        {layout.bodyText}
       </Text>
 
-      {tags.slice(0, portraitUX ? 2 : 3).map((tg, i) => (
+      {tags.slice(0, 3).map((tg, i) => (
         <Text
           key={tg}
-          position={[
-            -W / 2 + 0.2 + i * (portraitUX ? 1.05 : 0.86),
-            portraitUX ? -H / 2 + 0.33 : -H / 2 + 0.20,
-            OUT + 0.095,
-          ]}
+          position={[-W / 2 + 0.2 + i * 0.86, layout.bottomTagsY, OUT + 0.095]}
           font={CHALK_FONT}
-          fontSize={portraitUX ? 0.064 : 0.058}
-          maxWidth={portraitUX ? 1.05 : 0.9}
+          fontSize={layout.isPortrait ? 0.062 : 0.058}
+          maxWidth={0.9}
           anchorX="left"
           anchorY="middle"
           color={CHALK_COLOR}
-          outlineWidth={portraitUX ? 0.0036 : 0.003}
-          outlineOpacity={portraitUX ? 0.14 : 0.1}
+          outlineWidth={layout.isPortrait ? 0.0036 : 0.003}
+          outlineOpacity={layout.isPortrait ? 0.14 : 0.1}
           outlineColor="#ffffff"
           raycast={() => null}
         >
