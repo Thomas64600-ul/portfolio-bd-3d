@@ -25,6 +25,8 @@ export default function TouchController({
   const cooldownTimer = useRef(null);
   const activePointerId = useRef(null);
 
+  const captured = useRef(false);
+
   const setGlobalLooking = (v) => {
     if (typeof window === "undefined") return;
     window.__TOUCH_LOOKING__ = !!v;
@@ -62,6 +64,16 @@ export default function TouchController({
       setTouchCooldown(false);
     };
 
+    const releaseCaptureIfNeeded = (pointerId) => {
+      if (!captured.current) return;
+      captured.current = false;
+      try {
+        if (pointerId != null) el.releasePointerCapture?.(pointerId);
+      } catch {
+        // ignore
+      }
+    };
+
     const hardStop = (e) => {
       pointerDown.current = false;
       dragging.current = false;
@@ -70,34 +82,31 @@ export default function TouchController({
       clearCooldown();
       setGlobalLooking(false);
 
-      try {
-        if (e?.pointerId != null) el.releasePointerCapture?.(e.pointerId);
-      } catch {}
+      releaseCaptureIfNeeded(e?.pointerId);
     };
 
     const onPointerDown = (e) => {
       if (!enabled) return;
       if (e.pointerType !== "touch") return;
 
+      
       if (isMapMode()) {
         hardStop(e);
         return;
       }
 
+      
       if (uiBlocksLook()) return;
 
-      e.preventDefault?.();
-
+     
       pointerDown.current = true;
       dragging.current = false;
+      captured.current = false;
+
       activePointerId.current = e.pointerId ?? null;
 
       start.current = { x: e.clientX, y: e.clientY };
       last.current = { x: e.clientX, y: e.clientY };
-
-      try {
-        el.setPointerCapture?.(e.pointerId);
-      } catch {}
 
       clearCooldown();
       setGlobalLooking(false);
@@ -117,18 +126,29 @@ export default function TouchController({
       const dxT = e.clientX - start.current.x;
       const dyT = e.clientY - start.current.y;
 
+     
       if (!dragging.current) {
         if (Math.hypot(dxT, dyT) >= dragThresholdPx) {
           dragging.current = true;
           setGlobalLooking(true);
-        } else return;
+
+          
+          try {
+            el.setPointerCapture?.(e.pointerId);
+            captured.current = true;
+          } catch {
+            // ignore
+          }
+        } else {
+          return; 
+        }
       }
 
+      
       e.preventDefault?.();
 
       const dx = e.clientX - last.current.x;
       const dy = e.clientY - last.current.y;
-
       last.current = { x: e.clientX, y: e.clientY };
 
       yaw.current += dx * lookSpeed;
@@ -150,23 +170,22 @@ export default function TouchController({
         dragging.current = false;
 
         setTouchCooldown(true);
-        clearTimeout(cooldownTimer.current);
+        if (cooldownTimer.current) clearTimeout(cooldownTimer.current);
 
-       
+        
         cooldownTimer.current = setTimeout(() => {
           setTouchCooldown(false);
+          cooldownTimer.current = null;
         }, 70);
       }
 
-      try {
-        if (e?.pointerId != null) el.releasePointerCapture?.(e.pointerId);
-      } catch {}
+      releaseCaptureIfNeeded(e?.pointerId);
     };
 
-    el.addEventListener("pointerdown", onPointerDown, { passive: false });
+    el.addEventListener("pointerdown", onPointerDown, { passive: true });
     el.addEventListener("pointermove", onPointerMove, { passive: false });
-    el.addEventListener("pointerup", onPointerEnd);
-    el.addEventListener("pointercancel", onPointerEnd);
+    el.addEventListener("pointerup", onPointerEnd, { passive: true });
+    el.addEventListener("pointercancel", onPointerEnd, { passive: true });
 
     return () => {
       el.removeEventListener("pointerdown", onPointerDown);
@@ -176,6 +195,7 @@ export default function TouchController({
 
       clearCooldown();
       setGlobalLooking(false);
+      releaseCaptureIfNeeded(activePointerId.current);
     };
   }, [enabled, gl, lookSpeed, dragThresholdPx]);
 
@@ -191,7 +211,6 @@ export default function TouchController({
 
     const fwd = !!forwardRef?.current;
     const back = !!backRef?.current;
-
     const move = (fwd ? 1 : 0) + (back ? -1 : 0);
 
     if (move !== 0) {
@@ -199,10 +218,7 @@ export default function TouchController({
       forwardDir.current.y = 0;
       forwardDir.current.normalize();
 
-      moveVec.current
-        .copy(forwardDir.current)
-        .multiplyScalar(move * speed * dt);
-
+      moveVec.current.copy(forwardDir.current).multiplyScalar(move * speed * dt);
       camera.position.add(moveVec.current);
 
       camera.position.x = Math.max(bounds.minX, Math.min(bounds.maxX, camera.position.x));
@@ -217,7 +233,6 @@ export default function TouchController({
           const inside = centers.some(
             (cx) => camera.position.x > cx - halfW && camera.position.x < cx + halfW
           );
-
           if (inside) camera.position.z = stopZ;
         }
       }
@@ -226,3 +241,4 @@ export default function TouchController({
 
   return null;
 }
+
