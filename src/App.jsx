@@ -67,11 +67,11 @@ export default function App() {
     look: [0, 1.6, 0],
   });
 
+ 
   const stopMobileMove = useCallback(() => {
     mobileForwardRef.current = false;
     mobileBackRef.current = false;
 
-    setGlobalFlag("__UI_ACTIVE__", false);
     setGlobalFlag("__JOYSTICK_ACTIVE__", false);
     setGlobalFlag("__TOUCH_LOOKING__", false);
   }, []);
@@ -124,6 +124,9 @@ export default function App() {
 
     setControlsEnabled(false);
     stopMobileMove();
+
+    
+    setGlobalFlag("__UI_ACTIVE__", false);
   }, [stopMobileMove]);
 
   const closePanel = useCallback(() => {
@@ -131,11 +134,15 @@ export default function App() {
     cancelFocus();
     setControlsEnabled(true);
     stopMobileMove();
+
+  
+    setGlobalFlag("__UI_ACTIVE__", false);
   }, [cancelFocus, stopMobileMove]);
 
   const handleOpenSection = useCallback(
     (id, itemId = null) => {
       
+      stopMobileMove();
 
       setOpenSectionId(id);
 
@@ -148,13 +155,12 @@ export default function App() {
       }
 
       setGlobalFlag("__UI_ACTIVE__", true);
+
       setControlsEnabled(false);
-      stopMobileMove();
 
       setFocus((f) => ({
         ...f,
         sectionId: id,
-        
         itemId: itemId == null ? null : itemId,
       }));
     },
@@ -179,6 +185,7 @@ export default function App() {
         cancelFocus();
         setControlsEnabled(true);
         stopMobileMove();
+        setGlobalFlag("__UI_ACTIVE__", false);
         return;
       }
 
