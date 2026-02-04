@@ -209,25 +209,25 @@ export default function App() {
 
      
       {showWallTopbar && (
-        <div className="hud">
-          <div className="topbar">
-            <button className="btn" onClick={closePanel}>
-              ⎋ Quitter
-            </button>
+  <div className="hud" style={{ pointerEvents: "none" }}>
+    <div className="topbar" style={{ pointerEvents: "auto" }}>
+      <button className="btn" onClick={closePanel}>
+        ⎋ Quitter
+      </button>
 
-            <button
-              className="btn"
-              onClick={() => window.open("/cv/Thomas-DeTraversay-CV.pdf")}
-            >
-              📄 Voir le CV
-            </button>
+      <button
+        className="btn"
+        onClick={() => window.open("/cv/Thomas-DeTraversay-CV.pdf")}
+      >
+        📄 Voir le CV
+      </button>
 
-            <button className="btn" onClick={closePanel}>
-              ✖ Fermer
-            </button>
-          </div>
-        </div>
-      )}
+      <button className="btn" onClick={closePanel}>
+        ✖ Fermer
+      </button>
+    </div>
+  </div>
+)}
 
       {openSectionId === "travels" && (
         <TravelCard itemId={focus?.itemId ?? null} onClose={closePanel} />
