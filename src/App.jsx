@@ -170,10 +170,13 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [focus.active, openSectionId, closePanel, releaseLock]);
 
-  
+ 
   const overlaySectionId = useMemo(() => {
     return OVERLAY_SECTIONS.includes(openSectionId) ? openSectionId : null;
   }, [openSectionId]);
+
+ 
+  const showWallTopbar = Boolean(openSectionId) && !overlaySectionId;
 
   return (
     <>
@@ -204,11 +207,34 @@ export default function App() {
         onMobileBackUp={() => (mobileBackRef.current = false)}
       />
 
+     
+      {showWallTopbar && (
+        <div className="hud">
+          <div className="topbar">
+            <button className="btn" onClick={closePanel}>
+              ⎋ Quitter
+            </button>
+
+            <button
+              className="btn"
+              onClick={() => window.open("/cv/Thomas-DeTraversay-CV.pdf")}
+            >
+              📄 Voir le CV
+            </button>
+
+            <button className="btn" onClick={closePanel}>
+              ✖ Fermer
+            </button>
+          </div>
+        </div>
+      )}
+
       {openSectionId === "travels" && (
         <TravelCard itemId={focus?.itemId ?? null} onClose={closePanel} />
       )}
     </>
   );
 }
+
 
 
