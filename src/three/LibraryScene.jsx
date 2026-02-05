@@ -23,7 +23,7 @@ function BookcaseUnit({
   walnutMat,
   onPickItem,
   onPickShelf,
-  isMobile = false, 
+  isMobile = false,
 }) {
   const palette = useMemo(() => {
     if (theme === "comics") return ["#ffd166", "#ef476f", "#06d6a0", "#118ab2"];
@@ -43,7 +43,6 @@ function BookcaseUnit({
   const shelfT = 0.08;
 
   const frontZ = D / 2 - 0.02;
-  const shelfZ = 0.02;
   const backZ = -D / 2 + 0.06;
 
   const bookZ = 0.165;
@@ -140,7 +139,7 @@ function BookcaseUnit({
     return x - Math.floor(x);
   }, []);
 
-  function Book({ itemId, x, y, h, w, c, tilt = 0, variant = 0, spineTex }) {
+  function Book({ x, y, h, w, c, tilt = 0, variant = 0, spineTex }) {
     const isManga = theme === "manga";
     const isComics = theme === "comics";
     const isBD = theme === "bd";
@@ -156,12 +155,9 @@ function BookcaseUnit({
         : "#2a2a2a"
       : palette[(variant + 1) % palette.length];
 
-   
     const handlePick = () => {
-  
-  onPickShelf?.();
-};
-
+      onPickShelf?.();
+    };
 
     return (
       <InteractiveItem onPick={handlePick}>
@@ -338,7 +334,13 @@ function BookcaseUnit({
               if (i < largoBlock)
                 spineTex = pickSlice(bdTextures[3], i, largoBlock, SERIES.largo, ...TRIM.largo);
               else
-                spineTex = pickSlice(bdTextures[0], i - largoBlock, signeBlock, SERIES.signe, ...TRIM.signe);
+                spineTex = pickSlice(
+                  bdTextures[0],
+                  i - largoBlock,
+                  signeBlock,
+                  SERIES.signe,
+                  ...TRIM.signe
+                );
             }
 
             if (rowIndex === 1) {
@@ -349,7 +351,13 @@ function BookcaseUnit({
               if (i < murenaBlock)
                 spineTex = pickSlice(bdTextures[6], i, murenaBlock, SERIES.murena, ...TRIM.murena);
               else
-                spineTex = pickSlice(bdTextures[4], i - murenaBlock, aiglesBlock, SERIES.aigles, ...TRIM.aigles);
+                spineTex = pickSlice(
+                  bdTextures[4],
+                  i - murenaBlock,
+                  aiglesBlock,
+                  SERIES.aigles,
+                  ...TRIM.aigles
+                );
             }
 
             if (rowIndex === 0) {
@@ -361,9 +369,21 @@ function BookcaseUnit({
               const jeremiahBlock = Math.max(1, count - used);
 
               if (i < complainteBlock)
-                spineTex = pickSlice(bdTextures[1], i, complainteBlock, SERIES.complainte, ...TRIM.complainte);
+                spineTex = pickSlice(
+                  bdTextures[1],
+                  i,
+                  complainteBlock,
+                  SERIES.complainte,
+                  ...TRIM.complainte
+                );
               else if (i < complainteBlock + vieuxBlock)
-                spineTex = pickSlice(bdTextures[5], i - complainteBlock, vieuxBlock, SERIES.vieux, ...TRIM.vieux);
+                spineTex = pickSlice(
+                  bdTextures[5],
+                  i - complainteBlock,
+                  vieuxBlock,
+                  SERIES.vieux,
+                  ...TRIM.vieux
+                );
               else
                 spineTex = pickSlice(
                   bdTextures[2],
@@ -378,7 +398,6 @@ function BookcaseUnit({
           return (
             <Book
               key={`${rowIndex}-${y}-${i}`}
-              itemId={globalIndex}
               x={x}
               y={y + 0.02}
               h={h}
@@ -398,7 +417,6 @@ function BookcaseUnit({
 
   return (
     <group>
-      
       {onPickShelf && (
         <InteractiveItem onPick={onPickShelf}>
           <mesh position={[0, H / 2, frontZ - 0.02]}>
@@ -480,10 +498,16 @@ function SceneInner({
   const fpsEnabled = controlsEnabled && !focus?.active && !mapEditMode;
   const touchEnabled = isMobile && !focus?.active && !mapEditMode;
 
+  const ROOM_BOUNDS = useMemo(
+  () => ({ minX: -10.75, maxX: 10.85, minZ: -7.55, maxZ: 7.55 }),
+  []
+);
+
+
   const cameraTarget = useRef(new THREE.Vector3());
   const lookTarget = useRef(new THREE.Vector3());
-
   const fovTarget = useRef(65);
+
   const woodMap = useLoader(THREE.TextureLoader, "/textures/wood_floor.jpg");
   const stoneMap = useLoader(THREE.TextureLoader, "/textures/stone_wall.jpg");
 
@@ -548,22 +572,23 @@ function SceneInner({
   }, [woodMap]);
 
   const stoneMat = useMemo(() => {
-    if (!stoneMap) return null;
+  if (!stoneMap) return null;
 
-    const base = stoneMap.clone();
-    base.wrapS = THREE.RepeatWrapping;
-    base.wrapT = THREE.RepeatWrapping;
-    base.repeat.set(7, 3.2);
-    base.anisotropy = 8;
-    base.colorSpace = THREE.SRGBColorSpace;
-    base.needsUpdate = true;
+  const base = stoneMap.clone();
+  base.wrapS = THREE.RepeatWrapping;
+  base.wrapT = THREE.RepeatWrapping;
+  base.repeat.set(7, 3.2);
+  base.anisotropy = 8;
+  base.colorSpace = THREE.SRGBColorSpace;
+  base.needsUpdate = true;
 
-    return new THREE.MeshStandardMaterial({
-      map: base,
-      roughness: 0.88,
-      metalness: 0.02,
-    });
-  }, [stoneMap]);
+  return new THREE.MeshStandardMaterial({
+    map: base,
+    roughness: 0.88,
+    metalness: 0.02,
+    side: THREE.DoubleSide, 
+  });
+}, [stoneMap]);
 
   const walnutMat = useMemo(
     () =>
@@ -575,14 +600,15 @@ function SceneInner({
     []
   );
 
-  const SHELF_Z = -6.55;
+ 
+  const SHELF_Z = -7.35;
 
   const focusForShelf = useCallback(
     (x) => ({
       pos: [x, 1.55, -4.95],
       look: [x, 1.35, SHELF_Z - 0.25],
     }),
-    []
+    [SHELF_Z]
   );
 
   useFrame((state, dt) => {
@@ -632,23 +658,28 @@ function SceneInner({
 
         fovTarget.current = 82;
       } else if (isMobile && isPortrait && sectionId === "about") {
-  const dx = pos[0] - look[0];
-  const dy = pos[1] - look[1];
-  const dz = pos[2] - look[2];
+        const dx = pos[0] - look[0];
+        const dy = pos[1] - look[1];
+        const dz = pos[2] - look[2];
 
- 
-  const k = 1.55; 
-  finalPos = [look[0] + dx * k, look[1] + dy * k + 0.10, look[2] + dz * k];
+        const k = 1.55;
+        finalPos = [look[0] + dx * k, look[1] + dy * k + 0.1, look[2] + dz * k];
 
-  
-  finalLook = [look[0], look[1] + 0.06, look[2]];
+        finalLook = [look[0], look[1] + 0.06, look[2]];
+        fovTarget.current = 58;
+      }
 
- 
-  fovTarget.current = 58;
-}
       setFocus({ active: true, opened: false, sectionId, itemId, pos: finalPos, look: finalLook });
     },
-    [unlockPointer, setMapEditMode, setFocus, mobileForwardRef, mobileBackRef, isMobile, isPortrait]
+    [
+      unlockPointer,
+      setMapEditMode,
+      setFocus,
+      mobileForwardRef,
+      mobileBackRef,
+      isMobile,
+      isPortrait,
+    ]
   );
 
   return (
@@ -673,7 +704,9 @@ function SceneInner({
 
       <Environment preset="warehouse" />
 
-      {fpsEnabled && <FPSController enabled={true} onLockChange={setIsLocked} />}
+      {fpsEnabled && (
+        <FPSController enabled={true} onLockChange={setIsLocked} bounds={ROOM_BOUNDS} />
+      )}
 
       {touchEnabled && (
         <TouchController
@@ -682,7 +715,8 @@ function SceneInner({
           backRef={mobileBackRef}
           speed={3.6}
           lookSpeed={0.0042}
-          bounds={{ minX: -8, maxX: 8, minZ: -10, maxZ: 6 }}
+          bounds={ROOM_BOUNDS}
+          shelfZ={SHELF_Z}
         />
       )}
 
@@ -769,7 +803,7 @@ function SceneInner({
         }}
       />
 
-      <group position={[-6.2, 0.0, -6.55]}>
+      <group position={[-6.2, 0.0, SHELF_Z]}>
         <BookcaseUnit
           theme="comics"
           walnutMat={walnutMat}
@@ -785,7 +819,7 @@ function SceneInner({
         />
       </group>
 
-      <group position={[0, 0.0, -6.55]}>
+      <group position={[0, 0.0, SHELF_Z]}>
         <BookcaseUnit
           theme="bd"
           walnutMat={walnutMat}
@@ -801,7 +835,7 @@ function SceneInner({
         />
       </group>
 
-      <group position={[6.2, 0.0, -6.55]}>
+      <group position={[6.2, 0.0, SHELF_Z]}>
         <BookcaseUnit
           theme="manga"
           walnutMat={walnutMat}
@@ -863,5 +897,6 @@ export default function LibraryScene({
     </Canvas>
   );
 }
+
 
 

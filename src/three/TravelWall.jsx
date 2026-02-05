@@ -40,8 +40,7 @@ function isBlockedForMap() {
   const until = Number(window.__MAP_INTERACT_UNTIL__ || 0);
   if (now < until) return true;
 
-
-  return !!window.__TOUCH_LOOKING__;
+  return !!window.__TOUCH_LOOKING__ || !!window.__JOYSTICK_ACTIVE__;
 }
 
 export default function TravelWall({
@@ -53,7 +52,13 @@ export default function TravelWall({
   onPickWall,
 }) {
   const mapRef = useRef(null);
+
+  
   const raycasterRef = useRef(new THREE.Raycaster());
+
+ 
+  const centerRayRef = useRef(new THREE.Raycaster());
+  const camDirRef = useRef(new THREE.Vector3());
 
   const mapTex = useLoader(THREE.TextureLoader, mapUrl);
   const { camera, gl } = useThree();
@@ -91,28 +96,25 @@ export default function TravelWall({
     return [x, y];
   }, []);
 
+  
   const isInMapZoneRef = useRef(false);
 
   const computeInMapZone = useCallback(() => {
     const mesh = mapRef.current;
     if (!mesh) return false;
 
-    const mapPos = new THREE.Vector3();
-    mesh.getWorldPosition(mapPos);
+    
+    camera.getWorldDirection(camDirRef.current);
+    centerRayRef.current.set(camera.position, camDirRef.current);
 
-    const camToMap = mapPos.clone().sub(camera.position).normalize();
+    const hits = centerRayRef.current.intersectObject(mesh, false);
+    if (!hits.length) return false;
 
-    const normal = new THREE.Vector3(0, 0, 1)
-      .applyQuaternion(mesh.getWorldQuaternion(new THREE.Quaternion()))
-      .normalize();
+    const dist = hits[0].distance;
 
-    const facing = Math.abs(camToMap.dot(normal));
-    const dist = camera.position.distanceTo(mapPos);
-
+    
     const maxDist = 7.2;
-    const minFacing = 0.22;
-
-    return dist <= maxDist && facing >= minFacing;
+    return dist <= maxDist;
   }, [camera]);
 
   useFrame(() => {
@@ -127,34 +129,6 @@ export default function TravelWall({
       else setGlobalNumber("__MAP_INTERACT_UNTIL__", Date.now() + 80);
     }
   });
-  const groupRef = useRef(null);
-
-useFrame(() => {
-  if (typeof window === "undefined") return;
-
-  const mapMode = !!window.__MAP_MODE__;
-  const isPortrait = window.innerHeight > window.innerWidth;
-
- 
-  const targetScale = mapMode && isPortrait ? 0.55 : 1.0;
-  const targetCamZ = mapMode && isPortrait ? 3.3 : 3.2;
-
-  if (groupRef.current) {
-    const s = groupRef.current.scale.x;
-    const next = THREE.MathUtils.lerp(s, targetScale, 0.12);
-    groupRef.current.scale.set(next, next, next);
-  }
-
-  if (camera) {
-    camera.position.z = THREE.MathUtils.lerp(
-      camera.position.z,
-      targetCamZ,
-      0.12
-    );
-  }
-});
-
-
 
   const handlePickDebugUV = useCallback(
     (e) => {
@@ -222,8 +196,7 @@ useFrame(() => {
   );
 
   return (
-    <group ref={groupRef} position={position} rotation={rotation}>
-
+    <group position={position} rotation={rotation}>
       <InteractiveItem
         disabled={false}
         onPick={(e) => {
@@ -254,6 +227,7 @@ useFrame(() => {
                     />
                   </mesh>
 
+               
                   <mesh>
                     <sphereGeometry args={[PIN_SIZE * 2.6, 12, 12]} />
                     <meshBasicMaterial
