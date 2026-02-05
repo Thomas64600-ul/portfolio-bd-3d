@@ -27,7 +27,6 @@ export default function FPSController({
   const velocity = useRef(new THREE.Vector3());
   const [locked, setLocked] = useState(false);
 
-  // Raycaster / Vector2 réutilisés (évite de recréer des objets à chaque clic)
   const raycasterRef = useRef(new THREE.Raycaster());
   const ndcCenterRef = useRef(new THREE.Vector2(0, 0));
 
@@ -35,7 +34,6 @@ export default function FPSController({
     Object.keys(keys.current).forEach((k) => (keys.current[k] = false));
   }, []);
 
-  // Raycast FPS au centre de l'écran (utile en PointerLock)
   const pickCenter = useCallback(() => {
     const raycaster = raycasterRef.current;
     const ndc = ndcCenterRef.current;
@@ -49,12 +47,7 @@ export default function FPSController({
       const obj = hit.object;
       if (obj?.userData?.pick) {
         if (DEBUG_FPS_PICK) {
-          console.log(
-            "🎯 FPS PICK:",
-            obj.userData.type,
-            obj.userData.label,
-            obj.userData.itemIndex
-          );
+          console.log("🎯 FPS PICK:", obj.userData.type, obj.userData.label, obj.userData.itemIndex);
         }
         obj.userData.pick();
         return true;
@@ -63,7 +56,6 @@ export default function FPSController({
     return false;
   }, [camera, scene]);
 
-  // Si enabled passe à false : on unlock + stop net
   useEffect(() => {
     if (enabled) return;
 
@@ -78,7 +70,6 @@ export default function FPSController({
     onLockChange?.(false);
   }, [enabled, onLockChange, resetKeys]);
 
-  // Mouvement clavier
   useEffect(() => {
     const onKeyDown = (e) => {
       if (!enabled) return;
@@ -112,7 +103,6 @@ export default function FPSController({
     };
   }, [enabled]);
 
-  // Lock/unlock events
   useEffect(() => {
     const controls = controlsRef.current;
     if (!controls) return;
@@ -139,13 +129,11 @@ export default function FPSController({
     };
   }, [onLockChange, resetKeys]);
 
-  // Clic souris en FPS => raycast centre écran
   useEffect(() => {
     if (!enabled || !locked) return;
 
     const onMouseDown = (e) => {
       if (e.button !== 0) return;
-
       const picked = pickCenter();
       if (picked) e.preventDefault();
     };
@@ -154,9 +142,20 @@ export default function FPSController({
     return () => window.removeEventListener("mousedown", onMouseDown);
   }, [enabled, locked, pickCenter]);
 
-  // Déplacement
   useFrame((_, dt) => {
-    if (!enabled || !locked) return;
+    if (!enabled) return;
+
+    const step = Math.min(dt, 0.033);
+
+    const hasWindow = typeof window !== "undefined";
+    const isPortrait = hasWindow ? window.innerHeight > window.innerWidth : false;
+    const isMap = hasWindow ? !!window.__MAP_MODE__ : false;
+
+    let targetFov = 60;
+    if (isPortrait && isMap) targetFov = 82;
+
+    camera.fov += (targetFov - camera.fov) * 0.12;
+    camera.updateProjectionMatrix();
 
     const speed = 3.2;
     const damping = 10;
@@ -169,11 +168,11 @@ export default function FPSController({
       (keys.current.d || keys.current.right ? 1 : 0) -
       (keys.current.a || keys.current.left ? 1 : 0);
 
-    velocity.current.x -= velocity.current.x * damping * dt;
-    velocity.current.z -= velocity.current.z * damping * dt;
+    velocity.current.x -= velocity.current.x * damping * step;
+    velocity.current.z -= velocity.current.z * damping * step;
 
-    if (forward !== 0) velocity.current.z -= forward * speed * dt;
-    if (strafe !== 0) velocity.current.x += strafe * speed * dt;
+    if (forward !== 0) velocity.current.z -= forward * speed * step;
+    if (strafe !== 0) velocity.current.x += strafe * speed * step;
 
     const dir = new THREE.Vector3(velocity.current.x, 0, velocity.current.z);
     dir.applyQuaternion(camera.quaternion);
@@ -186,10 +185,7 @@ export default function FPSController({
   });
 
   return (
-    <PointerLockControls
-      ref={controlsRef}
-      args={[camera, gl.domElement]}
-      enabled={enabled}
-    />
+    <PointerLockControls ref={controlsRef} args={[camera, gl.domElement]} enabled={enabled} />
   );
 }
+
