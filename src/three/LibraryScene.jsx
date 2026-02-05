@@ -632,13 +632,20 @@ function SceneInner({
 
         fovTarget.current = 82;
       } else if (isMobile && isPortrait && sectionId === "about") {
-        finalPos = [pos[0] - 0.55, pos[1] + 0.05, pos[2]];
-        finalLook = [look[0], look[1], look[2]];
-        fovTarget.current = 78;
-      } else {
-        fovTarget.current = 65;
-      }
+  const dx = pos[0] - look[0];
+  const dy = pos[1] - look[1];
+  const dz = pos[2] - look[2];
 
+ 
+  const k = 1.55; 
+  finalPos = [look[0] + dx * k, look[1] + dy * k + 0.10, look[2] + dz * k];
+
+  
+  finalLook = [look[0], look[1] + 0.06, look[2]];
+
+ 
+  fovTarget.current = 58;
+}
       setFocus({ active: true, opened: false, sectionId, itemId, pos: finalPos, look: finalLook });
     },
     [unlockPointer, setMapEditMode, setFocus, mobileForwardRef, mobileBackRef, isMobile, isPortrait]

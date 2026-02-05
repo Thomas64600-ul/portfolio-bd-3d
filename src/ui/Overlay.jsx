@@ -27,9 +27,11 @@ export default function Overlay({
   onMobileForwardUp,
   onMobileBackDown,
   onMobileBackUp,
+
+  anyOpen = false,
 }) {
   const section = openSectionId ? SECTIONS[openSectionId] : null;
-  const panelOpen = Boolean(openSectionId);
+  const panelOpen = Boolean(openSectionId); 
 
   const [isPortraitLocal, setIsPortraitLocal] = useState(false);
   const isPortrait =
@@ -66,7 +68,6 @@ export default function Overlay({
       const map = !!window.__MAP_MODE__;
       setIsMapMode(map);
 
-     
       if (map) resetGlobalControls();
     };
 
@@ -78,12 +79,12 @@ export default function Overlay({
 
   useEffect(() => {
     
-    if (panelOpen) {
+    if (anyOpen) {
       resetGlobalControls();
       onMobileForwardUp?.();
       onMobileBackUp?.();
     }
-  }, [panelOpen, onMobileForwardUp, onMobileBackUp]);
+  }, [anyOpen, onMobileForwardUp, onMobileBackUp]);
 
   const handleRequestLock = useCallback(() => {
     onRequestLock?.();
@@ -124,8 +125,9 @@ export default function Overlay({
     onMobileBackUp?.();
   }, [onMobileForwardUp, onMobileBackUp]);
 
+ 
   const showRotateHint =
-    isMobile && isPortrait && !panelOpen && !dismissRotateHint && !isMapMode;
+    isMobile && isPortrait && !anyOpen && !dismissRotateHint && !isMapMode;
 
   const panelContent = useMemo(() => {
     if (!section) return null;
@@ -195,24 +197,12 @@ export default function Overlay({
                         {(it.href || it.github) && (
                           <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
                             {it.href && (
-                              <a
-                                className="btn"
-                                href={it.href}
-                                target="_blank"
-                                rel="noreferrer"
-                                style={{ textDecoration: "none" }}
-                              >
+                              <a className="btn" href={it.href} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
                                 🔗 Voir le site
                               </a>
                             )}
                             {it.github && (
-                              <a
-                                className="btn"
-                                href={it.github}
-                                target="_blank"
-                                rel="noreferrer"
-                                style={{ textDecoration: "none" }}
-                              >
+                              <a className="btn" href={it.github} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
                                 ⭐ GitHub
                               </a>
                             )}
@@ -266,20 +256,16 @@ export default function Overlay({
         <div style={{ padding: 14, overflow: "auto" }}>
           {items.length === 0 ? (
             <div style={{ opacity: 0.85, fontSize: 14 }}>
-              {openSectionId === "about"
-                ? " "
-                : "Aucun élément pour cette section."}
+              {openSectionId === "about" ? " " : "Aucun élément pour cette section."}
             </div>
           ) : (
             <div style={{ display: "grid", gap: 10 }}>
               {items.map((it, idx) => {
                 const isActive = Number(openItemId) === idx;
-
                 const title2 =
                   it.title ??
                   it.name ??
                   `${it.company ? `${it.name} — ${it.company}` : `Item ${idx + 1}`}`;
-
                 const desc2 = it.description ?? it.desc ?? "";
 
                 return (
@@ -288,12 +274,8 @@ export default function Overlay({
                     style={{
                       padding: 12,
                       borderRadius: 14,
-                      border: isActive
-                        ? "1px solid rgba(255,255,255,0.35)"
-                        : "1px solid rgba(255,255,255,0.12)",
-                      background: isActive
-                        ? "rgba(255,255,255,0.06)"
-                        : "rgba(255,255,255,0.03)",
+                      border: isActive ? "1px solid rgba(255,255,255,0.35)" : "1px solid rgba(255,255,255,0.12)",
+                      background: isActive ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.03)",
                     }}
                   >
                     <div style={{ fontWeight: 900 }}>{title2}</div>
@@ -330,43 +312,22 @@ export default function Overlay({
   }, [section, openSectionId, openItemId]);
 
   return (
-    <div
-      className="hud"
-      data-rotatehint={showRotateHint ? "1" : "0"}
-      data-panelopen={panelOpen ? "1" : "0"}
-    >
+    <div className="hud" data-rotatehint={showRotateHint ? "1" : "0"} data-panelopen={panelOpen ? "1" : "0"}>
       <div className="topbar">
         {panelOpen ? (
           <>
-            <button className="btn" onClick={handleCloseEverything}>
-              ⎋ Quitter
-            </button>
-
-            <button
-              className="btn"
-              onClick={() => window.open("/cv/Thomas-DeTraversay-CV.pdf")}
-            >
-              📄 Voir le CV
-            </button>
-
-            <button className="btn" onClick={onClosePanel}>
-              ✖ Fermer
-            </button>
+            <button className="btn" onClick={handleCloseEverything}>⎋ Quitter</button>
+            <button className="btn" onClick={() => window.open("/cv/Thomas-DeTraversay-CV.pdf")}>📄 Voir le CV</button>
+            <button className="btn" onClick={onClosePanel}>✖ Fermer</button>
           </>
         ) : !isLocked ? (
           !isMobile ? (
-            <button className="btn btn-lock" onClick={handleRequestLock}>
-              🎮 Entrer
-            </button>
+            <button className="btn btn-lock" onClick={handleRequestLock}>🎮 Entrer</button>
           ) : (
-            <button className="btn" disabled>
-              📱 Mode mobile
-            </button>
+            <button className="btn" disabled>📱 Mode mobile</button>
           )
         ) : (
-          <button className="btn" onClick={onReleaseLock}>
-            ⎋ Libérer souris
-          </button>
+          <button className="btn" onClick={onReleaseLock}>⎋ Libérer souris</button>
         )}
       </div>
 
@@ -393,7 +354,8 @@ export default function Overlay({
         </div>
       )}
 
-      {isMobile && !panelOpen && !isMapMode && (
+    
+      {isMobile && !anyOpen && !isMapMode && (
         <MobileJoystick
           enabled
           onMove={({ y }) => {
@@ -405,7 +367,7 @@ export default function Overlay({
         />
       )}
 
-      {isMobile && !panelOpen && isMapMode && (
+      {isMobile && !anyOpen && isMapMode && (
         <div
           style={{
             position: "absolute",
@@ -421,9 +383,7 @@ export default function Overlay({
           }}
         >
           <div style={{ fontWeight: 800 }}>🗺️ Mode carte</div>
-          <div style={{ fontSize: 13, opacity: 0.85 }}>
-            Tape sur un pin pour ouvrir le détail.
-          </div>
+          <div style={{ fontSize: 13, opacity: 0.85 }}>Tape sur un pin pour ouvrir le détail.</div>
 
           <button
             className="btn"
@@ -453,22 +413,15 @@ export default function Overlay({
           }}
         >
           <div style={{ fontWeight: 800 }}>📱 Passe en paysage</div>
-          <div style={{ fontSize: 13, opacity: 0.85 }}>
-            Pour une meilleure navigation.
-          </div>
+          <div style={{ fontSize: 13, opacity: 0.85 }}>Pour une meilleure navigation.</div>
 
-          <button
-            className="btn"
-            style={{ marginTop: 10 }}
-            onClick={() => setDismissRotateHint(true)}
-          >
+          <button className="btn" style={{ marginTop: 10 }} onClick={() => setDismissRotateHint(true)}>
             Continuer
           </button>
         </div>
       )}
 
-    
-      {!panelOpen && !isMapMode && (
+      {!anyOpen && !isMapMode && (
         <div className="hint">
           {!isMobile ? <div>WASD / Souris / Clic</div> : <div>Joystick + Tap</div>}
         </div>
@@ -476,4 +429,5 @@ export default function Overlay({
     </div>
   );
 }
+
 

@@ -193,19 +193,21 @@ export default function App() {
       />
 
       <Overlay
-        isMobile={isMobile}
-        isPortrait={isPortrait}
-        isLocked={isLocked}
-        onRequestLock={requestLock}
-        onReleaseLock={releaseLock}
-        openSectionId={overlaySectionId}
-        openItemId={focus?.itemId ?? null}
-        onClosePanel={closePanel}
-        onMobileForwardDown={() => (mobileForwardRef.current = true)}
-        onMobileForwardUp={() => (mobileForwardRef.current = false)}
-        onMobileBackDown={() => (mobileBackRef.current = true)}
-        onMobileBackUp={() => (mobileBackRef.current = false)}
-      />
+  isMobile={isMobile}
+  isPortrait={isPortrait}
+  isLocked={isLocked}
+  onRequestLock={requestLock}
+  onReleaseLock={releaseLock}
+  openSectionId={overlaySectionId}
+  openItemId={focus?.itemId ?? null}
+  onClosePanel={closePanel}
+  onMobileForwardDown={() => (mobileForwardRef.current = true)}
+  onMobileForwardUp={() => (mobileForwardRef.current = false)}
+  onMobileBackDown={() => (mobileBackRef.current = true)}
+  onMobileBackUp={() => (mobileBackRef.current = false)}
+  anyOpen={Boolean(openSectionId)}
+/>
+
 
      
       {showWallTopbar && (
