@@ -11,6 +11,7 @@ function resetGlobalControls() {
   if (typeof window === "undefined") return;
   window.__UI_ACTIVE__ = false;
   window.__JOYSTICK_ACTIVE__ = false;
+ 
 }
 
 export default function Overlay({
@@ -64,6 +65,7 @@ export default function Overlay({
     };
   }, [isMobile, isPortraitProp]);
 
+
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -71,7 +73,6 @@ export default function Overlay({
       const map = !!window.__MAP_MODE__;
       setIsMapMode(map);
 
-      
       if (map && !prevMapRef.current) {
         resetGlobalControls();
         onMobileForwardUp?.();
@@ -104,7 +105,6 @@ export default function Overlay({
 
   const handleCloseEverything = useCallback(() => {
     resetGlobalControls();
-
     onMobileForwardUp?.();
     onMobileBackUp?.();
 
@@ -133,8 +133,9 @@ export default function Overlay({
     onMobileBackUp?.();
   }, [onMobileForwardUp, onMobileBackUp]);
 
+  
   const showRotateHint =
-    isMobile && isPortrait && !anyOpen && !dismissRotateHint && !isMapMode;
+    isMobile && isPortrait && !anyOpen && !dismissRotateHint; 
 
   const panelContent = useMemo(() => {
     if (!section) return null;
@@ -170,15 +171,7 @@ export default function Overlay({
             )}
 
             {description && (
-              <div
-                style={{
-                  marginTop: 10,
-                  fontSize: 13,
-                  opacity: 0.85,
-                  lineHeight: 1.45,
-                  whiteSpace: "pre-line",
-                }}
-              >
+              <div style={{ marginTop: 10, fontSize: 13, opacity: 0.85, lineHeight: 1.45, whiteSpace: "pre-line" }}>
                 {description}
               </div>
             )}
@@ -188,9 +181,7 @@ export default function Overlay({
             <div style={{ display: "grid", gap: 14 }}>
               {section.rows.map((row, rIdx) => (
                 <div key={row.title ?? rIdx} style={{ display: "grid", gap: 10 }}>
-                  <div style={{ fontWeight: 800, opacity: 0.92 }}>
-                    {row.title ?? `Rangée ${rIdx + 1}`}
-                  </div>
+                  <div style={{ fontWeight: 800, opacity: 0.92 }}>{row.title ?? `Rangée ${rIdx + 1}`}</div>
 
                   <div style={{ display: "grid", gap: 10 }}>
                     {(row.items ?? []).map((it, iIdx) => (
@@ -214,24 +205,12 @@ export default function Overlay({
                         {(it.href || it.github) && (
                           <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
                             {it.href && (
-                              <a
-                                className="btn"
-                                href={it.href}
-                                target="_blank"
-                                rel="noreferrer"
-                                style={{ textDecoration: "none" }}
-                              >
+                              <a className="btn" href={it.href} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
                                 🔗 Voir le site
                               </a>
                             )}
                             {it.github && (
-                              <a
-                                className="btn"
-                                href={it.github}
-                                target="_blank"
-                                rel="noreferrer"
-                                style={{ textDecoration: "none" }}
-                              >
+                              <a className="btn" href={it.github} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
                                 ⭐ GitHub
                               </a>
                             )}
@@ -303,9 +282,7 @@ export default function Overlay({
                     style={{
                       padding: 12,
                       borderRadius: 14,
-                      border: isActive
-                        ? "1px solid rgba(255,255,255,0.35)"
-                        : "1px solid rgba(255,255,255,0.12)",
+                      border: isActive ? "1px solid rgba(255,255,255,0.35)" : "1px solid rgba(255,255,255,0.12)",
                       background: isActive ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.03)",
                     }}
                   >
@@ -385,7 +362,8 @@ export default function Overlay({
         </div>
       )}
 
-      {isMobile && !anyOpen && !isMapMode && (
+     
+      {isMobile && !anyOpen && (
         <MobileJoystick
           enabled
           onMove={({ y }) => {
@@ -397,15 +375,13 @@ export default function Overlay({
         />
       )}
 
-  
-
       {showRotateHint && (
         <div
           style={{
             position: "absolute",
             left: 14,
             right: 14,
-            bottom: `calc(160px + var(--safe-bottom))`,
+            bottom: `calc(14px + var(--safe-bottom) + var(--joy-safe))`,
             zIndex: 25,
             padding: 12,
             borderRadius: 14,
@@ -422,7 +398,8 @@ export default function Overlay({
         </div>
       )}
 
-      {!anyOpen && !isMapMode && (
+     
+      {!anyOpen && (
         <div className="hint">
           {!isMobile ? <div>WASD / Souris / Clic</div> : <div>Joystick + Tap</div>}
         </div>
@@ -430,5 +407,4 @@ export default function Overlay({
     </div>
   );
 }
-
 

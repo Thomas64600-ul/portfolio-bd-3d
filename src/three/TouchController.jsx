@@ -47,23 +47,6 @@ export default function TouchController({
     return !!window.__MAP_MODE__;
   };
 
-  
-  const isMapMoveBlocked = () => {
-    if (typeof window === "undefined") return false;
-    const until = Number(window.__MAP_INTERACT_UNTIL__ || 0);
-    return Date.now() < until;
-  };
-
-  const hardStopMoveRefs = () => {
-    if (forwardRef && typeof forwardRef.current === "boolean") forwardRef.current = false;
-    if (backRef && typeof backRef.current === "boolean") backRef.current = false;
-
-    if (typeof window !== "undefined") {
-      window.__UI_ACTIVE__ = false;
-      window.__JOYSTICK_ACTIVE__ = false;
-    }
-  };
-
   useEffect(() => {
     const e = new THREE.Euler().setFromQuaternion(camera.quaternion, "YXZ");
     yaw.current = e.y;
@@ -111,7 +94,6 @@ export default function TouchController({
         return;
       }
 
-      
       if (uiBlocksLook()) return;
 
       pointerDown.current = true;
@@ -214,46 +196,81 @@ export default function TouchController({
   const moveVec = useRef(new THREE.Vector3());
 
   useFrame((_, dt) => {
-    if (!enabled) return;
+  if (!enabled) return;
+
+  const mapMode =
+    typeof window !== "undefined" && !!window.__MAP_MODE__;
+
+  const isPortrait =
+    typeof window !== "undefined" &&
+    window.innerHeight > window.innerWidth;
+
+  if (mapMode && isPortrait) {
+   
+    camera.fov = 68;
+    camera.updateProjectionMatrix();
+
+  
+    camera.position.z = THREE.MathUtils.lerp(
+      camera.position.z,
+      3.2,
+      0.08
+    );
+  } else {
+  
+    camera.fov = THREE.MathUtils.lerp(camera.fov, 48, 0.1);
+    camera.updateProjectionMatrix();
+  }
 
 
-    if (isMapMode() || isMapMoveBlocked()) {
-      hardStopMoveRefs();
-    }
+  camera.rotation.order = "YXZ";
+  camera.rotation.y = yaw.current;
+  camera.rotation.x = pitch.current;
 
-    camera.rotation.order = "YXZ";
-    camera.rotation.y = yaw.current;
-    camera.rotation.x = pitch.current;
+  const fwd = !!forwardRef?.current;
+  const back = !!backRef?.current;
+  const move = (fwd ? 1 : 0) + (back ? -1 : 0);
 
-    const fwd = !!forwardRef?.current;
-    const back = !!backRef?.current;
-    const move = (fwd ? 1 : 0) + (back ? -1 : 0);
+  if (move !== 0) {
+    camera.getWorldDirection(forwardDir.current);
+    forwardDir.current.y = 0;
+    forwardDir.current.normalize();
 
-    if (move !== 0) {
-      camera.getWorldDirection(forwardDir.current);
-      forwardDir.current.y = 0;
-      forwardDir.current.normalize();
+    moveVec.current
+      .copy(forwardDir.current)
+      .multiplyScalar(move * speed * dt);
 
-      moveVec.current.copy(forwardDir.current).multiplyScalar(move * speed * dt);
-      camera.position.add(moveVec.current);
+    camera.position.add(moveVec.current);
 
-      camera.position.x = Math.max(bounds.minX, Math.min(bounds.maxX, camera.position.x));
-      camera.position.z = Math.max(bounds.minZ, Math.min(bounds.maxZ, camera.position.z));
+    camera.position.x = Math.max(
+      bounds.minX,
+      Math.min(bounds.maxX, camera.position.x)
+    );
 
-      if (enableShelfCollision) {
-        const centers = [-6.2, 0, 6.2];
-        const halfW = 2.35;
-        const stopZ = -6.05;
+    camera.position.z = Math.max(
+      bounds.minZ,
+      Math.min(bounds.maxZ, camera.position.z)
+    );
 
-        if (camera.position.z < stopZ) {
-          const inside = centers.some(
-            (cx) => camera.position.x > cx - halfW && camera.position.x < cx + halfW
-          );
-          if (inside) camera.position.z = stopZ;
-        }
+  
+    if (enableShelfCollision && !mapMode) {
+      const centers = [-6.2, 0, 6.2];
+      const halfW = 2.35;
+      const stopZ = -6.05;
+
+      if (camera.position.z < stopZ) {
+        const inside = centers.some(
+          (cx) =>
+            camera.position.x > cx - halfW &&
+            camera.position.x < cx + halfW
+        );
+
+        if (inside) camera.position.z = stopZ;
       }
     }
-  });
+  }
+});
+
 
   return null;
 }
