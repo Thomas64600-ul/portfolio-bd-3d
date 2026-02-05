@@ -25,8 +25,6 @@ export default function TouchController({
   const cooldownTimer = useRef(null);
   const activePointerId = useRef(null);
 
-  const captured = useRef(false);
-
   const setGlobalLooking = (v) => {
     if (typeof window === "undefined") return;
     window.__TOUCH_LOOKING__ = !!v;
@@ -64,25 +62,12 @@ export default function TouchController({
       setTouchCooldown(false);
     };
 
-    const releaseCaptureIfNeeded = (pointerId) => {
-      if (!captured.current) return;
-      captured.current = false;
-      try {
-        if (pointerId != null) el.releasePointerCapture?.(pointerId);
-      } catch {
-        // ignore
-      }
-    };
-
-    const hardStop = (e) => {
+    const hardStop = () => {
       pointerDown.current = false;
       dragging.current = false;
       activePointerId.current = null;
-
       clearCooldown();
       setGlobalLooking(false);
-
-      releaseCaptureIfNeeded(e?.pointerId);
     };
 
     const onPointerDown = (e) => {
@@ -90,7 +75,7 @@ export default function TouchController({
       if (e.pointerType !== "touch") return;
 
       if (isMapMode()) {
-        hardStop(e);
+        hardStop();
         return;
       }
 
@@ -98,8 +83,6 @@ export default function TouchController({
 
       pointerDown.current = true;
       dragging.current = false;
-      captured.current = false;
-
       activePointerId.current = e.pointerId ?? null;
 
       start.current = { x: e.clientX, y: e.clientY };
@@ -116,7 +99,7 @@ export default function TouchController({
       if (activePointerId.current != null && e.pointerId !== activePointerId.current) return;
 
       if (isMapMode()) {
-        hardStop(e);
+        hardStop();
         return;
       }
 
@@ -127,13 +110,6 @@ export default function TouchController({
         if (Math.hypot(dxT, dyT) >= dragThresholdPx) {
           dragging.current = true;
           setGlobalLooking(true);
-
-          try {
-            el.setPointerCapture?.(e.pointerId);
-            captured.current = true;
-          } catch {
-            // ignore
-          }
         } else {
           return;
         }
@@ -171,8 +147,6 @@ export default function TouchController({
           cooldownTimer.current = null;
         }, 70);
       }
-
-      releaseCaptureIfNeeded(e?.pointerId);
     };
 
     el.addEventListener("pointerdown", onPointerDown, { passive: true });
@@ -188,7 +162,7 @@ export default function TouchController({
 
       clearCooldown();
       setGlobalLooking(false);
-      releaseCaptureIfNeeded(activePointerId.current);
+      hardStop();
     };
   }, [enabled, gl, lookSpeed, dragThresholdPx]);
 
@@ -196,82 +170,59 @@ export default function TouchController({
   const moveVec = useRef(new THREE.Vector3());
 
   useFrame((_, dt) => {
-  if (!enabled) return;
+    if (!enabled) return;
 
-  const mapMode =
-    typeof window !== "undefined" && !!window.__MAP_MODE__;
+    
+    camera.rotation.order = "YXZ";
+    camera.rotation.y = yaw.current;
+    camera.rotation.x = pitch.current;
 
-  const isPortrait =
-    typeof window !== "undefined" &&
-    window.innerHeight > window.innerWidth;
+    
+    const hasWindow = typeof window !== "undefined";
+    const isPortrait = hasWindow ? window.innerHeight > window.innerWidth : false;
 
-  if (mapMode && isPortrait) {
-   
-    camera.fov = 68;
-    camera.updateProjectionMatrix();
+    const b = isPortrait
+      ? {
+          ...bounds,
+          minX: Math.min(bounds.minX, -10.2),
+          maxX: Math.max(bounds.maxX, 10.2),
+        }
+      : bounds;
 
-  
-    camera.position.z = THREE.MathUtils.lerp(
-      camera.position.z,
-      3.2,
-      0.08
-    );
-  } else {
-  
-    camera.fov = THREE.MathUtils.lerp(camera.fov, 48, 0.1);
-    camera.updateProjectionMatrix();
-  }
+    const fwd = !!forwardRef?.current;
+    const back = !!backRef?.current;
+    const move = (fwd ? 1 : 0) + (back ? -1 : 0);
 
+    if (move !== 0) {
+      camera.getWorldDirection(forwardDir.current);
+      forwardDir.current.y = 0;
+      forwardDir.current.normalize();
 
-  camera.rotation.order = "YXZ";
-  camera.rotation.y = yaw.current;
-  camera.rotation.x = pitch.current;
+      moveVec.current.copy(forwardDir.current).multiplyScalar(move * speed * dt);
+      camera.position.add(moveVec.current);
 
-  const fwd = !!forwardRef?.current;
-  const back = !!backRef?.current;
-  const move = (fwd ? 1 : 0) + (back ? -1 : 0);
+      
+      camera.position.x = Math.max(b.minX, Math.min(b.maxX, camera.position.x));
+      camera.position.z = Math.max(b.minZ, Math.min(b.maxZ, camera.position.z));
 
-  if (move !== 0) {
-    camera.getWorldDirection(forwardDir.current);
-    forwardDir.current.y = 0;
-    forwardDir.current.normalize();
+     
+      camera.position.x = Math.max(-10.6, Math.min(10.6, camera.position.x));
 
-    moveVec.current
-      .copy(forwardDir.current)
-      .multiplyScalar(move * speed * dt);
+     
+      if (enableShelfCollision) {
+        const centers = [-6.2, 0, 6.2];
+        const halfW = 2.35;
+        const stopZ = -6.05;
 
-    camera.position.add(moveVec.current);
-
-    camera.position.x = Math.max(
-      bounds.minX,
-      Math.min(bounds.maxX, camera.position.x)
-    );
-
-    camera.position.z = Math.max(
-      bounds.minZ,
-      Math.min(bounds.maxZ, camera.position.z)
-    );
-
-  
-    if (enableShelfCollision && !mapMode) {
-      const centers = [-6.2, 0, 6.2];
-      const halfW = 2.35;
-      const stopZ = -6.05;
-
-      if (camera.position.z < stopZ) {
-        const inside = centers.some(
-          (cx) =>
-            camera.position.x > cx - halfW &&
-            camera.position.x < cx + halfW
-        );
-
-        if (inside) camera.position.z = stopZ;
+        if (camera.position.z < stopZ) {
+          const inside = centers.some(
+            (cx) => camera.position.x > cx - halfW && camera.position.x < cx + halfW
+          );
+          if (inside) camera.position.z = stopZ;
+        }
       }
     }
-  }
-});
-
+  });
 
   return null;
 }
-
