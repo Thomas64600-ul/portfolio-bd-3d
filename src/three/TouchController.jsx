@@ -47,6 +47,23 @@ export default function TouchController({
     return !!window.__MAP_MODE__;
   };
 
+  
+  const isMapMoveBlocked = () => {
+    if (typeof window === "undefined") return false;
+    const until = Number(window.__MAP_INTERACT_UNTIL__ || 0);
+    return Date.now() < until;
+  };
+
+  const hardStopMoveRefs = () => {
+    if (forwardRef && typeof forwardRef.current === "boolean") forwardRef.current = false;
+    if (backRef && typeof backRef.current === "boolean") backRef.current = false;
+
+    if (typeof window !== "undefined") {
+      window.__UI_ACTIVE__ = false;
+      window.__JOYSTICK_ACTIVE__ = false;
+    }
+  };
+
   useEffect(() => {
     const e = new THREE.Euler().setFromQuaternion(camera.quaternion, "YXZ");
     yaw.current = e.y;
@@ -89,7 +106,6 @@ export default function TouchController({
       if (!enabled) return;
       if (e.pointerType !== "touch") return;
 
-      
       if (isMapMode()) {
         hardStop(e);
         return;
@@ -98,7 +114,6 @@ export default function TouchController({
       
       if (uiBlocksLook()) return;
 
-     
       pointerDown.current = true;
       dragging.current = false;
       captured.current = false;
@@ -126,13 +141,11 @@ export default function TouchController({
       const dxT = e.clientX - start.current.x;
       const dyT = e.clientY - start.current.y;
 
-     
       if (!dragging.current) {
         if (Math.hypot(dxT, dyT) >= dragThresholdPx) {
           dragging.current = true;
           setGlobalLooking(true);
 
-          
           try {
             el.setPointerCapture?.(e.pointerId);
             captured.current = true;
@@ -140,11 +153,10 @@ export default function TouchController({
             // ignore
           }
         } else {
-          return; 
+          return;
         }
       }
 
-      
       e.preventDefault?.();
 
       const dx = e.clientX - last.current.x;
@@ -172,7 +184,6 @@ export default function TouchController({
         setTouchCooldown(true);
         if (cooldownTimer.current) clearTimeout(cooldownTimer.current);
 
-        
         cooldownTimer.current = setTimeout(() => {
           setTouchCooldown(false);
           cooldownTimer.current = null;
@@ -204,6 +215,11 @@ export default function TouchController({
 
   useFrame((_, dt) => {
     if (!enabled) return;
+
+
+    if (isMapMode() || isMapMoveBlocked()) {
+      hardStopMoveRefs();
+    }
 
     camera.rotation.order = "YXZ";
     camera.rotation.y = yaw.current;

@@ -14,7 +14,6 @@ export default function MobileJoystick({
   const baseRef = useRef(null);
   const pointerIdRef = useRef(null);
 
- 
   const onMoveRef = useRef(onMove);
   const onEndRef = useRef(onEnd);
   useEffect(() => {
@@ -47,9 +46,7 @@ export default function MobileJoystick({
   );
 
   const reset = useCallback(() => {
-    
-    if (pointerIdRef.current == null && !active) return;
-
+  
     setActive(false);
     setKnob({ x: 0, y: 0 });
     pointerIdRef.current = null;
@@ -58,7 +55,17 @@ export default function MobileJoystick({
 
     onEndRef.current?.();
     onMoveRef.current?.({ x: 0, y: 0 });
-  }, [active]);
+  }, []);
+
+
+  useEffect(() => {
+    if (!enabled) reset();
+  }, [enabled, reset]);
+
+ 
+  useEffect(() => {
+    return () => reset();
+  }, [reset]);
 
   const clampToCircle = useCallback(
     (dx, dy) => {

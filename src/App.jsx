@@ -23,7 +23,6 @@ function setGlobalFlag(key, value) {
   window[key] = !!value;
 }
 
-
 const OVERLAY_SECTIONS = ["projects", "stack", "career"];
 
 export default function App() {
@@ -132,6 +131,13 @@ export default function App() {
     resetUI();
   }, [cancelFocus, resetUI]);
 
+  const closeTravelCard = useCallback(() => {
+    setFocus((f) => ({
+      ...f,
+      itemId: null,
+    }));
+  }, []);
+
   const handleOpenSection = useCallback(
     (id, itemId = null) => {
       resetUI();
@@ -170,12 +176,10 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [focus.active, openSectionId, closePanel, releaseLock]);
 
- 
   const overlaySectionId = useMemo(() => {
     return OVERLAY_SECTIONS.includes(openSectionId) ? openSectionId : null;
   }, [openSectionId]);
 
- 
   const showWallTopbar = Boolean(openSectionId) && !overlaySectionId;
 
   return (
@@ -193,50 +197,47 @@ export default function App() {
       />
 
       <Overlay
-  isMobile={isMobile}
-  isPortrait={isPortrait}
-  isLocked={isLocked}
-  onRequestLock={requestLock}
-  onReleaseLock={releaseLock}
-  openSectionId={overlaySectionId}
-  openItemId={focus?.itemId ?? null}
-  onClosePanel={closePanel}
-  onMobileForwardDown={() => (mobileForwardRef.current = true)}
-  onMobileForwardUp={() => (mobileForwardRef.current = false)}
-  onMobileBackDown={() => (mobileBackRef.current = true)}
-  onMobileBackUp={() => (mobileBackRef.current = false)}
-  anyOpen={Boolean(openSectionId)}
-/>
+        isMobile={isMobile}
+        isPortrait={isPortrait}
+        isLocked={isLocked}
+        onRequestLock={requestLock}
+        onReleaseLock={releaseLock}
+        openSectionId={overlaySectionId}
+        openItemId={focus?.itemId ?? null}
+        onClosePanel={closePanel}
+        onMobileForwardDown={() => (mobileForwardRef.current = true)}
+        onMobileForwardUp={() => (mobileForwardRef.current = false)}
+        onMobileBackDown={() => (mobileBackRef.current = true)}
+        onMobileBackUp={() => (mobileBackRef.current = false)}
+        anyOpen={Boolean(openSectionId)}
+      />
 
-
-     
       {showWallTopbar && (
-  <div className="hud" style={{ pointerEvents: "none" }}>
-    <div className="topbar" style={{ pointerEvents: "auto" }}>
-      <button className="btn" onClick={closePanel}>
-        ⎋ Quitter
-      </button>
+        <div className="hud" style={{ pointerEvents: "none" }}>
+          <div className="topbar" style={{ pointerEvents: "auto" }}>
+            <button className="btn" onClick={closePanel}>
+              ⎋ Quitter
+            </button>
 
-      <button
-        className="btn"
-        onClick={() => window.open("/cv/Thomas-DeTraversay-CV.pdf")}
-      >
-        📄 Voir le CV
-      </button>
+            <button
+              className="btn"
+              onClick={() => window.open("/cv/Thomas-DeTraversay-CV.pdf")}
+            >
+              📄 Voir le CV
+            </button>
 
-      <button className="btn" onClick={closePanel}>
-        ✖ Fermer
-      </button>
-    </div>
-  </div>
-)}
+            <button className="btn" onClick={closePanel}>
+              ✖ Fermer
+            </button>
+          </div>
+        </div>
+      )}
 
       {openSectionId === "travels" && (
-        <TravelCard itemId={focus?.itemId ?? null} onClose={closePanel} />
+        <TravelCard itemId={focus?.itemId ?? null} onClose={closeTravelCard} />
       )}
     </>
   );
 }
-
 
 

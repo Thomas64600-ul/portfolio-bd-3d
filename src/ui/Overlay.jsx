@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { SECTIONS } from "../data/sections";
 import MobileJoystick from "./MobileJoystick";
 
@@ -31,7 +31,7 @@ export default function Overlay({
   anyOpen = false,
 }) {
   const section = openSectionId ? SECTIONS[openSectionId] : null;
-  const panelOpen = Boolean(openSectionId); 
+  const panelOpen = Boolean(openSectionId);
 
   const [isPortraitLocal, setIsPortraitLocal] = useState(false);
   const isPortrait =
@@ -39,6 +39,9 @@ export default function Overlay({
 
   const [dismissRotateHint, setDismissRotateHint] = useState(false);
   const [isMapMode, setIsMapMode] = useState(false);
+
+ 
+  const prevMapRef = useRef(false);
 
   useEffect(() => {
     setDismissRotateHint(false);
@@ -68,17 +71,22 @@ export default function Overlay({
       const map = !!window.__MAP_MODE__;
       setIsMapMode(map);
 
-      if (map) resetGlobalControls();
+      
+      if (map && !prevMapRef.current) {
+        resetGlobalControls();
+        onMobileForwardUp?.();
+        onMobileBackUp?.();
+      }
+
+      prevMapRef.current = map;
     };
 
     tick();
-
     const id = window.setInterval(tick, 120);
     return () => window.clearInterval(id);
-  }, []);
+  }, [onMobileForwardUp, onMobileBackUp]);
 
   useEffect(() => {
-    
     if (anyOpen) {
       resetGlobalControls();
       onMobileForwardUp?.();
@@ -125,7 +133,6 @@ export default function Overlay({
     onMobileBackUp?.();
   }, [onMobileForwardUp, onMobileBackUp]);
 
- 
   const showRotateHint =
     isMobile && isPortrait && !anyOpen && !dismissRotateHint && !isMapMode;
 
@@ -163,7 +170,15 @@ export default function Overlay({
             )}
 
             {description && (
-              <div style={{ marginTop: 10, fontSize: 13, opacity: 0.85, lineHeight: 1.45, whiteSpace: "pre-line" }}>
+              <div
+                style={{
+                  marginTop: 10,
+                  fontSize: 13,
+                  opacity: 0.85,
+                  lineHeight: 1.45,
+                  whiteSpace: "pre-line",
+                }}
+              >
                 {description}
               </div>
             )}
@@ -173,7 +188,9 @@ export default function Overlay({
             <div style={{ display: "grid", gap: 14 }}>
               {section.rows.map((row, rIdx) => (
                 <div key={row.title ?? rIdx} style={{ display: "grid", gap: 10 }}>
-                  <div style={{ fontWeight: 800, opacity: 0.92 }}>{row.title ?? `Rangée ${rIdx + 1}`}</div>
+                  <div style={{ fontWeight: 800, opacity: 0.92 }}>
+                    {row.title ?? `Rangée ${rIdx + 1}`}
+                  </div>
 
                   <div style={{ display: "grid", gap: 10 }}>
                     {(row.items ?? []).map((it, iIdx) => (
@@ -197,12 +214,24 @@ export default function Overlay({
                         {(it.href || it.github) && (
                           <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
                             {it.href && (
-                              <a className="btn" href={it.href} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
+                              <a
+                                className="btn"
+                                href={it.href}
+                                target="_blank"
+                                rel="noreferrer"
+                                style={{ textDecoration: "none" }}
+                              >
                                 🔗 Voir le site
                               </a>
                             )}
                             {it.github && (
-                              <a className="btn" href={it.github} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
+                              <a
+                                className="btn"
+                                href={it.github}
+                                target="_blank"
+                                rel="noreferrer"
+                                style={{ textDecoration: "none" }}
+                              >
                                 ⭐ GitHub
                               </a>
                             )}
@@ -274,7 +303,9 @@ export default function Overlay({
                     style={{
                       padding: 12,
                       borderRadius: 14,
-                      border: isActive ? "1px solid rgba(255,255,255,0.35)" : "1px solid rgba(255,255,255,0.12)",
+                      border: isActive
+                        ? "1px solid rgba(255,255,255,0.35)"
+                        : "1px solid rgba(255,255,255,0.12)",
                       background: isActive ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.03)",
                     }}
                   >
@@ -354,7 +385,6 @@ export default function Overlay({
         </div>
       )}
 
-    
       {isMobile && !anyOpen && !isMapMode && (
         <MobileJoystick
           enabled
@@ -367,36 +397,7 @@ export default function Overlay({
         />
       )}
 
-      {isMobile && !anyOpen && isMapMode && (
-        <div
-          style={{
-            position: "absolute",
-            left: 14,
-            right: 14,
-            bottom: `calc(14px + var(--safe-bottom))`,
-            zIndex: 26,
-            padding: 12,
-            borderRadius: 14,
-            border: "1px solid rgba(255,255,255,0.12)",
-            background: "rgba(0,0,0,0.55)",
-            backdropFilter: "blur(6px)",
-          }}
-        >
-          <div style={{ fontWeight: 800 }}>🗺️ Mode carte</div>
-          <div style={{ fontSize: 13, opacity: 0.85 }}>Tape sur un pin pour ouvrir le détail.</div>
-
-          <button
-            className="btn"
-            style={{ marginTop: 10 }}
-            onClick={() => {
-              setGlobalFlag("__MAP_MODE__", false);
-              resetGlobalControls();
-            }}
-          >
-            Fermer
-          </button>
-        </div>
-      )}
+  
 
       {showRotateHint && (
         <div
