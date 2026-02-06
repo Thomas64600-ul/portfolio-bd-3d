@@ -33,7 +33,7 @@ function setGlobalNumber(key, value) {
   window[key] = Number(value) || 0;
 }
 
-function isBlockedForMap() {
+function isBlockedForMapTouch() {
   if (typeof window === "undefined") return false;
 
   const now = Date.now();
@@ -53,21 +53,18 @@ export default function TravelWall({
 }) {
   const mapRef = useRef(null);
 
-  
   const raycasterRef = useRef(new THREE.Raycaster());
 
- 
   const centerRayRef = useRef(new THREE.Raycaster());
   const camDirRef = useRef(new THREE.Vector3());
 
   const mapTex = useLoader(THREE.TextureLoader, mapUrl);
-  const { camera, gl } = useThree();
+  const { camera, gl, size } = useThree();
 
   const items = SECTIONS?.travels?.items || [];
 
   useEffect(() => {
     if (!mapTex) return;
-
     mapTex.colorSpace = THREE.SRGBColorSpace;
     mapTex.anisotropy = 8;
     mapTex.wrapS = THREE.ClampToEdgeWrapping;
@@ -87,7 +84,8 @@ export default function TravelWall({
   );
 
   const MAP_Z = 0;
-  const PIN_Z = 0.15;
+
+  const PIN_Z = 0.22;
 
   const uvToXY = useCallback((u, v) => {
     const vv = FLIP_V ? 1 - v : v;
@@ -96,25 +94,51 @@ export default function TravelWall({
     return [x, y];
   }, []);
 
-  
+  const isPortrait = size.height > size.width;
+
+  const mapScale = useMemo(() => {
+    if (!isPortrait) return 1;
+
+    const screenAspect = size.width / size.height;
+
+    const s = THREE.MathUtils.clamp(screenAspect / 0.60, 0.62, 0.85);
+
+    return s;
+  }, [isPortrait, size.width, size.height]);
+
+
+  const mapYOffset = useMemo(() => (isPortrait ? 0.12 : 0), [isPortrait]);
+
   const isInMapZoneRef = useRef(false);
+
+
+  const ENTER_DIST = 3.2;
+  const EXIT_DIST = 3.8;
+
+  
+  const lastHitTimeRef = useRef(0);
+  const GRACE_MS = 250;
 
   const computeInMapZone = useCallback(() => {
     const mesh = mapRef.current;
     if (!mesh) return false;
 
-    
     camera.getWorldDirection(camDirRef.current);
     centerRayRef.current.set(camera.position, camDirRef.current);
 
     const hits = centerRayRef.current.intersectObject(mesh, false);
-    if (!hits.length) return false;
+    const wasIn = isInMapZoneRef.current;
 
+    if (!hits.length) {
+      if (wasIn && Date.now() - lastHitTimeRef.current < GRACE_MS) return true;
+      return false;
+    }
+
+    lastHitTimeRef.current = Date.now();
     const dist = hits[0].distance;
 
-    
-    const maxDist = 7.2;
-    return dist <= maxDist;
+    if (!wasIn) return dist <= ENTER_DIST;
+    return dist <= EXIT_DIST;
   }, [camera]);
 
   useFrame(() => {
@@ -122,9 +146,9 @@ export default function TravelWall({
 
     if (ok !== isInMapZoneRef.current) {
       isInMapZoneRef.current = ok;
-
       setGlobalFlag("__MAP_MODE__", ok);
 
+  
       if (ok) setGlobalNumber("__MAP_INTERACT_UNTIL__", Date.now() + 220);
       else setGlobalNumber("__MAP_INTERACT_UNTIL__", Date.now() + 80);
     }
@@ -165,17 +189,30 @@ export default function TravelWall({
     [camera, gl]
   );
 
+  const isTouchEvent = (e) => {
+    const pt = e?.pointerType;
+    if (pt) return pt === "touch";
+    const ne = e?.nativeEvent;
+    return ne?.pointerType === "touch";
+  };
+
   const pickWall = useCallback(
     (e) => {
       if (DEBUG_PINS) return;
 
       e?.stopPropagation?.();
 
-      if (isBlockedForMap()) return;
-      if (!isInMapZoneRef.current) return;
+      if (isTouchEvent(e)) {
+      
+        if (isBlockedForMapTouch()) return;
 
-      setGlobalNumber("__MAP_INTERACT_UNTIL__", Date.now() + 260);
+        
+        setGlobalNumber("__MAP_INTERACT_UNTIL__", Date.now() + 320);
+        onPickWall?.();
+        return;
+      }
 
+     
       onPickWall?.();
     },
     [onPickWall]
@@ -185,66 +222,74 @@ export default function TravelWall({
     (itemIndex, e) => {
       e?.stopPropagation?.();
 
-      if (isBlockedForMap()) return;
-      if (!isInMapZoneRef.current) return;
+      if (isTouchEvent(e)) {
+        if (isBlockedForMapTouch()) return;
 
-      setGlobalNumber("__MAP_INTERACT_UNTIL__", Date.now() + 300);
+      
+        setGlobalNumber("__MAP_INTERACT_UNTIL__", Date.now() + 360);
+        onPickPin?.(itemIndex);
+        return;
+      }
 
       onPickPin?.(itemIndex);
     },
     [onPickPin]
   );
 
+  const HITBOX_SCALE = 3.4;
+
   return (
     <group position={position} rotation={rotation}>
-      <InteractiveItem
-        disabled={false}
-        onPick={(e) => {
-          if (DEBUG_PINS) handlePickDebugUV(e);
-          else pickWall(e);
-        }}
+      <group
+        scale={[mapScale, mapScale, 1]}
+        position={[0, mapYOffset, 0]}
       >
-        <mesh ref={mapRef} position={[0, 0, MAP_Z]} material={mapMat}>
-          <planeGeometry args={[MAP_W, MAP_H]} />
-        </mesh>
-      </InteractiveItem>
+        <InteractiveItem
+          disabled={false}
+          onPick={(e) => {
+            if (DEBUG_PINS) handlePickDebugUV(e);
+            else pickWall(e);
+          }}
+        >
+          <mesh ref={mapRef} position={[0, 0, MAP_Z]} material={mapMat}>
+            <planeGeometry args={[MAP_W, MAP_H]} />
+          </mesh>
+        </InteractiveItem>
 
-      {!DEBUG_PINS &&
-        PINS.map((p) => {
-          const isActive = activeIndex === p.itemIndex;
-          const [x, y] = uvToXY(p.uv[0], p.uv[1]);
+        {!DEBUG_PINS &&
+          PINS.map((p) => {
+            const isActive = activeIndex === p.itemIndex;
+            const [x, y] = uvToXY(p.uv[0], p.uv[1]);
 
-          return (
-            <group key={`${p.label}-${p.itemIndex}`} position={[x, y, PIN_Z]}>
-              <InteractiveItem onPick={(e) => pickPin(p.itemIndex, e)}>
-                <group>
-                  <mesh>
-                    <sphereGeometry args={[PIN_SIZE, 20, 20]} />
-                    <meshStandardMaterial
-                      color={isActive ? "#ff6b8a" : "#ff7a9a"}
-                      roughness={0.35}
-                      metalness={0.1}
-                    />
-                  </mesh>
+            return (
+              <group key={`${p.label}-${p.itemIndex}`} position={[x, y, PIN_Z]}>
+                <InteractiveItem onPick={(e) => pickPin(p.itemIndex, e)}>
+                  <group>
+                    <mesh>
+                      <sphereGeometry args={[PIN_SIZE, 20, 20]} />
+                      <meshStandardMaterial
+                        color={isActive ? "#ff6b8a" : "#ff7a9a"}
+                        roughness={0.35}
+                        metalness={0.1}
+                      />
+                    </mesh>
 
-               
-                  <mesh>
-                    <sphereGeometry args={[PIN_SIZE * 2.6, 12, 12]} />
-                    <meshBasicMaterial
-                      transparent
-                      opacity={0.001}
-                      depthWrite={false}
-                      depthTest={false}
-                    />
-                  </mesh>
-                </group>
-              </InteractiveItem>
-            </group>
-          );
-        })}
+                   
+                    <mesh>
+                      <sphereGeometry args={[PIN_SIZE * HITBOX_SCALE, 12, 12]} />
+                      <meshBasicMaterial
+                        transparent
+                        opacity={0.001}
+                        depthWrite={false}
+                        depthTest={false}
+                      />
+                    </mesh>
+                  </group>
+                </InteractiveItem>
+              </group>
+            );
+          })}
+      </group>
     </group>
   );
 }
-
-
-

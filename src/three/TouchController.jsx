@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useMemo } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
@@ -25,6 +25,10 @@ export default function TouchController({
   const cooldownTimer = useRef(null);
   const activePointerId = useRef(null);
 
+  const baseFovRef = useRef(
+    camera?.isPerspectiveCamera ? camera.fov : 65
+  );
+
   const setGlobalLooking = (v) => {
     if (typeof window === "undefined") return;
     window.__TOUCH_LOOKING__ = !!v;
@@ -49,6 +53,10 @@ export default function TouchController({
     const e = new THREE.Euler().setFromQuaternion(camera.quaternion, "YXZ");
     yaw.current = e.y;
     pitch.current = e.x;
+
+    if (camera?.isPerspectiveCamera) {
+      baseFovRef.current = camera.fov || 65;
+    }
   }, [camera]);
 
   useEffect(() => {
@@ -96,7 +104,11 @@ export default function TouchController({
       if (!enabled) return;
       if (e.pointerType !== "touch") return;
       if (!pointerDown.current) return;
-      if (activePointerId.current != null && e.pointerId !== activePointerId.current) return;
+      if (
+        activePointerId.current != null &&
+        e.pointerId !== activePointerId.current
+      )
+        return;
 
       if (isMapMode()) {
         hardStop();
@@ -129,7 +141,11 @@ export default function TouchController({
     };
 
     const onPointerEnd = (e) => {
-      if (activePointerId.current != null && e?.pointerId !== activePointerId.current) return;
+      if (
+        activePointerId.current != null &&
+        e?.pointerId !== activePointerId.current
+      )
+        return;
 
       pointerDown.current = false;
       activePointerId.current = null;
@@ -169,57 +185,80 @@ export default function TouchController({
   const forwardDir = useRef(new THREE.Vector3());
   const moveVec = useRef(new THREE.Vector3());
 
+  const portraitBounds = useMemo(() => {
+    return {
+      ...bounds,
+      minX: Math.min(bounds.minX, -10.2),
+      maxX: Math.max(bounds.maxX, 10.2),
+    };
+  }, [bounds]);
+
+  const mapFovLatchRef = useRef(false);
+
   useFrame((_, dt) => {
     if (!enabled) return;
 
+    const hasWindow = typeof window !== "undefined";
+    const isPortrait = hasWindow
+      ? window.innerHeight > window.innerWidth
+      : false;
+    const isMap = hasWindow ? !!window.__MAP_MODE__ : false;
+
+    if (camera?.isPerspectiveCamera) {
+      const baseFov = baseFovRef.current || 65;
+
     
+      const mapFov = 90;
+
+     
+      if (isPortrait && isMap) mapFovLatchRef.current = true;
+      if (!isMap) mapFovLatchRef.current = false;
+
+      const targetFov =
+        isPortrait && mapFovLatchRef.current ? mapFov : baseFov;
+
+      camera.fov += (targetFov - camera.fov) * 0.12;
+      camera.updateProjectionMatrix();
+    }
+
+   
     camera.rotation.order = "YXZ";
     camera.rotation.y = yaw.current;
     camera.rotation.x = pitch.current;
 
     
-    const hasWindow = typeof window !== "undefined";
-    const isPortrait = hasWindow ? window.innerHeight > window.innerWidth : false;
+    const b = isPortrait ? portraitBounds : bounds;
 
-    const b = isPortrait
-      ? {
-          ...bounds,
-          minX: Math.min(bounds.minX, -10.2),
-          maxX: Math.max(bounds.maxX, 10.2),
-        }
-      : bounds;
-
+  
     const fwd = !!forwardRef?.current;
     const back = !!backRef?.current;
     const move = (fwd ? 1 : 0) + (back ? -1 : 0);
 
-    if (move !== 0) {
-      camera.getWorldDirection(forwardDir.current);
-      forwardDir.current.y = 0;
-      forwardDir.current.normalize();
+    if (move === 0) return;
 
-      moveVec.current.copy(forwardDir.current).multiplyScalar(move * speed * dt);
-      camera.position.add(moveVec.current);
+    camera.getWorldDirection(forwardDir.current);
+    forwardDir.current.y = 0;
+    forwardDir.current.normalize();
 
-      
-      camera.position.x = Math.max(b.minX, Math.min(b.maxX, camera.position.x));
-      camera.position.z = Math.max(b.minZ, Math.min(b.maxZ, camera.position.z));
+    moveVec.current.copy(forwardDir.current).multiplyScalar(move * speed * dt);
+    camera.position.add(moveVec.current);
 
-     
-      camera.position.x = Math.max(-10.6, Math.min(10.6, camera.position.x));
+    camera.position.x = Math.max(b.minX, Math.min(b.maxX, camera.position.x));
+    camera.position.z = Math.max(b.minZ, Math.min(b.maxZ, camera.position.z));
 
-     
-      if (enableShelfCollision) {
-        const centers = [-6.2, 0, 6.2];
-        const halfW = 2.35;
-        const stopZ = -6.05;
+    camera.position.x = Math.max(-10.6, Math.min(10.6, camera.position.x));
 
-        if (camera.position.z < stopZ) {
-          const inside = centers.some(
-            (cx) => camera.position.x > cx - halfW && camera.position.x < cx + halfW
-          );
-          if (inside) camera.position.z = stopZ;
-        }
+    if (enableShelfCollision && !isMap) {
+      const centers = [-6.2, 0, 6.2];
+      const halfW = 2.35;
+      const stopZ = -6.05;
+
+      if (camera.position.z < stopZ) {
+        const inside = centers.some(
+          (cx) =>
+            camera.position.x > cx - halfW && camera.position.x < cx + halfW
+        );
+        if (inside) camera.position.z = stopZ;
       }
     }
   });
