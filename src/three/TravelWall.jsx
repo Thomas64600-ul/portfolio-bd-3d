@@ -46,7 +46,7 @@ function isBlockedForMapTouch() {
 export default function TravelWall({
   position = [0, 0, 0],
   rotation = [0, 0, 0],
-  mapUrl = "/textures/world_map.jpg",
+  mapUrl = "/textures/world_map.webp",
   activeIndex = null,
   onPickPin,
   onPickWall,

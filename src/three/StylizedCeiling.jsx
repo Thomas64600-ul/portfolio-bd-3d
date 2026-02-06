@@ -11,7 +11,7 @@ export default function StylizedCeiling({
   beamThickness = 0.22,
   beamHeight = 0.26,
 
-  textureUrl = "/textures/plaster_ceiling.jpg",
+  textureUrl = "/textures/plaster_ceiling.webp",
   repeatX = 4,
   repeatZ = 3,
   ceilingTint = "#d2c9bc",

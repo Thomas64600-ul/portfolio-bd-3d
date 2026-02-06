@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Sources images non optimisées
+public/textures/**/*.jpg
+public/textures/**/*.jpeg
+public/textures/**/*.png

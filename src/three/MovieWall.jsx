@@ -37,7 +37,7 @@ export default function MovieWall({
   gapY = 0.55,
   zOffset = 0.03,
 
-  logoPath = "/textures/logo/portfolio-thomas.png",
+  logoPath = "/textures/logo/portfolio-thomas.webp",
   logoZ = 0.06,
 
   middleGap = 0.8,
@@ -47,25 +47,25 @@ export default function MovieWall({
   beamNudge = 0.8,
 }) {
   const posters = useTexture([
-    "/textures/posters/cite-de-dieu.jpg",
-    "/textures/posters/pulp-fiction.jpg",
-    "/textures/posters/godfather.jpg",
-    "/textures/posters/big-lebowski.jpg",
+    "/textures/posters/cite-de-dieu.webp",
+    "/textures/posters/pulp-fiction.webp",
+    "/textures/posters/godfather.webp",
+    "/textures/posters/big-lebowski.webp",
 
-    "/textures/posters/alien.jpg",
-    "/textures/posters/apocalypsenow.jpg",
-    "/textures/posters/exorcist.jpg",
-    "/textures/posters/fightclub.jpg",
+    "/textures/posters/alien.webp",
+    "/textures/posters/apocalypsenow.webp",
+    "/textures/posters/exorcist.webp",
+    "/textures/posters/fightclub.webp",
 
-    "/textures/posters/terminator-2.jpg",
-    "/textures/posters/platoon.jpg",
-    "/textures/posters/back-to-the-future-2.jpg",
-    "/textures/posters/gladiator.jpg",
+    "/textures/posters/terminator-2.webp",
+    "/textures/posters/platoon.webp",
+    "/textures/posters/back-to-the-future-2.webp",
+    "/textures/posters/gladiator.webp",
 
-    "/textures/posters/jaws.jpg",
-    "/textures/posters/onceuponatimeinwest.jpg",
-    "/textures/posters/orangemecanique.jpg",
-    "/textures/posters/scarface.jpg",
+    "/textures/posters/jaws.webp",
+    "/textures/posters/onceuponatimeinwest.webp",
+    "/textures/posters/orangemecanique.webp",
+    "/textures/posters/scarface.webp",
   ]);
 
   const logoTex = useTexture(logoPath);

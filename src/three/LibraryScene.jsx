@@ -58,29 +58,29 @@ function BookcaseUnit({
   );
 
   const mangaTextures = useLoader(THREE.TextureLoader, [
-    "/textures/manga/dragonball.jpg",
-    "/textures/manga/aot.jpg",
-    "/textures/manga/sommet.jpg",
-    "/textures/manga/lastman.jpg",
-    "/textures/manga/gunnm.jpg",
+    "/textures/manga/dragonball.webp",
+    "/textures/manga/aot.webp",
+    "/textures/manga/sommet.webp",
+    "/textures/manga/lastman.webp",
+    "/textures/manga/gunnm.webp",
   ]);
 
   const comicsTextures = useLoader(THREE.TextureLoader, [
-    "/textures/comics/300.jpg",
-    "/textures/comics/dc.jpg",
-    "/textures/comics/preacher.jpg",
-    "/textures/comics/sincity.jpg",
-    "/textures/comics/walkingdead.jpg",
+    "/textures/comics/300.webp",
+    "/textures/comics/dc.webp",
+    "/textures/comics/preacher.webp",
+    "/textures/comics/sincity.webp",
+    "/textures/comics/walkingdead.webp",
   ]);
 
   const bdTextures = useLoader(THREE.TextureLoader, [
-    "/textures/bd/signe.jpg",
-    "/textures/bd/complainte.jpg",
-    "/textures/bd/jeremiah.jpg",
-    "/textures/bd/largo.jpg",
-    "/textures/bd/lesaigles.jpg",
-    "/textures/bd/lesvieux.jpg",
-    "/textures/bd/murena.jpg",
+    "/textures/bd/signe.webp",
+    "/textures/bd/complainte.webp",
+    "/textures/bd/jeremiah.webp",
+    "/textures/bd/largo.webp",
+    "/textures/bd/lesaigles.webp",
+    "/textures/bd/lesvieux.webp",
+    "/textures/bd/murena.webp",
   ]);
 
   useEffect(() => {
@@ -508,8 +508,8 @@ function SceneInner({
   const lookTarget = useRef(new THREE.Vector3());
   const fovTarget = useRef(65);
 
-  const woodMap = useLoader(THREE.TextureLoader, "/textures/wood_floor.jpg");
-  const stoneMap = useLoader(THREE.TextureLoader, "/textures/stone_wall.jpg");
+  const woodMap = useLoader(THREE.TextureLoader, "/textures/wood_floor.webp");
+  const stoneMap = useLoader(THREE.TextureLoader, "/textures/stone_wall.webp");
 
   const unlockPointer = useCallback(() => {
     if (typeof document === "undefined") return;
@@ -786,7 +786,7 @@ function SceneInner({
       <TravelWall
         position={[10.92, 2.55, 3.3]}
         rotation={[0, -Math.PI / 2, 0]}
-        mapUrl="/textures/world_map.jpg"
+        mapUrl="/textures/world_map.webp"
         activeIndex={focus?.sectionId === "travels" ? focus?.itemId : null}
         onPickWall={() => pick("travels", [7.8, 2.35, 3.3], [10.5, 2.55, 3.3])}
         onPickPin={(itemIndex) =>

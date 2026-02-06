@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import LibraryScene from "./three/LibraryScene";
 import Overlay from "./ui/Overlay";
 import TravelCard from "./ui/TravelCard";
+import StartLoader from "./ui/StartLoader";
 
 function detectMobile() {
   if (typeof window === "undefined") return false;
@@ -29,6 +30,9 @@ export default function App() {
   const [isLocked, setIsLocked] = useState(false);
   const [controlsEnabled, setControlsEnabled] = useState(true);
   const [openSectionId, setOpenSectionId] = useState(null);
+
+  
+  const [started, setStarted] = useState(false);
 
   const isMobile = useMemo(() => detectMobile(), []);
   const [isPortrait, setIsPortrait] = useState(() =>
@@ -106,22 +110,27 @@ export default function App() {
   }, []);
 
   const requestLock = useCallback(() => {
+   
+    if (!started) return;
+
     setControlsEnabled(true);
 
     const canvas = document.querySelector("canvas");
     if (canvas && !document.pointerLockElement) {
       canvas.requestPointerLock?.();
     }
-  }, []);
+  }, [started]);
 
   const releaseLock = useCallback(() => {
+    if (!started) return;
+
     if (document.pointerLockElement) {
       document.exitPointerLock?.();
     }
 
     setControlsEnabled(false);
     resetUI();
-  }, [resetUI]);
+  }, [resetUI, started]);
 
   const closePanel = useCallback(() => {
     setOpenSectionId(null);
@@ -140,6 +149,9 @@ export default function App() {
 
   const handleOpenSection = useCallback(
     (id, itemId = null) => {
+      
+      if (!started) return;
+
       resetUI();
 
       setOpenSectionId(id);
@@ -157,12 +169,15 @@ export default function App() {
         itemId: itemId ?? null,
       }));
     },
-    [resetUI]
+    [resetUI, started]
   );
 
   useEffect(() => {
     const onKeyDown = (e) => {
       if (e.key !== "Escape") return;
+
+     
+      if (!started) return;
 
       if (focus.active || openSectionId) {
         closePanel();
@@ -174,20 +189,28 @@ export default function App() {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [focus.active, openSectionId, closePanel, releaseLock]);
+  }, [focus.active, openSectionId, closePanel, releaseLock, started]);
 
   const overlaySectionId = useMemo(() => {
     return OVERLAY_SECTIONS.includes(openSectionId) ? openSectionId : null;
   }, [openSectionId]);
 
-  const showWallTopbar = Boolean(openSectionId) && !overlaySectionId;
+  const showWallTopbar = started && Boolean(openSectionId) && !overlaySectionId;
+
+  const handleStart = useCallback(() => {
+    setStarted(true);
+    
+    setControlsEnabled(true);
+    resetUI();
+  }, [resetUI]);
 
   return (
     <>
       <LibraryScene
         isMobile={isMobile}
         isPortrait={isPortrait}
-        controlsEnabled={controlsEnabled}
+       
+        controlsEnabled={started && controlsEnabled}
         setIsLocked={setIsLocked}
         focus={focus}
         setFocus={setFocus}
@@ -233,11 +256,12 @@ export default function App() {
         </div>
       )}
 
-      {openSectionId === "travels" && (
+      {started && openSectionId === "travels" && (
         <TravelCard itemId={focus?.itemId ?? null} onClose={closeTravelCard} />
       )}
+
+      {!started && <StartLoader onStart={handleStart} />}
     </>
   );
 }
-
 

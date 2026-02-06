@@ -9,10 +9,10 @@ const Y = 2.85;
 const Z_LIST = [3.8, 1.1, -1.6, -4.3];
 
 const DIPLOMA_TEXTURES = [
-  "/textures/diplomas/diplome-rncp.jpg",
-  "/textures/diplomas/certif-ia.jpg",
-  "/textures/diplomas/diplome-bts.jpg",
-  "/textures/diplomas/bac.jpg",
+  "/textures/diplomas/diplome-rncp.webp",
+  "/textures/diplomas/certif-ia.webp",
+  "/textures/diplomas/diplome-bts.webp",
+  "/textures/diplomas/bac.webp",
 ];
 
 function DiplomaFrameContent({ size = SIZE, textureUrl }) {
