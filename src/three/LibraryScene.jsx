@@ -855,6 +855,7 @@ function SceneInner({
 }
 
 export default function LibraryScene({
+  paused = false,
   isMobile,
   isPortrait = false,
   controlsEnabled,
@@ -869,32 +870,34 @@ export default function LibraryScene({
 
   return (
     <Canvas
-      shadows={!isMobile}
-      dpr={isMobile ? 1 : [1, 2]}
-      camera={{ position: [0, 1.6, 4], fov: 65 }}
-      gl={{
-        antialias: !isMobile,
-        powerPreference: "high-performance",
-      }}
-      onCreated={({ gl }) => {
-        gl.toneMapping = THREE.ACESFilmicToneMapping;
-        gl.toneMappingExposure = 0.98;
-      }}
-    >
-      <SceneInner
-        isMobile={isMobile}
-        isPortrait={isPortrait}
-        mobileForwardRef={mobileForwardRef}
-        mobileBackRef={mobileBackRef}
-        controlsEnabled={controlsEnabled}
-        setIsLocked={setIsLocked}
-        onOpenSection={onOpenSection}
-        focus={focus}
-        setFocus={setFocus}
-        mapEditMode={mapEditMode}
-        setMapEditMode={setMapEditMode}
-      />
-    </Canvas>
+  frameloop={paused ? "never" : "always"}
+  shadows={!isMobile}
+  dpr={isMobile ? 1 : [1, 2]}
+  camera={{ position: [0, 1.6, 4], fov: 65 }}
+  gl={{
+    antialias: !isMobile,
+    powerPreference: "high-performance",
+  }}
+  onCreated={({ gl }) => {
+    gl.toneMapping = THREE.ACESFilmicToneMapping;
+    gl.toneMappingExposure = 0.98;
+  }}
+>
+  <SceneInner
+    isMobile={isMobile}
+    isPortrait={isPortrait}
+    mobileForwardRef={mobileForwardRef}
+    mobileBackRef={mobileBackRef}
+    controlsEnabled={controlsEnabled && !paused}
+    setIsLocked={setIsLocked}
+    onOpenSection={onOpenSection}
+    focus={focus}
+    setFocus={setFocus}
+    mapEditMode={mapEditMode}
+    setMapEditMode={setMapEditMode}
+  />
+</Canvas>
+
   );
 }
 

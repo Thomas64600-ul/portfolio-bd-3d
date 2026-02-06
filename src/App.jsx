@@ -27,12 +27,11 @@ function setGlobalFlag(key, value) {
 const OVERLAY_SECTIONS = ["projects", "stack", "career"];
 
 export default function App() {
+  const [hasStarted, setHasStarted] = useState(false);
+
   const [isLocked, setIsLocked] = useState(false);
   const [controlsEnabled, setControlsEnabled] = useState(true);
   const [openSectionId, setOpenSectionId] = useState(null);
-
-  
-  const [started, setStarted] = useState(false);
 
   const isMobile = useMemo(() => detectMobile(), []);
   const [isPortrait, setIsPortrait] = useState(() =>
@@ -110,27 +109,22 @@ export default function App() {
   }, []);
 
   const requestLock = useCallback(() => {
-   
-    if (!started) return;
-
     setControlsEnabled(true);
 
     const canvas = document.querySelector("canvas");
     if (canvas && !document.pointerLockElement) {
       canvas.requestPointerLock?.();
     }
-  }, [started]);
+  }, []);
 
   const releaseLock = useCallback(() => {
-    if (!started) return;
-
     if (document.pointerLockElement) {
       document.exitPointerLock?.();
     }
 
     setControlsEnabled(false);
     resetUI();
-  }, [resetUI, started]);
+  }, [resetUI]);
 
   const closePanel = useCallback(() => {
     setOpenSectionId(null);
@@ -149,9 +143,6 @@ export default function App() {
 
   const handleOpenSection = useCallback(
     (id, itemId = null) => {
-      
-      if (!started) return;
-
       resetUI();
 
       setOpenSectionId(id);
@@ -169,15 +160,12 @@ export default function App() {
         itemId: itemId ?? null,
       }));
     },
-    [resetUI, started]
+    [resetUI]
   );
 
   useEffect(() => {
     const onKeyDown = (e) => {
       if (e.key !== "Escape") return;
-
-     
-      if (!started) return;
 
       if (focus.active || openSectionId) {
         closePanel();
@@ -189,28 +177,21 @@ export default function App() {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [focus.active, openSectionId, closePanel, releaseLock, started]);
+  }, [focus.active, openSectionId, closePanel, releaseLock]);
 
   const overlaySectionId = useMemo(() => {
     return OVERLAY_SECTIONS.includes(openSectionId) ? openSectionId : null;
   }, [openSectionId]);
 
-  const showWallTopbar = started && Boolean(openSectionId) && !overlaySectionId;
-
-  const handleStart = useCallback(() => {
-    setStarted(true);
-    
-    setControlsEnabled(true);
-    resetUI();
-  }, [resetUI]);
+  const showWallTopbar = Boolean(openSectionId) && !overlaySectionId;
 
   return (
     <>
       <LibraryScene
+        paused={!hasStarted} 
         isMobile={isMobile}
         isPortrait={isPortrait}
-       
-        controlsEnabled={started && controlsEnabled}
+        controlsEnabled={controlsEnabled && hasStarted}
         setIsLocked={setIsLocked}
         focus={focus}
         setFocus={setFocus}
@@ -218,6 +199,15 @@ export default function App() {
         mobileForwardRef={mobileForwardRef}
         mobileBackRef={mobileBackRef}
       />
+
+      {!hasStarted && (
+        <StartLoader
+          onStart={() => {
+            setHasStarted(true);
+           
+          }}
+        />
+      )}
 
       <Overlay
         isMobile={isMobile}
@@ -256,11 +246,9 @@ export default function App() {
         </div>
       )}
 
-      {started && openSectionId === "travels" && (
+      {openSectionId === "travels" && (
         <TravelCard itemId={focus?.itemId ?? null} onClose={closeTravelCard} />
       )}
-
-      {!started && <StartLoader onStart={handleStart} />}
     </>
   );
 }
