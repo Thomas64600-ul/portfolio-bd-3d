@@ -9,7 +9,6 @@ export default function StartLoader({ onStart }) {
   const { active, progress, item, loaded, total } = useProgress();
 
   const canEnter = useMemo(() => {
-   
     return Math.round(progress) >= 100 || (total > 0 && loaded >= total);
   }, [progress, loaded, total]);
 
@@ -28,7 +27,6 @@ export default function StartLoader({ onStart }) {
     });
   }, [progress, loaded, total]);
 
- 
   const [readyFlash, setReadyFlash] = useState(false);
   useEffect(() => {
     if (!canEnter) return;
@@ -76,8 +74,11 @@ export default function StartLoader({ onStart }) {
       <div style={{ ...styles.card, ...(readyFlash ? styles.cardReadyFlash : null) }}>
         <div style={styles.header}>
           <img
-            src="/textures/logo/portfolio-thomas.webp"
+            src="/textures/logo/portfolio-thomas-256.webp"
             alt="Logo Portfolio Thomas"
+            fetchPriority="high"
+            loading="eager"
+            decoding="async"
             style={styles.logo}
             draggable={false}
           />
@@ -116,7 +117,6 @@ export default function StartLoader({ onStart }) {
             <div
               style={{
                 ...styles.barInner,
-               
                 width: `${clamp(canEnter ? 100 : p, 0, 100)}%`,
               }}
             />
@@ -171,10 +171,10 @@ const styles = {
     boxShadow: "0 18px 60px rgba(0,0,0,0.45)",
     padding: 18,
     backdropFilter: "blur(8px)",
-    transition: "transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease",
+    transition: "transform 220ms ease, box-shadow 220ms ease, border 220ms ease",
   },
   cardReadyFlash: {
-    borderColor: "rgba(255, 210, 0, 0.28)",
+    border: "1px solid rgba(255, 210, 0, 0.28)",
     boxShadow: "0 22px 80px rgba(0,0,0,0.55)",
     transform: "translateY(-1px)",
   },
