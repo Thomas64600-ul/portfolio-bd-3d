@@ -6,7 +6,20 @@ function Poster({ texture, position, w = 1.15, h = 1.7 }) {
   return (
     <mesh position={position}>
       <planeGeometry args={[w, h]} />
-      <meshStandardMaterial map={texture} roughness={0.95} metalness={0} />
+      <meshStandardMaterial
+        map={texture}
+        roughness={1}
+        metalness={0}
+        toneMapped={true}
+       
+        envMapIntensity={0.08}
+       
+        color={new THREE.Color("#bcbcbc")}
+        
+        polygonOffset
+        polygonOffsetFactor={-1}
+        polygonOffsetUnits={-1}
+      />
     </mesh>
   );
 }
@@ -19,11 +32,20 @@ function Logo({ texture, position, w = 2.2, h = 2.2 }) {
         map={texture}
         transparent
         alphaTest={0.35}
-        roughness={0.9}
-        metalness={0}
+        roughness={0.95}
+        metalness={0.02}
         depthWrite={false}
+       
+        envMapIntensity={0.08}
+       
         emissive={new THREE.Color("#ffd400")}
-        emissiveIntensity={0.12}
+        emissiveIntensity={0.035}
+        toneMapped={true}
+       
+        color={new THREE.Color("#c6b891")}
+        polygonOffset
+        polygonOffsetFactor={-1}
+        polygonOffsetUnits={-1}
       />
     </mesh>
   );
@@ -42,7 +64,6 @@ export default function MovieWall({
 
   middleGap = 0.8,
   outerGap = 1.2,
-
 
   beamNudge = 0.8,
 }) {
@@ -77,9 +98,14 @@ export default function MovieWall({
       
       t.colorSpace = THREE.SRGBColorSpace;
 
-      t.anisotropy = 8;
+      t.anisotropy = 12;
       t.minFilter = THREE.LinearMipmapLinearFilter;
       t.magFilter = THREE.LinearFilter;
+      t.generateMipmaps = true;
+
+      t.wrapS = THREE.ClampToEdgeWrapping;
+      t.wrapT = THREE.ClampToEdgeWrapping;
+
       t.needsUpdate = true;
     });
   }, [posters, logoTex]);
@@ -98,7 +124,7 @@ export default function MovieWall({
   }, [posterW, posterH, gapX, gapY, zOffset]);
 
   const galleryHeight = useMemo(() => posterH * 2 + gapY, [posterH, gapY]);
-  const bigLogoH = useMemo(() => galleryHeight * 1.1, [galleryHeight]);
+  const bigLogoH = useMemo(() => galleryHeight * 1.08, [galleryHeight]);
   const bigLogoW = bigLogoH;
 
   const blockWidth = useMemo(() => posterW + gapX, [posterW, gapX]);
@@ -113,10 +139,7 @@ export default function MovieWall({
     [nearOffsetX, blockWidth, outerGap]
   );
 
-  const farAlignedX = useMemo(
-    () => farOffsetX + beamNudge,
-    [farOffsetX, beamNudge]
-  );
+  const farAlignedX = useMemo(() => farOffsetX + beamNudge, [farOffsetX, beamNudge]);
 
   const leftNear = posters.slice(0, 4);
   const leftFar = posters.slice(4, 8);
@@ -129,11 +152,7 @@ export default function MovieWall({
         <Poster
           key={`LN-${i}`}
           texture={tex}
-          position={[
-            block2x2[i][0] - nearOffsetX,
-            block2x2[i][1],
-            block2x2[i][2],
-          ]}
+          position={[block2x2[i][0] - nearOffsetX, block2x2[i][1], block2x2[i][2]]}
           w={posterW}
           h={posterH}
         />
@@ -143,32 +162,19 @@ export default function MovieWall({
         <Poster
           key={`LF-${i}`}
           texture={tex}
-          position={[
-            block2x2[i][0] - farAlignedX,
-            block2x2[i][1],
-            block2x2[i][2],
-          ]}
+          position={[block2x2[i][0] - farAlignedX, block2x2[i][1], block2x2[i][2]]}
           w={posterW}
           h={posterH}
         />
       ))}
 
-      <Logo
-        texture={logoTex}
-        position={[0, 0, logoZ]}
-        w={bigLogoW}
-        h={bigLogoH}
-      />
+      <Logo texture={logoTex} position={[0, 0, logoZ]} w={bigLogoW} h={bigLogoH} />
 
       {rightNear.map((tex, i) => (
         <Poster
           key={`RN-${i}`}
           texture={tex}
-          position={[
-            block2x2[i][0] + nearOffsetX,
-            block2x2[i][1],
-            block2x2[i][2],
-          ]}
+          position={[block2x2[i][0] + nearOffsetX, block2x2[i][1], block2x2[i][2]]}
           w={posterW}
           h={posterH}
         />
@@ -178,25 +184,20 @@ export default function MovieWall({
         <Poster
           key={`RF-${i}`}
           texture={tex}
-          position={[
-            block2x2[i][0] + farAlignedX,
-            block2x2[i][1],
-            block2x2[i][2],
-          ]}
+          position={[block2x2[i][0] + farAlignedX, block2x2[i][1], block2x2[i][2]]}
           w={posterW}
           h={posterH}
         />
       ))}
 
       <spotLight
-        position={[0, 2.2, 2]}
-        angle={0.5}
-        penumbra={0.95}
-        intensity={0.45}
-        distance={12}
+        position={[0, 2.4, 2.2]}
+        angle={0.42}
+        penumbra={1}
+        intensity={0.03}
+        distance={10}
         color="#ffd2a6"
       />
     </group>
   );
 }
-

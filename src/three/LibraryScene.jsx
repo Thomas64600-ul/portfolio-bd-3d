@@ -1,5 +1,5 @@
-import { Canvas, useFrame, useLoader } from "@react-three/fiber";
-import { Environment, Text } from "@react-three/drei";
+import { Canvas, useFrame, useLoader, useThree } from "@react-three/fiber";
+import { Environment, Text, useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import { useMemo, useRef, useEffect, useCallback, useState } from "react";
 import { easing } from "maath";
@@ -16,6 +16,126 @@ import StylizedCeiling from "./StylizedCeiling";
 function setGlobalFlag(key, value) {
   if (typeof window === "undefined") return;
   window[key] = !!value;
+}
+
+function ensureUv2(geo) {
+  if (!geo?.attributes?.uv) return;
+  if (geo.attributes.uv2) return;
+  geo.setAttribute("uv2", new THREE.BufferAttribute(geo.attributes.uv.array, 2));
+}
+
+function usePBRMaps(basePath, repeat = [1, 1]) {
+  const maps = useTexture({
+    map: `${basePath}/diff.webp`,
+    aoMap: `${basePath}/ao.webp`,
+    normalMap: `${basePath}/normal.webp`,
+    roughnessMap: `${basePath}/rough.webp`,
+  });
+
+  const { gl } = useThree();
+
+  useEffect(() => {
+    const maxAniso = gl?.capabilities?.getMaxAnisotropy
+      ? gl.capabilities.getMaxAnisotropy()
+      : 8;
+
+    const apply = (tex, isColor) => {
+      if (!tex) return;
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(repeat[0], repeat[1]);
+
+      tex.colorSpace = isColor ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+
+      tex.anisotropy = Math.min(16, maxAniso);
+      tex.minFilter = THREE.LinearMipmapLinearFilter;
+      tex.magFilter = THREE.LinearFilter;
+      tex.generateMipmaps = true;
+
+      tex.needsUpdate = true;
+    };
+
+    apply(maps.map, true);
+    apply(maps.aoMap, false);
+    apply(maps.normalMap, false);
+    apply(maps.roughnessMap, false);
+  }, [maps, repeat, gl]);
+
+  return maps;
+}
+
+function PBRBox({
+  args,
+  maps,
+  roughness = 0.9,
+  metalness = 0.0,
+  aoIntensity = 0.7,
+  normalScale = 1,
+  ...props
+}) {
+  const geoRef = useRef();
+  const ns = useMemo(
+    () => new THREE.Vector2(normalScale, normalScale),
+    [normalScale]
+  );
+
+  useEffect(() => {
+    if (geoRef.current) ensureUv2(geoRef.current);
+  }, []);
+
+  return (
+    <mesh {...props}>
+      <boxGeometry ref={geoRef} args={args} />
+      <meshStandardMaterial
+        map={maps?.map}
+        aoMap={maps?.aoMap}
+        aoMapIntensity={aoIntensity}
+        normalMap={maps?.normalMap}
+        normalScale={ns}
+        roughnessMap={maps?.roughnessMap}
+        roughness={roughness}
+        metalness={metalness}
+      />
+    </mesh>
+  );
+}
+
+function PBRPlane({
+  args,
+  maps,
+  roughness = 0.92,
+  metalness = 0.0,
+  aoIntensity = 0.7,
+  normalScale = 1,
+  doubleSide = false,
+  ...props
+}) {
+  const geoRef = useRef();
+  const ns = useMemo(
+    () => new THREE.Vector2(normalScale, normalScale),
+    [normalScale]
+  );
+
+  useEffect(() => {
+    if (geoRef.current) ensureUv2(geoRef.current);
+  }, []);
+
+  return (
+    <mesh {...props}>
+      <planeGeometry ref={geoRef} args={args} />
+      <meshStandardMaterial
+        map={maps?.map}
+        aoMap={maps?.aoMap}
+        aoMapIntensity={aoIntensity}
+        normalMap={maps?.normalMap}
+        normalScale={ns}
+        roughnessMap={maps?.roughnessMap}
+        roughness={roughness}
+        metalness={metalness}
+        side={doubleSide ? THREE.DoubleSide : THREE.FrontSide}
+      />
+    </mesh>
+  );
 }
 
 function BookcaseUnit({
@@ -88,16 +208,13 @@ function BookcaseUnit({
       const list = Array.isArray(texList) ? texList : [texList];
       list.forEach((t) => {
         if (!t) return;
-
         t.colorSpace = THREE.SRGBColorSpace;
         t.anisotropy = 12;
         t.minFilter = THREE.LinearMipmapLinearFilter;
         t.magFilter = THREE.LinearFilter;
         t.generateMipmaps = true;
-
         t.wrapS = THREE.RepeatWrapping;
         t.wrapT = THREE.ClampToEdgeWrapping;
-
         t.needsUpdate = true;
       });
     };
@@ -133,7 +250,6 @@ function BookcaseUnit({
   }, []);
 
   const ROW_COUNTS = useMemo(() => [20, 18, 24], []);
-
   const rand01 = useCallback((n) => {
     const x = Math.sin(n * 999) * 10000;
     return x - Math.floor(x);
@@ -155,9 +271,7 @@ function BookcaseUnit({
         : "#2a2a2a"
       : palette[(variant + 1) % palette.length];
 
-    const handlePick = () => {
-      onPickShelf?.();
-    };
+    const handlePick = () => onPickShelf?.();
 
     return (
       <InteractiveItem onPick={handlePick}>
@@ -238,11 +352,7 @@ function BookcaseUnit({
             theme === "manga" ? step * 0.9 : theme === "comics" ? step * 0.86 : step * 0.88;
 
           const baseColor =
-            theme === "manga"
-              ? i % 2 === 0
-                ? "#f2f2f2"
-                : "#dcdcdc"
-              : palette[i % palette.length];
+            theme === "manga" ? (i % 2 === 0 ? "#f2f2f2" : "#dcdcdc") : palette[i % palette.length];
 
           const tilt =
             theme === "comics"
@@ -259,7 +369,6 @@ function BookcaseUnit({
 
           if (theme === "manga") {
             const SERIES = { db: 34, aot: 11, sommet: 5, lastman: 12, gunnm: 9 };
-
             if (rowIndex === 2) spineTex = pickSlice(mangaTextures[0], i, count, SERIES.db);
 
             if (rowIndex === 1) {
@@ -276,15 +385,13 @@ function BookcaseUnit({
               const lastBlock = Math.max(1, Math.round((count * SERIES.lastman) / total));
               const gunnmBlock = Math.max(1, count - lastBlock);
 
-              if (i < lastBlock)
-                spineTex = pickSlice(mangaTextures[3], i, lastBlock, SERIES.lastman);
+              if (i < lastBlock) spineTex = pickSlice(mangaTextures[3], i, lastBlock, SERIES.lastman);
               else spineTex = pickSlice(mangaTextures[4], i - lastBlock, gunnmBlock, SERIES.gunnm);
             }
           }
 
           if (theme === "comics") {
             const SERIES = { t300: 1, dc: 10, preacher: 4, sincity: 7, walkingdead: 16 };
-
             if (rowIndex === 2) spineTex = pickSlice(comicsTextures[4], i, count, SERIES.walkingdead);
             if (rowIndex === 1) spineTex = pickSlice(comicsTextures[1], i, count, SERIES.dc);
 
@@ -315,7 +422,6 @@ function BookcaseUnit({
               vieux: 8,
               murena: 13,
             };
-
             const TRIM = {
               signe: [0.02, 0.98],
               complainte: [0.06, 0.94],
@@ -333,14 +439,7 @@ function BookcaseUnit({
 
               if (i < largoBlock)
                 spineTex = pickSlice(bdTextures[3], i, largoBlock, SERIES.largo, ...TRIM.largo);
-              else
-                spineTex = pickSlice(
-                  bdTextures[0],
-                  i - largoBlock,
-                  signeBlock,
-                  SERIES.signe,
-                  ...TRIM.signe
-                );
+              else spineTex = pickSlice(bdTextures[0], i - largoBlock, signeBlock, SERIES.signe, ...TRIM.signe);
             }
 
             if (rowIndex === 1) {
@@ -350,14 +449,7 @@ function BookcaseUnit({
 
               if (i < murenaBlock)
                 spineTex = pickSlice(bdTextures[6], i, murenaBlock, SERIES.murena, ...TRIM.murena);
-              else
-                spineTex = pickSlice(
-                  bdTextures[4],
-                  i - murenaBlock,
-                  aiglesBlock,
-                  SERIES.aigles,
-                  ...TRIM.aigles
-                );
+              else spineTex = pickSlice(bdTextures[4], i - murenaBlock, aiglesBlock, SERIES.aigles, ...TRIM.aigles);
             }
 
             if (rowIndex === 0) {
@@ -369,21 +461,9 @@ function BookcaseUnit({
               const jeremiahBlock = Math.max(1, count - used);
 
               if (i < complainteBlock)
-                spineTex = pickSlice(
-                  bdTextures[1],
-                  i,
-                  complainteBlock,
-                  SERIES.complainte,
-                  ...TRIM.complainte
-                );
+                spineTex = pickSlice(bdTextures[1], i, complainteBlock, SERIES.complainte, ...TRIM.complainte);
               else if (i < complainteBlock + vieuxBlock)
-                spineTex = pickSlice(
-                  bdTextures[5],
-                  i - complainteBlock,
-                  vieuxBlock,
-                  SERIES.vieux,
-                  ...TRIM.vieux
-                );
+                spineTex = pickSlice(bdTextures[5], i - complainteBlock, vieuxBlock, SERIES.vieux, ...TRIM.vieux);
               else
                 spineTex = pickSlice(
                   bdTextures[2],
@@ -482,6 +562,16 @@ function BookcaseUnit({
   );
 }
 
+function ToneMapping({ exposure }) {
+  const { gl } = useThree();
+  useEffect(() => {
+    gl.toneMapping = THREE.ACESFilmicToneMapping;
+    gl.toneMappingExposure = exposure;
+    gl.outputColorSpace = THREE.SRGBColorSpace;
+  }, [gl, exposure]);
+  return null;
+}
+
 function SceneInner({
   isMobile,
   isPortrait,
@@ -495,25 +585,46 @@ function SceneInner({
   mapEditMode,
   setMapEditMode,
 }) {
+  
+  const light = useMemo(
+  () => ({
+    exposure: 0.28,
+    envIntensity: 0.04,
+
+    ambient: 0.04,
+
+    spotIntensity: 0.25,
+    spotAngle: 0.48,
+    spotPenumbra: 0.92,
+    spotDistance: 28,
+
+    dirA: 0.16,
+    dirB: 0.10,
+
+    point: 0.03,
+    pointDistance: 22,
+  }),
+  []
+);
+
+
   const fpsEnabled = controlsEnabled && !focus?.active && !mapEditMode;
   const touchEnabled = isMobile && !focus?.active && !mapEditMode;
 
   const ROOM_BOUNDS = useMemo(
-  () => ({ minX: -10.75, maxX: 10.85, minZ: -7.55, maxZ: 7.55 }),
-  []
-);
-
+    () => ({ minX: -10.75, maxX: 10.85, minZ: -7.55, maxZ: 7.55 }),
+    []
+  );
 
   const cameraTarget = useRef(new THREE.Vector3());
   const lookTarget = useRef(new THREE.Vector3());
   const fovTarget = useRef(65);
 
-  const woodMap = useLoader(THREE.TextureLoader, "/textures/wood_floor.webp");
-  const stoneMap = useLoader(THREE.TextureLoader, "/textures/stone_wall.webp");
+  const floorMaps = usePBRMaps("/textures/floor", [5, 4]);
+  const stoneMaps = usePBRMaps("/textures/stone", [7, 3.2]);
 
   const unlockPointer = useCallback(() => {
     if (typeof document === "undefined") return;
-
     if (document.pointerLockElement) {
       try {
         document.exitPointerLock();
@@ -554,42 +665,6 @@ function SceneInner({
     if (!fpsEnabled) setIsLocked?.(false);
   }, [fpsEnabled, setIsLocked]);
 
-  const floorMat = useMemo(() => {
-    if (!woodMap) return null;
-
-    woodMap.wrapS = THREE.RepeatWrapping;
-    woodMap.wrapT = THREE.RepeatWrapping;
-    woodMap.repeat.set(5, 4);
-    woodMap.anisotropy = 8;
-    woodMap.colorSpace = THREE.SRGBColorSpace;
-    woodMap.needsUpdate = true;
-
-    return new THREE.MeshStandardMaterial({
-      map: woodMap,
-      roughness: 0.55,
-      metalness: 0.03,
-    });
-  }, [woodMap]);
-
-  const stoneMat = useMemo(() => {
-  if (!stoneMap) return null;
-
-  const base = stoneMap.clone();
-  base.wrapS = THREE.RepeatWrapping;
-  base.wrapT = THREE.RepeatWrapping;
-  base.repeat.set(7, 3.2);
-  base.anisotropy = 8;
-  base.colorSpace = THREE.SRGBColorSpace;
-  base.needsUpdate = true;
-
-  return new THREE.MeshStandardMaterial({
-    map: base,
-    roughness: 0.88,
-    metalness: 0.02,
-    side: THREE.DoubleSide, 
-  });
-}, [stoneMap]);
-
   const walnutMat = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
@@ -600,7 +675,6 @@ function SceneInner({
     []
   );
 
- 
   const SHELF_Z = -7.35;
 
   const focusForShelf = useCallback(
@@ -655,7 +729,6 @@ function SceneInner({
         const k = 1.45;
         finalPos = [look[0] + dx * k, look[1] + dy * k, look[2] + dz * k];
         finalLook = [look[0], look[1], look[2]];
-
         fovTarget.current = 82;
       } else if (isMobile && isPortrait && sectionId === "about") {
         const dx = pos[0] - look[0];
@@ -664,49 +737,47 @@ function SceneInner({
 
         const k = 1.55;
         finalPos = [look[0] + dx * k, look[1] + dy * k + 0.1, look[2] + dz * k];
-
         finalLook = [look[0], look[1] + 0.06, look[2]];
         fovTarget.current = 58;
       }
 
       setFocus({ active: true, opened: false, sectionId, itemId, pos: finalPos, look: finalLook });
     },
-    [
-      unlockPointer,
-      setMapEditMode,
-      setFocus,
-      mobileForwardRef,
-      mobileBackRef,
-      isMobile,
-      isPortrait,
-    ]
+    [unlockPointer, setMapEditMode, setFocus, mobileForwardRef, mobileBackRef, isMobile, isPortrait]
   );
 
   return (
     <>
+      <ToneMapping exposure={light.exposure} />
+
       <fog attach="fog" args={["#07070a", 10, 28]} />
 
-      <ambientLight intensity={0.32} />
+      <ambientLight intensity={light.ambient} />
+
       <spotLight
         position={[0, 6.6, -1.5]}
-        angle={0.55}
-        penumbra={0.75}
-        intensity={2.2}
-        distance={35}
+        angle={light.spotAngle}
+        penumbra={light.spotPenumbra}
+        intensity={light.spotIntensity}
+        distance={light.spotDistance}
         castShadow={!isMobile}
         shadow-mapSize-width={1024}
         shadow-mapSize-height={1024}
       />
-      <directionalLight position={[7, 9, 7]} intensity={0.45} />
-      <directionalLight position={[-6, 5.5, 6]} intensity={0.25} />
-      <pointLight position={[-7, 4.2, 0]} intensity={0.22} distance={30} />
-      <pointLight position={[7, 4.2, 0]} intensity={0.22} distance={30} />
 
-      <Environment preset="warehouse" />
+      <directionalLight position={[7, 9, 7]} intensity={light.dirA} />
+      <directionalLight position={[-6, 5.5, 6]} intensity={light.dirB} />
 
-      {fpsEnabled && (
-        <FPSController enabled={true} onLockChange={setIsLocked} bounds={ROOM_BOUNDS} />
-      )}
+      <pointLight position={[-7, 4.2, 0]} intensity={light.point} distance={light.pointDistance} />
+      <pointLight position={[7, 4.2, 0]} intensity={light.point} distance={light.pointDistance} />
+
+      <Environment
+        files="/hdri/studio_small_03_2k.hdr"
+        background={false}
+        intensity={light.envIntensity}
+      />
+
+      {fpsEnabled && <FPSController enabled={true} onLockChange={setIsLocked} bounds={ROOM_BOUNDS} />}
 
       {touchEnabled && (
         <TouchController
@@ -720,53 +791,73 @@ function SceneInner({
         />
       )}
 
-      <mesh receiveShadow={!isMobile} position={[0, 0, 0]}>
-        <boxGeometry args={[22, 0.2, 18]} />
-        {floorMat ? <primitive object={floorMat} attach="material" /> : null}
-      </mesh>
+      <PBRBox
+        receiveShadow={!isMobile}
+        position={[0, 0, 0]}
+        args={[22, 0.2, 18]}
+        maps={floorMaps}
+        roughness={0.9}
+        metalness={0.0}
+        aoIntensity={0.85}
+        normalScale={0.9}
+      />
 
-      <mesh position={[0, 2.3, -7.85]} receiveShadow={!isMobile}>
-        <planeGeometry args={[22, 4.6]} />
-        {stoneMat ? <primitive object={stoneMat} attach="material" /> : null}
-      </mesh>
-
-      <mesh position={[0, 2.3, 7.85]} rotation={[0, Math.PI, 0]} receiveShadow={!isMobile}>
-        <planeGeometry args={[22, 4.6]} />
-        {stoneMat ? <primitive object={stoneMat} attach="material" /> : null}
-      </mesh>
+      <PBRPlane
+        position={[0, 2.3, -7.85]}
+        receiveShadow={!isMobile}
+        args={[22, 4.6]}
+        maps={stoneMaps}
+        roughness={0.95}
+        metalness={0.02}
+        aoIntensity={0.75}
+        normalScale={0.75}
+        doubleSide
+      />
+      <PBRPlane
+        position={[0, 2.3, 7.85]}
+        rotation={[0, Math.PI, 0]}
+        receiveShadow={!isMobile}
+        args={[22, 4.6]}
+        maps={stoneMaps}
+        roughness={0.95}
+        metalness={0.02}
+        aoIntensity={0.75}
+        normalScale={0.75}
+        doubleSide
+      />
 
       <MovieWall position={[0, 2.35, 7.78]} />
 
-      <mesh
+      <PBRPlane
         position={[-10.98, 2.3, 0]}
         rotation={[0, Math.PI / 2, 0]}
         receiveShadow={!isMobile}
-      >
-        <planeGeometry args={[18, 4.6]} />
-        {stoneMat ? <primitive object={stoneMat} attach="material" /> : null}
-      </mesh>
-      <mesh
+        args={[18, 4.6]}
+        maps={stoneMaps}
+        roughness={0.95}
+        metalness={0.02}
+        aoIntensity={0.75}
+        normalScale={0.75}
+        doubleSide
+      />
+      <PBRPlane
         position={[10.98, 2.3, 0]}
         rotation={[0, -Math.PI / 2, 0]}
         receiveShadow={!isMobile}
-      >
-        <planeGeometry args={[18, 4.6]} />
-        {stoneMat ? <primitive object={stoneMat} attach="material" /> : null}
-      </mesh>
+        args={[18, 4.6]}
+        maps={stoneMaps}
+        roughness={0.95}
+        metalness={0.02}
+        aoIntensity={0.75}
+        normalScale={0.75}
+        doubleSide
+      />
 
-      <mesh
-        position={[-10.92, 0.65, 0]}
-        rotation={[0, Math.PI / 2, 0]}
-        receiveShadow={!isMobile}
-      >
+      <mesh position={[-10.92, 0.65, 0]} rotation={[0, Math.PI / 2, 0]} receiveShadow={!isMobile}>
         <boxGeometry args={[18, 1.3, 0.08]} />
         <primitive object={walnutMat} attach="material" />
       </mesh>
-      <mesh
-        position={[10.92, 0.65, 0]}
-        rotation={[0, -Math.PI / 2, 0]}
-        receiveShadow={!isMobile}
-      >
+      <mesh position={[10.92, 0.65, 0]} rotation={[0, -Math.PI / 2, 0]} receiveShadow={!isMobile}>
         <boxGeometry args={[18, 1.3, 0.08]} />
         <primitive object={walnutMat} attach="material" />
       </mesh>
@@ -789,9 +880,7 @@ function SceneInner({
         mapUrl="/textures/world_map.webp"
         activeIndex={focus?.sectionId === "travels" ? focus?.itemId : null}
         onPickWall={() => pick("travels", [7.8, 2.35, 3.3], [10.5, 2.55, 3.3])}
-        onPickPin={(itemIndex) =>
-          pick("travels", [7.8, 2.35, 3.3], [10.5, 2.55, 3.3], itemIndex)
-        }
+        onPickPin={(itemIndex) => pick("travels", [7.8, 2.35, 3.3], [10.5, 2.55, 3.3], itemIndex)}
       />
 
       <DiplomaWall
@@ -870,36 +959,29 @@ export default function LibraryScene({
 
   return (
     <Canvas
-  frameloop={paused ? "never" : "always"}
-  shadows={!isMobile}
-  dpr={isMobile ? 1 : [1, 2]}
-  camera={{ position: [0, 1.6, 4], fov: 65 }}
-  gl={{
-    antialias: !isMobile,
-    powerPreference: "high-performance",
-  }}
-  onCreated={({ gl }) => {
-    gl.toneMapping = THREE.ACESFilmicToneMapping;
-    gl.toneMappingExposure = 0.98;
-  }}
->
-  <SceneInner
-    isMobile={isMobile}
-    isPortrait={isPortrait}
-    mobileForwardRef={mobileForwardRef}
-    mobileBackRef={mobileBackRef}
-    controlsEnabled={controlsEnabled && !paused}
-    setIsLocked={setIsLocked}
-    onOpenSection={onOpenSection}
-    focus={focus}
-    setFocus={setFocus}
-    mapEditMode={mapEditMode}
-    setMapEditMode={setMapEditMode}
-  />
-</Canvas>
-
+      frameloop={paused ? "never" : "always"}
+      shadows={!isMobile}
+      dpr={isMobile ? 1 : [1, 2]}
+      camera={{ position: [0, 1.6, 4], fov: 65 }}
+      gl={{ antialias: !isMobile, powerPreference: "high-performance" }}
+      onCreated={({ gl }) => {
+      
+        gl.outputColorSpace = THREE.SRGBColorSpace;
+      }}
+    >
+      <SceneInner
+        isMobile={isMobile}
+        isPortrait={isPortrait}
+        mobileForwardRef={mobileForwardRef}
+        mobileBackRef={mobileBackRef}
+        controlsEnabled={controlsEnabled && !paused}
+        setIsLocked={setIsLocked}
+        onOpenSection={onOpenSection}
+        focus={focus}
+        setFocus={setFocus}
+        mapEditMode={mapEditMode}
+        setMapEditMode={setMapEditMode}
+      />
+    </Canvas>
   );
 }
-
-
-

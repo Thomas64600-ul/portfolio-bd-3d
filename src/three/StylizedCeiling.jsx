@@ -1,48 +1,90 @@
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect, useRef } from "react";
 import * as THREE from "three";
-import { useLoader } from "@react-three/fiber";
+import { useThree } from "@react-three/fiber";
+import { useTexture } from "@react-three/drei";
+
+function ensureUv2(geo) {
+  if (!geo?.attributes?.uv) return;
+  if (geo.attributes.uv2) return;
+  geo.setAttribute("uv2", new THREE.BufferAttribute(geo.attributes.uv.array, 2));
+}
 
 export default function StylizedCeiling({
   y = 4.6,
   width = 22,
   depth = 18,
   panelThickness = 0.05,
+
   beamCount = 6,
   beamThickness = 0.22,
   beamHeight = 0.26,
 
-  textureUrl = "/textures/plaster_ceiling.webp",
-  repeatX = 4,
-  repeatZ = 3,
+  
+  pbrBasePath = "/textures/ceiling",
+
+  repeatX = 3,
+  repeatZ = 2,
+
+ 
   ceilingTint = "#d2c9bc",
+
+  
+  aoIntensity = 0.65,
+  normalStrength = 0.5,
+  roughness = 0.92,
 }) {
-  const ceilingMap = useLoader(THREE.TextureLoader, textureUrl);
+  const { gl } = useThree();
+
+  const maps = useTexture({
+    map: `${pbrBasePath}/diff.webp`,
+    aoMap: `${pbrBasePath}/ao.webp`,
+    normalMap: `${pbrBasePath}/normal.webp`,
+    roughnessMap: `${pbrBasePath}/rough.webp`,
+  });
 
   useEffect(() => {
-    if (!ceilingMap) return;
+    const maxAniso = gl?.capabilities?.getMaxAnisotropy
+      ? gl.capabilities.getMaxAnisotropy()
+      : 8;
 
-    ceilingMap.wrapS = ceilingMap.wrapT = THREE.RepeatWrapping;
-    ceilingMap.repeat.set(repeatX, repeatZ);
+    const apply = (tex, isColor) => {
+      if (!tex) return;
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(repeatX, repeatZ);
 
-    ceilingMap.anisotropy = 8;
-    ceilingMap.minFilter = THREE.LinearMipmapLinearFilter;
-    ceilingMap.magFilter = THREE.LinearFilter;
+      tex.colorSpace = isColor ? THREE.SRGBColorSpace : THREE.NoColorSpace;
 
-   
-    ceilingMap.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = Math.min(16, maxAniso);
+      tex.minFilter = THREE.LinearMipmapLinearFilter;
+      tex.magFilter = THREE.LinearFilter;
+      tex.generateMipmaps = true;
 
-    ceilingMap.needsUpdate = true;
-  }, [ceilingMap, repeatX, repeatZ]);
+      tex.needsUpdate = true;
+    };
+
+    apply(maps.map, true);
+    apply(maps.aoMap, false);
+    apply(maps.normalMap, false);
+    apply(maps.roughnessMap, false);
+  }, [maps, repeatX, repeatZ, gl]);
 
   const panelMat = useMemo(() => {
+    const ns = new THREE.Vector2(normalStrength, normalStrength);
+
     return new THREE.MeshStandardMaterial({
-      map: ceilingMap,
-      color: new THREE.Color(ceilingTint),
-      roughness: 0.95,
+      map: maps.map,
+      aoMap: maps.aoMap,
+      aoMapIntensity: aoIntensity,
+      normalMap: maps.normalMap,
+      normalScale: ns,
+      roughnessMap: maps.roughnessMap,
+      roughness,
       metalness: 0.0,
+      color: new THREE.Color(ceilingTint),
       side: THREE.DoubleSide,
     });
-  }, [ceilingMap, ceilingTint]);
+  }, [maps, ceilingTint, aoIntensity, normalStrength, roughness]);
 
   const beamMat = useMemo(() => {
     return new THREE.MeshStandardMaterial({
@@ -62,12 +104,20 @@ export default function StylizedCeiling({
     return xs;
   }, [beamCount, width]);
 
+  const panelGeoRef = useRef(null);
+
+  useEffect(() => {
+    if (panelGeoRef.current) ensureUv2(panelGeoRef.current);
+  }, []);
+
   return (
     <group position={[0, y, 0]}>
+     
       <mesh position={[0, panelThickness / 2, 0]} material={panelMat}>
-        <boxGeometry args={[width, panelThickness, depth]} />
+        <boxGeometry ref={panelGeoRef} args={[width, panelThickness, depth]} />
       </mesh>
 
+     
       {beams.map((x, i) => (
         <mesh
           key={i}
