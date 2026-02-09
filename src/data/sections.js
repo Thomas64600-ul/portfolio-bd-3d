@@ -85,6 +85,12 @@ export const SECTIONS = {
         desc: "Gestion des flux & organisation terrain",
         year: "2012",
       },
+      {
+        name: "Baccalauréat",
+        desc: "Diplôme général",
+       year: "2005",
+},
+
     ],
   },
 
