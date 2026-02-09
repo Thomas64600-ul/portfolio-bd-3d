@@ -11,7 +11,21 @@ function resetGlobalControls() {
   if (typeof window === "undefined") return;
   window.__UI_ACTIVE__ = false;
   window.__JOYSTICK_ACTIVE__ = false;
- 
+}
+
+function openCV() {
+  if (typeof window === "undefined") return;
+  window.open("/cv/Thomas-DeTraversay-CV.pdf", "_blank", "noopener,noreferrer");
+}
+
+function getDiplomaImageByIndex(idx) {
+  const map = {
+    0: "/textures/diplomas/diplome-rncp.webp",
+    1: "/textures/diplomas/certif-ia.webp",
+    2: "/textures/diplomas/diplome-bts.webp",
+    3: "/textures/diplomas/bac.webp", 
+  };
+  return map[idx] || null;
 }
 
 export default function Overlay({
@@ -40,13 +54,9 @@ export default function Overlay({
 
   const [dismissRotateHint, setDismissRotateHint] = useState(false);
   const [isMapMode, setIsMapMode] = useState(false);
-
- 
   const prevMapRef = useRef(false);
 
-  useEffect(() => {
-    setDismissRotateHint(false);
-  }, [isMobile]);
+  useEffect(() => setDismissRotateHint(false), [isMobile]);
 
   useEffect(() => {
     if (!isMobile) return;
@@ -54,17 +64,15 @@ export default function Overlay({
     if (typeof isPortraitProp === "boolean") return;
 
     const compute = () => setIsPortraitLocal(window.innerHeight > window.innerWidth);
-
     compute();
+
     window.addEventListener("resize", compute);
     window.addEventListener("orientationchange", compute);
-
     return () => {
       window.removeEventListener("resize", compute);
       window.removeEventListener("orientationchange", compute);
     };
   }, [isMobile, isPortraitProp]);
-
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -88,16 +96,14 @@ export default function Overlay({
   }, [onMobileForwardUp, onMobileBackUp]);
 
   useEffect(() => {
-    if (anyOpen) {
-      resetGlobalControls();
-      onMobileForwardUp?.();
-      onMobileBackUp?.();
-    }
+    if (!anyOpen) return;
+    resetGlobalControls();
+    onMobileForwardUp?.();
+    onMobileBackUp?.();
   }, [anyOpen, onMobileForwardUp, onMobileBackUp]);
 
   const handleRequestLock = useCallback(() => {
     onRequestLock?.();
-
     if (typeof document === "undefined") return;
     const canvas = document.querySelector("canvas");
     if (canvas?.requestPointerLock) canvas.requestPointerLock();
@@ -115,7 +121,6 @@ export default function Overlay({
   const setMobileMove = useCallback(
     ({ forward, back }) => {
       const active = forward || back;
-
       setGlobalFlag("__UI_ACTIVE__", active);
 
       if (forward) onMobileForwardDown?.();
@@ -133,9 +138,7 @@ export default function Overlay({
     onMobileBackUp?.();
   }, [onMobileForwardUp, onMobileBackUp]);
 
-  
-  const showRotateHint =
-    isMobile && isPortrait && !anyOpen && !dismissRotateHint; 
+  const showRotateHint = isMobile && isPortrait && !anyOpen && !dismissRotateHint;
 
   const panelContent = useMemo(() => {
     if (!section) return null;
@@ -143,6 +146,145 @@ export default function Overlay({
     const title = section.title ?? openSectionId;
     const description = section.description ?? "";
     const tags = Array.isArray(section.tags) ? section.tags : [];
+    const items = Array.isArray(section.items) ? section.items : [];
+
+    const isAbout = openSectionId === "about";
+    const isDiplomas = openSectionId === "diplomas";
+    const hasActiveItem = openItemId !== null && openItemId !== undefined && !Number.isNaN(Number(openItemId));
+    const activeIdx = hasActiveItem ? Number(openItemId) : null;
+
+    if (isAbout) {
+      return (
+        <>
+          <div style={{ padding: 14, borderBottom: "1px solid rgba(255,255,255,0.10)" }}>
+            <div style={{ fontWeight: 900, fontSize: 16 }}>{title}</div>
+
+            {tags.length > 0 && (
+              <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {tags.map((t) => (
+                  <span
+                    key={t}
+                    style={{
+                      fontSize: 12,
+                      padding: "4px 8px",
+                      borderRadius: 999,
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      background: "rgba(255,255,255,0.03)",
+                      opacity: 0.9,
+                    }}
+                  >
+                    {t}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <div
+              style={{
+                marginTop: 10,
+                fontSize: 13,
+                opacity: 0.88,
+                lineHeight: 1.55,
+                whiteSpace: "pre-line",
+              }}
+            >
+              {description || " "}
+            </div>
+          </div>
+
+          <div style={{ padding: 14, overflow: "auto" }}>
+            <div style={{ display: "grid", gap: 10 }}>
+              <button className="btn" onClick={openCV} style={{ width: "fit-content" }}>
+                📄 Voir le CV
+              </button>
+            </div>
+          </div>
+        </>
+      );
+    }
+
+    if (isDiplomas && activeIdx !== null) {
+      const it = items[activeIdx];
+      const img = getDiplomaImageByIndex(activeIdx);
+
+      return (
+        <>
+          <div style={{ padding: 14, borderBottom: "1px solid rgba(255,255,255,0.10)" }}>
+            <div style={{ fontWeight: 900, fontSize: 16 }}>{title}</div>
+
+            {tags.length > 0 && (
+              <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {tags.map((t) => (
+                  <span
+                    key={t}
+                    style={{
+                      fontSize: 12,
+                      padding: "4px 8px",
+                      borderRadius: 999,
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      background: "rgba(255,255,255,0.03)",
+                      opacity: 0.9,
+                    }}
+                  >
+                    {t}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div style={{ padding: 14, overflow: "auto" }}>
+            <div style={{ display: "grid", gap: 12 }}>
+              {img && (
+                <div
+                  style={{
+                    borderRadius: 14,
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    overflow: "hidden",
+                    background: "rgba(255,255,255,0.03)",
+                  }}
+                >
+                  <img
+                    src={img}
+                    alt={it?.name || it?.title || `Diplôme ${activeIdx + 1}`}
+                    style={{
+                      display: "block",
+                      width: "100%",
+                      height: "auto",
+                      maxHeight: isMobile ? (isPortrait ? 320 : 220) : 420,
+                      objectFit: "contain",
+                      background: "rgba(0,0,0,0.25)",
+                    }}
+                    loading="lazy"
+                  />
+                </div>
+              )}
+
+              <div
+                style={{
+                  padding: 12,
+                  borderRadius: 14,
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  background: "rgba(255,255,255,0.03)",
+                }}
+              >
+                <div style={{ fontWeight: 900 }}>{it?.name || it?.title || `Diplôme ${activeIdx + 1}`}</div>
+                {(it?.year || it?.period || it?.location) && (
+                  <div style={{ marginTop: 6, fontSize: 12, opacity: 0.75 }}>
+                    {[it?.year, it?.period, it?.location].filter(Boolean).join(" • ")}
+                  </div>
+                )}
+                {it?.desc && (
+                  <div style={{ marginTop: 8, fontSize: 13, opacity: 0.88, lineHeight: 1.45, whiteSpace: "pre-line" }}>
+                    {it.desc}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </>
+      );
+    }
 
     if (Array.isArray(section.rows)) {
       return (
@@ -227,8 +369,6 @@ export default function Overlay({
       );
     }
 
-    const items = Array.isArray(section.items) ? section.items : [];
-
     return (
       <>
         <div style={{ padding: 14, borderBottom: "1px solid rgba(255,255,255,0.10)" }}>
@@ -263,9 +403,7 @@ export default function Overlay({
 
         <div style={{ padding: 14, overflow: "auto" }}>
           {items.length === 0 ? (
-            <div style={{ opacity: 0.85, fontSize: 14 }}>
-              {openSectionId === "about" ? " " : "Aucun élément pour cette section."}
-            </div>
+            <div style={{ opacity: 0.85, fontSize: 14 }}>Aucun élément pour cette section.</div>
           ) : (
             <div style={{ display: "grid", gap: 10 }}>
               {items.map((it, idx) => {
@@ -317,7 +455,9 @@ export default function Overlay({
         </div>
       </>
     );
-  }, [section, openSectionId, openItemId]);
+  }, [section, openSectionId, openItemId, isMobile, isPortrait]);
+
+  const showCVInTopbar = !panelOpen && !anyOpen;
 
   return (
     <div className="hud" data-rotatehint={showRotateHint ? "1" : "0"} data-panelopen={panelOpen ? "1" : "0"}>
@@ -325,17 +465,25 @@ export default function Overlay({
         {panelOpen ? (
           <>
             <button className="btn" onClick={handleCloseEverything}>⎋ Quitter</button>
-            <button className="btn" onClick={() => window.open("/cv/Thomas-DeTraversay-CV.pdf")}>📄 Voir le CV</button>
             <button className="btn" onClick={onClosePanel}>✖ Fermer</button>
           </>
         ) : !isLocked ? (
           !isMobile ? (
-            <button className="btn btn-lock" onClick={handleRequestLock}>🎮 Entrer</button>
+            <>
+              {showCVInTopbar && <button className="btn" onClick={openCV}>📄 Voir le CV</button>}
+              <button className="btn btn-lock" onClick={handleRequestLock}>🎮 Entrer</button>
+            </>
           ) : (
-            <button className="btn" disabled>📱 Mode mobile</button>
+            <>
+              {showCVInTopbar && <button className="btn" onClick={openCV}>📄 Voir le CV</button>}
+              <button className="btn" disabled>📱 Mode mobile</button>
+            </>
           )
         ) : (
-          <button className="btn" onClick={onReleaseLock}>⎋ Libérer souris</button>
+          <>
+            {showCVInTopbar && <button className="btn" onClick={openCV}>📄 Voir le CV</button>}
+            <button className="btn" onClick={onReleaseLock}>⎋ Libérer souris</button>
+          </>
         )}
       </div>
 
@@ -362,7 +510,6 @@ export default function Overlay({
         </div>
       )}
 
-     
       {isMobile && !anyOpen && (
         <MobileJoystick
           enabled
@@ -398,7 +545,6 @@ export default function Overlay({
         </div>
       )}
 
-     
       {!anyOpen && (
         <div className="hint">
           {!isMobile ? <div>WASD / Souris / Clic</div> : <div>Joystick + Tap</div>}
@@ -407,4 +553,3 @@ export default function Overlay({
     </div>
   );
 }
-
