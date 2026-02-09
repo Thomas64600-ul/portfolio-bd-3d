@@ -21,10 +21,19 @@ function DiplomaFrameContent({ size = SIZE, textureUrl }) {
   useEffect(() => {
     if (!diplomaTex) return;
 
+    
     diplomaTex.colorSpace = THREE.SRGBColorSpace;
-    diplomaTex.anisotropy = 8;
+
+   
+    diplomaTex.anisotropy = 12;
+    diplomaTex.minFilter = THREE.LinearMipmapLinearFilter;
+    diplomaTex.magFilter = THREE.LinearFilter;
+    diplomaTex.generateMipmaps = true;
+
+   
     diplomaTex.wrapS = THREE.ClampToEdgeWrapping;
     diplomaTex.wrapT = THREE.ClampToEdgeWrapping;
+
     diplomaTex.needsUpdate = true;
   }, [diplomaTex]);
 
@@ -52,24 +61,25 @@ function DiplomaFrameContent({ size = SIZE, textureUrl }) {
     () =>
       new THREE.MeshStandardMaterial({
         map: diplomaTex,
-        roughness: 0.78,
+        roughness: 0.82,
         metalness: 0.0,
         toneMapped: true,
+        
+        color: new THREE.Color("#e2e2e2"),
+      
         emissive: new THREE.Color("#ffffff"),
-        emissiveIntensity: 0.16, 
+        emissiveIntensity: 0.05,
       }),
     [diplomaTex]
   );
 
   return (
     <group>
-     
       <mesh raycast={() => null}>
         <boxGeometry args={[size[0] + 0.12, size[1] + 0.12, 0.05]} />
         <primitive object={inkMat} attach="material" />
       </mesh>
 
-   
       <mesh position={[0, 0, 0.035]} raycast={() => null}>
         <boxGeometry args={[size[0], size[1], 0.01]} />
         <primitive object={paperMat} attach="material" />
