@@ -58,9 +58,13 @@ export default function TravelWall({
   const centerRayRef = useRef(new THREE.Raycaster());
   const camDirRef = useRef(new THREE.Vector3());
 
+  
+  const mapRaycastRef = useRef(null);
+
   const mapTex = useLoader(THREE.TextureLoader, mapUrl);
   const { camera, gl, size } = useThree();
 
+  
   const items = SECTIONS?.travels?.items || [];
 
   useEffect(() => {
@@ -84,7 +88,6 @@ export default function TravelWall({
   );
 
   const MAP_Z = 0;
-
   const PIN_Z = 0.22;
 
   const uvToXY = useCallback((u, v) => {
@@ -100,22 +103,17 @@ export default function TravelWall({
     if (!isPortrait) return 1;
 
     const screenAspect = size.width / size.height;
-
     const s = THREE.MathUtils.clamp(screenAspect / 0.60, 0.62, 0.85);
-
     return s;
   }, [isPortrait, size.width, size.height]);
-
 
   const mapYOffset = useMemo(() => (isPortrait ? 0.12 : 0), [isPortrait]);
 
   const isInMapZoneRef = useRef(false);
 
-
   const ENTER_DIST = 3.2;
   const EXIT_DIST = 3.8;
 
-  
   const lastHitTimeRef = useRef(0);
   const GRACE_MS = 250;
 
@@ -141,6 +139,13 @@ export default function TravelWall({
     return dist <= EXIT_DIST;
   }, [camera]);
 
+  
+  useEffect(() => {
+    const mesh = mapRef.current;
+    if (!mesh) return;
+    if (!mapRaycastRef.current) mapRaycastRef.current = mesh.raycast;
+  }, []);
+
   useFrame(() => {
     const ok = computeInMapZone();
 
@@ -148,7 +153,12 @@ export default function TravelWall({
       isInMapZoneRef.current = ok;
       setGlobalFlag("__MAP_MODE__", ok);
 
-  
+    
+      const mesh = mapRef.current;
+      if (mesh && mapRaycastRef.current) {
+        mesh.raycast = ok ? mapRaycastRef.current : () => null;
+      }
+
       if (ok) setGlobalNumber("__MAP_INTERACT_UNTIL__", Date.now() + 220);
       else setGlobalNumber("__MAP_INTERACT_UNTIL__", Date.now() + 80);
     }
@@ -203,16 +213,13 @@ export default function TravelWall({
       e?.stopPropagation?.();
 
       if (isTouchEvent(e)) {
-      
         if (isBlockedForMapTouch()) return;
 
-        
         setGlobalNumber("__MAP_INTERACT_UNTIL__", Date.now() + 320);
         onPickWall?.();
         return;
       }
 
-     
       onPickWall?.();
     },
     [onPickWall]
@@ -225,7 +232,6 @@ export default function TravelWall({
       if (isTouchEvent(e)) {
         if (isBlockedForMapTouch()) return;
 
-      
         setGlobalNumber("__MAP_INTERACT_UNTIL__", Date.now() + 360);
         onPickPin?.(itemIndex);
         return;
@@ -240,10 +246,7 @@ export default function TravelWall({
 
   return (
     <group position={position} rotation={rotation}>
-      <group
-        scale={[mapScale, mapScale, 1]}
-        position={[0, mapYOffset, 0]}
-      >
+      <group scale={[mapScale, mapScale, 1]} position={[0, mapYOffset, 0]}>
         <InteractiveItem
           disabled={false}
           onPick={(e) => {
@@ -274,7 +277,6 @@ export default function TravelWall({
                       />
                     </mesh>
 
-                   
                     <mesh>
                       <sphereGeometry args={[PIN_SIZE * HITBOX_SCALE, 12, 12]} />
                       <meshBasicMaterial
