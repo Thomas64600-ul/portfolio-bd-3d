@@ -110,10 +110,11 @@ export default function App() {
   }, []);
 
   const requestLock = useCallback(() => {
+    if (!hasStarted) return; 
     setControlsEnabled(true);
     const canvas = document.querySelector("canvas");
     if (canvas && !document.pointerLockElement) canvas.requestPointerLock?.();
-  }, []);
+  }, [hasStarted]);
 
   const releaseLock = useCallback(() => {
     if (document.pointerLockElement) document.exitPointerLock?.();
@@ -162,8 +163,9 @@ export default function App() {
   );
 
   useEffect(() => {
-    setGlobalFlag("__MAP_MODE__", openSectionId === "travels");
-  }, [openSectionId]);
+   
+    setGlobalFlag("__MAP_MODE__", hasStarted && openSectionId === "travels");
+  }, [openSectionId, hasStarted]);
 
   const overlaySectionId = useMemo(() => {
     if (openSectionId === "travels") return null;
@@ -171,58 +173,73 @@ export default function App() {
   }, [openSectionId]);
 
   const showTravelTopbar = openSectionId === "travels";
-
   const anyOpen = Boolean(openSectionId) || Boolean(focus?.active);
 
   return (
     <>
-      <LibraryScene
-        paused={!hasStarted}
-        isMobile={isMobile}
-        isPortrait={isPortrait}
-        controlsEnabled={controlsEnabled && hasStarted}
-        setIsLocked={setIsLocked}
-        focus={focus}
-        setFocus={setFocus}
-        onOpenSection={handleOpenSection}
-        mobileForwardRef={mobileForwardRef}
-        mobileBackRef={mobileBackRef}
-        mobileStrafeRef={mobileStrafeRef}
-      />
+     
+      {hasStarted && (
+        <>
+          <LibraryScene
+            paused={false}
+            isMobile={isMobile}
+            isPortrait={isPortrait}
+            controlsEnabled={controlsEnabled}
+            setIsLocked={setIsLocked}
+            focus={focus}
+            setFocus={setFocus}
+            onOpenSection={handleOpenSection}
+            mobileForwardRef={mobileForwardRef}
+            mobileBackRef={mobileBackRef}
+            mobileStrafeRef={mobileStrafeRef}
+          />
 
-      {!hasStarted && <StartLoader onStart={() => setHasStarted(true)} />}
+          <Overlay
+            isMobile={isMobile}
+            isPortrait={isPortrait}
+            isLocked={isLocked}
+            onRequestLock={requestLock}
+            onReleaseLock={releaseLock}
+            openSectionId={overlaySectionId}
+            openItemId={focus?.itemId ?? null}
+            onClosePanel={closePanel}
+            anyOpen={anyOpen}
+            mobileForwardRef={mobileForwardRef}
+            mobileBackRef={mobileBackRef}
+            mobileStrafeRef={mobileStrafeRef}
+          />
 
-      <Overlay
-        isMobile={isMobile}
-        isPortrait={isPortrait}
-        isLocked={isLocked}
-        onRequestLock={requestLock}
-        onReleaseLock={releaseLock}
-        openSectionId={overlaySectionId}
-        openItemId={focus?.itemId ?? null}
-        onClosePanel={closePanel}
-        anyOpen={anyOpen}
-        mobileForwardRef={mobileForwardRef}
-        mobileBackRef={mobileBackRef}
-        mobileStrafeRef={mobileStrafeRef}
-      />
+          {showTravelTopbar && (
+            <div className="hud" style={{ pointerEvents: "none" }}>
+              <div className="topbar" style={{ pointerEvents: "auto" }}>
+                <button className="btn" onClick={closePanel}>
+                  ⎋ Quitter la carte
+                </button>
+                <button className="btn" onClick={closePanel}>
+                  ✖ Fermer
+                </button>
+              </div>
+            </div>
+          )}
 
-      {showTravelTopbar && (
-        <div className="hud" style={{ pointerEvents: "none" }}>
-          <div className="topbar" style={{ pointerEvents: "auto" }}>
-            <button className="btn" onClick={closePanel}>
-              ⎋ Quitter la carte
-            </button>
-            <button className="btn" onClick={closePanel}>
-              ✖ Fermer
-            </button>
-          </div>
-        </div>
+          {openSectionId === "travels" && (
+            <TravelCard itemId={focus?.itemId ?? null} onClose={closeTravelCard} />
+          )}
+        </>
       )}
 
-      {openSectionId === "travels" && (
-        <TravelCard itemId={focus?.itemId ?? null} onClose={closeTravelCard} />
+      {!hasStarted && (
+        <StartLoader
+          onStart={() => {
+            setOpenSectionId(null);
+            setControlsEnabled(true);
+            setGlobalFlag("__UI_ACTIVE__", false);
+            setGlobalFlag("__MAP_MODE__", false);
+            setHasStarted(true);
+          }}
+        />
       )}
     </>
   );
 }
+
