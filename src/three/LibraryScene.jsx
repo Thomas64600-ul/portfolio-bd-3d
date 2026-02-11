@@ -24,7 +24,9 @@ function ensureUv2(geo) {
   geo.setAttribute("uv2", new THREE.BufferAttribute(geo.attributes.uv.array, 2));
 }
 
-function usePBRMaps(basePath, repeat = [1, 1]) {
+function usePBRMaps(basePath, repeat = [1, 1], opts = {}) {
+  const { isMobile = false, disableNormalOnMobile = true } = opts;
+
   const maps = useTexture({
     map: `${basePath}/diff.webp`,
     aoMap: `${basePath}/ao.webp`,
@@ -39,6 +41,8 @@ function usePBRMaps(basePath, repeat = [1, 1]) {
       ? gl.capabilities.getMaxAnisotropy()
       : 8;
 
+    const aniso = isMobile ? 4 : Math.min(16, maxAniso);
+
     const apply = (tex, isColor) => {
       if (!tex) return;
       tex.wrapS = THREE.RepeatWrapping;
@@ -47,7 +51,7 @@ function usePBRMaps(basePath, repeat = [1, 1]) {
 
       tex.colorSpace = isColor ? THREE.SRGBColorSpace : THREE.NoColorSpace;
 
-      tex.anisotropy = Math.min(16, maxAniso);
+      tex.anisotropy = aniso;
       tex.minFilter = THREE.LinearMipmapLinearFilter;
       tex.magFilter = THREE.LinearFilter;
       tex.generateMipmaps = true;
@@ -58,9 +62,15 @@ function usePBRMaps(basePath, repeat = [1, 1]) {
     apply(maps.aoMap, false);
     apply(maps.normalMap, false);
     apply(maps.roughnessMap, false);
-  }, [maps, repeat, gl]);
+  }, [maps, repeat, gl, isMobile]);
 
-  return maps;
+
+  const effective = useMemo(() => {
+    if (!isMobile || !disableNormalOnMobile) return maps;
+    return { ...maps, normalMap: null };
+  }, [maps, isMobile, disableNormalOnMobile]);
+
+  return effective;
 }
 
 function PBRBox({
@@ -209,7 +219,7 @@ function BookcaseUnit({
       list.forEach((t) => {
         if (!t) return;
         t.colorSpace = THREE.SRGBColorSpace;
-        t.anisotropy = 12;
+        t.anisotropy = isMobile ? 4 : 12;
         t.minFilter = THREE.LinearMipmapLinearFilter;
         t.magFilter = THREE.LinearFilter;
         t.generateMipmaps = true;
@@ -222,7 +232,7 @@ function BookcaseUnit({
     apply(mangaTextures);
     apply(comicsTextures);
     apply(bdTextures);
-  }, [mangaTextures, comicsTextures, bdTextures]);
+  }, [mangaTextures, comicsTextures, bdTextures, isMobile]);
 
   const sliceTexture = useCallback((baseTex, i, count, uStart = 0, uEnd = 1) => {
     if (!baseTex || !count) return null;
@@ -241,13 +251,15 @@ function BookcaseUnit({
     t.wrapT = THREE.ClampToEdgeWrapping;
 
     t.colorSpace = THREE.SRGBColorSpace;
-    t.anisotropy = 12;
+
+    t.anisotropy = isMobile ? 4 : 12;
+
     t.minFilter = THREE.LinearMipmapLinearFilter;
     t.magFilter = THREE.LinearFilter;
     t.generateMipmaps = true;
 
     return t;
-  }, []);
+  }, [isMobile]);
 
   const ROW_COUNTS = useMemo(() => [20, 18, 24], []);
   const rand01 = useCallback((n) => {
@@ -329,7 +341,7 @@ function BookcaseUnit({
 
           {!isManga && !isComics && !hasSpine && (
             <mesh position={[0, h * 0.28, 0.045]}>
-              <boxGeometry args={[w * 0.86, h * 0.14, 0.012]} />
+              <boxGeometry args={[w * (isBD ? 0.86 : 0.86), h * 0.14, 0.012]} />
               <meshStandardMaterial color={band} roughness={0.55} metalness={0.01} />
             </mesh>
           )}
@@ -395,7 +407,6 @@ function BookcaseUnit({
 
           let spineTex = null;
 
-         
           if (theme === "manga") {
             const SERIES = { db: 34, aot: 11, sommet: 5, lastman: 12, gunnm: 9 };
 
@@ -420,7 +431,6 @@ function BookcaseUnit({
             }
           }
 
-        
           if (theme === "comics") {
             const SERIES = { t300: 1, dc: 10, preacher: 4, sincity: 7, walkingdead: 16 };
 
@@ -444,7 +454,6 @@ function BookcaseUnit({
             }
           }
 
-         
           if (theme === "bd") {
             const SERIES = {
               signe: 32,
@@ -650,8 +659,14 @@ function SceneInner({
   const lookTarget = useRef(new THREE.Vector3());
   const fovTarget = useRef(65);
 
-  const floorMaps = usePBRMaps("/textures/floor", [5, 4]);
-  const stoneMaps = usePBRMaps("/textures/stone", [7, 3.2]);
+  const floorMaps = usePBRMaps("/textures/floor", [5, 4], {
+    isMobile,
+    disableNormalOnMobile: true,
+  });
+  const stoneMaps = usePBRMaps("/textures/stone", [7, 3.2], {
+    isMobile,
+    disableNormalOnMobile: true,
+  });
 
   const unlockPointer = useCallback(() => {
     if (typeof document === "undefined") return;
@@ -741,61 +756,63 @@ function SceneInner({
   });
 
   const pick = useCallback(
-  (sectionId, pos, look, itemId = null) => {
-    unlockPointer();
-    setMapEditMode(false);
+    (sectionId, pos, look, itemId = null) => {
+      unlockPointer();
+      setMapEditMode(false);
 
-    if (mobileForwardRef?.current !== undefined) mobileForwardRef.current = false;
-    if (mobileBackRef?.current !== undefined) mobileBackRef.current = false;
-    if (mobileStrafeRef?.current !== undefined) mobileStrafeRef.current = 0;
+      if (mobileForwardRef?.current !== undefined) mobileForwardRef.current = false;
+      if (mobileBackRef?.current !== undefined) mobileBackRef.current = false;
+      if (mobileStrafeRef?.current !== undefined) mobileStrafeRef.current = 0;
 
-    let finalPos = pos;
-    let finalLook = look;
+      let finalPos = pos;
+      let finalLook = look;
 
-    if (isMobile && isPortrait && sectionId === "travels") {
-      const dx = pos[0] - look[0];
-      const dy = pos[1] - look[1];
-      const dz = pos[2] - look[2];
+      if (isMobile && isPortrait && sectionId === "travels") {
+        const dx = pos[0] - look[0];
+        const dy = pos[1] - look[1];
+        const dz = pos[2] - look[2];
 
-      const k = 2.15;
-      finalPos = [look[0] + dx * k, look[1] + dy * k + 0.12, look[2] + dz * k];
-      finalLook = [look[0], look[1] + 0.02, look[2]];
-      fovTarget.current = 96;
-    } else if (isMobile && isPortrait && sectionId === "about") {
-      const dx = pos[0] - look[0];
-      const dy = pos[1] - look[1];
-      const dz = pos[2] - look[2];
+        const k = 2.15;
+        finalPos = [look[0] + dx * k, look[1] + dy * k + 0.12, look[2] + dz * k];
+        finalLook = [look[0], look[1] + 0.02, look[2]];
+        fovTarget.current = 96;
+      } else if (isMobile && isPortrait && sectionId === "about") {
+        const dx = pos[0] - look[0];
+        const dy = pos[1] - look[1];
+        const dz = pos[2] - look[2];
 
-      const k = 1.55;
-      finalPos = [look[0] + dx * k, look[1] + dy * k + 0.1, look[2] + dz * k];
-      finalLook = [look[0], look[1] + 0.06, look[2]];
-      fovTarget.current = 58;
-    } else {
-  
-      fovTarget.current = 65;
-    }
+        const k = 1.55;
+        finalPos = [look[0] + dx * k, look[1] + dy * k + 0.1, look[2] + dz * k];
+        finalLook = [look[0], look[1] + 0.06, look[2]];
+        fovTarget.current = 58;
+      } else {
+        fovTarget.current = 65;
+      }
 
-    setFocus({
-      active: true,
-      opened: false,
-      sectionId,
-      itemId,
-      pos: finalPos,
-      look: finalLook,
-    });
-  },
-  [
-    unlockPointer,
-    setMapEditMode,
-    setFocus,
-    mobileForwardRef,
-    mobileBackRef,
-    mobileStrafeRef,
-    isMobile,
-    isPortrait,
-  ]
-);
+      setFocus({
+        active: true,
+        opened: false,
+        sectionId,
+        itemId,
+        pos: finalPos,
+        look: finalLook,
+      });
+    },
+    [
+      unlockPointer,
+      setMapEditMode,
+      setFocus,
+      mobileForwardRef,
+      mobileBackRef,
+      mobileStrafeRef,
+      isMobile,
+      isPortrait,
+    ]
+  );
 
+  const hdriFile = isMobile
+    ? "/hdri/studio_small_03_1k.hdr"
+    : "/hdri/studio_small_03_2k.hdr";
 
   return (
     <>
@@ -821,7 +838,7 @@ function SceneInner({
       <pointLight position={[-7, 4.2, 0]} intensity={light.point} distance={light.pointDistance} />
       <pointLight position={[7, 4.2, 0]} intensity={light.point} distance={light.pointDistance} />
 
-      <Environment files="/hdri/studio_small_03_2k.hdr" background={false} intensity={light.envIntensity} />
+      <Environment files={hdriFile} background={false} intensity={light.envIntensity} />
 
       {fpsEnabled && (
         <FPSController enabled={true} onLockChange={setIsLocked} bounds={ROOM_BOUNDS} />
@@ -840,7 +857,6 @@ function SceneInner({
         />
       )}
 
-   
       <PBRBox
         receiveShadow={!isMobile}
         position={[0, 0, 0]}
@@ -849,10 +865,9 @@ function SceneInner({
         roughness={0.9}
         metalness={0.0}
         aoIntensity={0.85}
-        normalScale={0.9}
+        normalScale={isMobile ? 0 : 0.9} 
       />
 
-    
       <PBRPlane
         position={[0, 2.3, -7.85]}
         receiveShadow={!isMobile}
@@ -861,7 +876,7 @@ function SceneInner({
         roughness={0.95}
         metalness={0.02}
         aoIntensity={0.75}
-        normalScale={0.75}
+        normalScale={isMobile ? 0 : 0.75}
         doubleSide
       />
       <PBRPlane
@@ -873,13 +888,12 @@ function SceneInner({
         roughness={0.95}
         metalness={0.02}
         aoIntensity={0.75}
-        normalScale={0.75}
+        normalScale={isMobile ? 0 : 0.75}
         doubleSide
       />
 
       <MovieWall position={[0, 2.35, 7.78]} />
 
-    
       <PBRPlane
         position={[-10.98, 2.3, 0]}
         rotation={[0, Math.PI / 2, 0]}
@@ -889,7 +903,7 @@ function SceneInner({
         roughness={0.95}
         metalness={0.02}
         aoIntensity={0.75}
-        normalScale={0.75}
+        normalScale={isMobile ? 0 : 0.75}
         doubleSide
       />
       <PBRPlane
@@ -901,11 +915,10 @@ function SceneInner({
         roughness={0.95}
         metalness={0.02}
         aoIntensity={0.75}
-        normalScale={0.75}
+        normalScale={isMobile ? 0 : 0.75}
         doubleSide
       />
 
-    
       <mesh position={[-10.92, 0.65, 0]} rotation={[0, Math.PI / 2, 0]} receiveShadow={!isMobile}>
         <boxGeometry args={[18, 1.3, 0.08]} />
         <primitive object={walnutMat} attach="material" />
@@ -917,7 +930,6 @@ function SceneInner({
 
       <StylizedCeiling y={4.6} width={22} depth={18} beamCount={6} />
 
-    
       <AboutPanel
         enabled={true}
         isMobile={isMobile}
@@ -948,7 +960,6 @@ function SceneInner({
         }}
       />
 
-     
       <group position={[-6.2, 0.0, SHELF_Z]}>
         <BookcaseUnit
           theme="comics"
@@ -1021,7 +1032,13 @@ export default function LibraryScene({
       shadows={!isMobile}
       dpr={isMobile ? 1 : [1, 2]}
       camera={{ position: [0, 1.6, 4], fov: 65 }}
-      gl={{ antialias: !isMobile, powerPreference: "high-performance" }}
+      gl={{
+        antialias: !isMobile,
+        powerPreference: isMobile ? "low-power" : "high-performance",
+        alpha: false,
+        stencil: false,
+        preserveDrawingBuffer: false,
+      }}
       onCreated={({ gl }) => {
         gl.outputColorSpace = THREE.SRGBColorSpace;
       }}
