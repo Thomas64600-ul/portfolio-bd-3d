@@ -2,19 +2,13 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { useProgress } from "@react-three/drei";
 
 export default function StartLoader({ onStart }) {
-  const { active, progress, item, loaded, total } = useProgress();
+  const { progress, loaded, total } = useProgress();
 
   const [visible, setVisible] = useState(false);
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), 120);
     return () => clearTimeout(t);
   }, []);
-
-  const canEnter = useMemo(() => {
-    const p = Number(progress) || 0;
-    const doneByCount = total > 0 && loaded >= total;
-    return p >= 99 || doneByCount;
-  }, [progress, loaded, total]);
 
   const isMobile = useMemo(() => {
     if (typeof navigator === "undefined") return false;
@@ -34,24 +28,24 @@ export default function StartLoader({ onStart }) {
     };
   }, []);
 
-  const tips = useMemo(() => {
-    return {
-      desktop: [
-        "Clique sur « Entrer » puis clique dans la scène pour activer la vue FPS.",
-        "ZQSD : se déplacer • Souris : regarder • Échap : sortir du contrôle.",
-      ],
-      mobileLandscape: [
-        "Joystick : déplacement • Glisser : caméra.",
-        "Tape sur les éléments pour ouvrir leurs contenus.",
-      ],
-      mobilePortrait: ["Passe en paysage pour une meilleure expérience."],
-    };
-  }, []);
+  const canEnter = useMemo(() => {
+    const p = Number(progress) || 0;
+    const doneByCount = total > 0 && loaded >= total;
+    return p >= 99 || doneByCount;
+  }, [progress, loaded, total]);
 
   const tipList = useMemo(() => {
-    if (!isMobile) return tips.desktop;
-    return isPortrait ? tips.mobilePortrait : tips.mobileLandscape;
-  }, [isMobile, isPortrait, tips]);
+    if (!isMobile) {
+      return [
+        "Clique sur « Entrer », puis clique dans la scène pour activer la vue FPS.",
+        "ZQSD : se déplacer • Souris : regarder • Échap : sortir.",
+      ];
+    }
+    if (isPortrait) {
+      return ["Passe en paysage pour une meilleure expérience."];
+    }
+    return ["Joystick : déplacement • Glisser : caméra.", "Tape sur les éléments pour ouvrir leurs contenus."];
+  }, [isMobile, isPortrait]);
 
   const handleStart = useCallback(() => {
     if (!canEnter) return;
@@ -60,34 +54,26 @@ export default function StartLoader({ onStart }) {
 
   if (!visible) return null;
 
-  const loadingLabel = canEnter
-    ? "Prêt ✅"
-    : `Chargement… ${Math.round(Number(progress) || 0)}%`;
-
-  const fileLabel =
-    active && item ? `En cours : ${String(item).split("/").pop()}` : " ";
-
   return (
     <div style={styles.backdrop}>
       <div style={styles.card}>
         <div style={styles.header}>
           <img
-            src="/textures/logo/portfolio-thomas-256.webp"
-            alt="Logo Portfolio Thomas"
-            loading="eager"
-            decoding="async"
-            fetchriority="high"
-            style={styles.logo}
-            draggable={false}
-            width={86}
-            height={86}
-          />
+  src="/textures/logo/portfolio-thomas-96.webp"
+  srcSet="/textures/logo/portfolio-thomas-96.webp 1x, /textures/logo/portfolio-thomas-128.webp 2x"
+  alt="Logo Portfolio Thomas"
+  width="86"
+  height="86"
+  decoding="async"
+  fetchPriority="high"
+  draggable={false}
+  style={styles.logo}
+/>
+
           <div style={styles.titleWrap}>
             <div style={styles.kicker}>Bienvenue sur le portfolio 3D de</div>
             <div style={styles.title}>Thomas</div>
-            <div style={styles.sub}>
-              Explore la bibliothèque, les diplômes et la carte du monde.
-            </div>
+            <div style={styles.sub}>Explore la bibliothèque, les diplômes et la carte du monde.</div>
           </div>
         </div>
 
@@ -102,19 +88,6 @@ export default function StartLoader({ onStart }) {
           </ul>
         </div>
 
-        <div style={styles.section}>
-          <div style={styles.sectionTitle}>État</div>
-
-          <div style={styles.statusRow}>
-            <div style={styles.statusText}>{loadingLabel}</div>
-            <div style={styles.statusMeta}>
-              {total > 0 ? `${loaded}/${total}` : ""}
-            </div>
-          </div>
-
-          <div style={styles.itemText}>{fileLabel}</div>
-        </div>
-
         <div style={styles.footer}>
           <button
             type="button"
@@ -125,11 +98,15 @@ export default function StartLoader({ onStart }) {
               ...(canEnter ? styles.btnOn : styles.btnOff),
             }}
           >
-            OK — Entrer
+            {canEnter ? "OK — Entrer" : "Chargement…"}
           </button>
 
           <div style={styles.note}>
-            Astuce : sur mobile, passe en paysage pour une meilleure navigation.
+            {canEnter
+              ? "Astuce : sur mobile, passe en paysage pour une meilleure navigation."
+              : total > 0
+              ? `Préparation des ressources… (${loaded}/${total})`
+              : "Préparation des ressources…"}
           </div>
         </div>
       </div>
@@ -157,7 +134,7 @@ const styles = {
     background: "rgba(10,10,14,0.86)",
     boxShadow: "0 18px 60px rgba(0,0,0,0.45)",
     padding: 18,
-    transition: "transform 220ms ease, box-shadow 220ms ease, border 220ms ease",
+    backdropFilter: "blur(8px)",
   },
   header: {
     display: "grid",
@@ -180,25 +157,9 @@ const styles = {
   sub: { marginTop: 6, fontSize: 13, opacity: 0.8, lineHeight: 1.35 },
 
   section: { marginTop: 12 },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: 700,
-    marginBottom: 8,
-    opacity: 0.95,
-  },
+  sectionTitle: { fontSize: 13, fontWeight: 700, marginBottom: 8, opacity: 0.95 },
   list: { margin: 0, paddingLeft: 18 },
   li: { marginBottom: 6, fontSize: 13, opacity: 0.9, lineHeight: 1.35 },
-
-  statusRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    gap: 10,
-    alignItems: "baseline",
-  },
-  statusText: { fontSize: 13, fontWeight: 800 },
-  statusMeta: { fontSize: 12, opacity: 0.7 },
-
-  itemText: { marginTop: 8, fontSize: 12, opacity: 0.7, minHeight: 16 },
 
   footer: { marginTop: 14, display: "grid", gap: 10 },
   btn: {
@@ -209,7 +170,6 @@ const styles = {
     fontWeight: 800,
     border: "1px solid rgba(255,255,255,0.14)",
     cursor: "pointer",
-    transition: "transform 140ms ease, filter 140ms ease",
   },
   btnOn: {
     background: "rgba(255,210,0,0.92)",
