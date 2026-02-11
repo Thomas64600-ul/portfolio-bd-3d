@@ -50,7 +50,7 @@ export const SECTIONS = {
           {
             name: "Portfolio 3D",
             desc: "Expérience immersive en 3D (React Three Fiber, navigation FPS).",
-            github: "https://github.com/Thomas64600-ul",
+            github: "https://github.com/Thomas64600-ul/portfolio-bd-3d",
           },
         ],
       },
@@ -74,23 +74,26 @@ export const SECTIONS = {
         name: "Titre Développeur Web & Web Mobile (RNCP)",
         desc: "Niveau 5 – Full stack",
         year: "2025",
+        image: "/textures/diplomas/diplome-rncp.webp",
       },
       {
         name: "Certification IA – Création de contenus",
         desc: "Usages responsables de l’IA générative",
         year: "2024",
+        image: "/textures/diplomas/certif-ia.webp",
       },
       {
         name: "BTS Logistique",
         desc: "Gestion des flux & organisation terrain",
         year: "2012",
+        image: "/textures/diplomas/diplome-bts.webp",
       },
       {
         name: "Baccalauréat",
         desc: "Diplôme général",
-       year: "2005",
-},
-
+        year: "2005",
+        image: "/textures/diplomas/bac.webp",
+      },
     ],
   },
 
@@ -234,12 +237,7 @@ Ce séjour constitue aujourd’hui une étape importante de mon parcours, illust
         items: [
           { name: "React", desc: "Hooks, components, routing.", logo: "/logos/react.png", href: "https://react.dev/" },
           { name: "Vite", desc: "Build tool rapide.", logo: "/logos/vite.png", href: "https://vitejs.dev/" },
-          {
-            name: "JavaScript",
-            desc: "ES6+, async/await.",
-            logo: "/logos/javascript.png",
-            href: "https://developer.mozilla.org/fr/docs/Web/JavaScript",
-          },
+          { name: "JavaScript", desc: "ES6+, async/await.", logo: "/logos/javascript.png", href: "https://developer.mozilla.org/fr/docs/Web/JavaScript" },
           { name: "HTML", desc: "Structure & sémantique.", logo: "/logos/html.png", href: "https://developer.mozilla.org/fr/docs/Web/HTML" },
           { name: "CSS", desc: "Responsive, layout.", logo: "/logos/css.png", href: "https://developer.mozilla.org/fr/docs/Web/CSS" },
           { name: "Tailwind", desc: "Utility-first.", logo: "/logos/tailwind.png", href: "https://tailwindcss.com/" },
@@ -282,7 +280,10 @@ Ce séjour constitue aujourd’hui une étape importante de mon parcours, illust
         location: "Tarnos",
         period: "Sep 2022 – Oct 2024",
         desc: "Gestion des Classic Engines / Makila / Arrius 1",
-        bullets: ["Analyse quotidienne des plans de travail", "Suivi carnet de commandes et kitting tool"],
+        bullets: [
+          "Analyse quotidienne des plans de travail",
+          "Suivi carnet de commandes et kitting tool",
+        ],
       },
       {
         name: "Approvisionneur Industriel",
@@ -290,7 +291,10 @@ Ce séjour constitue aujourd’hui une étape importante de mon parcours, illust
         location: "Mérignac",
         period: "Nov 2021 – Avr 2022",
         desc: "Approvisionnement et relation fournisseurs",
-        bullets: ["Création de DA et passage de commandes", "Interface avec différents fournisseurs"],
+        bullets: [
+          "Création de DA et passage de commandes",
+          "Interface avec différents fournisseurs",
+        ],
       },
       {
         name: "Pilote de flux",
@@ -298,7 +302,11 @@ Ce séjour constitue aujourd’hui une étape importante de mon parcours, illust
         location: "Tarnos",
         period: "Jan 2020 – Août 2021",
         desc: "Pilotage prestataire & supervision de flux",
-        bullets: ["Interface prestataire / clients internes", "Suivi anomalies + amélioration continue", "Gestion des urgences (AOG)"],
+        bullets: [
+          "Interface prestataire / clients internes",
+          "Suivi anomalies + amélioration continue",
+          "Gestion des urgences (AOG)",
+        ],
       },
       {
         name: "Gestionnaire ordonnancement",

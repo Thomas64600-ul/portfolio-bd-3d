@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useProgress } from "@react-three/drei";
 
 function clamp(n, a, b) {
@@ -8,36 +8,82 @@ function clamp(n, a, b) {
 export default function StartLoader({ onStart }) {
   const { active, progress, item, loaded, total } = useProgress();
 
-  const canEnter = useMemo(() => {
-    return Math.round(progress) >= 100 || (total > 0 && loaded >= total);
-  }, [progress, loaded, total]);
-
-  const [p, setP] = useState(0);
+  
+  const [visible, setVisible] = useState(false);
   useEffect(() => {
-    const target = clamp(progress, 0, 100);
+    const t = setTimeout(() => setVisible(true), 120);
+    return () => clearTimeout(t);
+  }, []);
 
-    if (Math.round(target) >= 100 || (total > 0 && loaded >= total)) {
-      setP(100);
-      return;
-    }
-
-    setP((prev) => {
-      const next = prev + (target - prev) * 0.12;
-      return Math.abs(next - target) < 0.2 ? target : next;
-    });
+  
+  const canEnter = useMemo(() => {
+    const p = Number(progress) || 0;
+    const doneByCount = total > 0 && loaded >= total;
+    return p >= 99 || doneByCount;
   }, [progress, loaded, total]);
+
+  
+  const [p, setP] = useState(0);
+  const pRef = useRef(0);
+  const targetRef = useRef(0);
+  const rafRef = useRef(null);
+
+  useEffect(() => {
+    const target = clamp(Number(progress) || 0, 0, 100);
+    targetRef.current = canEnter ? 100 : target;
+
+    if (rafRef.current) return;
+
+    const tick = () => {
+      const cur = pRef.current;
+      const tgt = targetRef.current;
+
+      const next = cur + (tgt - cur) * 0.14;
+      const snap = Math.abs(next - tgt) < 0.25 ? tgt : next;
+
+      pRef.current = snap;
+      setP(snap);
+
+      if (snap >= 99.9 || Math.abs(snap - tgt) < 0.05) {
+        rafRef.current = null;
+        return;
+      }
+
+      rafRef.current = requestAnimationFrame(tick);
+    };
+
+    rafRef.current = requestAnimationFrame(tick);
+
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    };
+  }, [progress, canEnter]);
 
   const [readyFlash, setReadyFlash] = useState(false);
   useEffect(() => {
     if (!canEnter) return;
     setReadyFlash(true);
-    const t = setTimeout(() => setReadyFlash(false), 650);
+    const t = setTimeout(() => setReadyFlash(false), 450);
     return () => clearTimeout(t);
   }, [canEnter]);
 
-  const isPortrait = useMemo(() => {
-    if (typeof window === "undefined") return false;
-    return window.matchMedia?.("(orientation: portrait)")?.matches ?? false;
+  const isMobile = useMemo(() => {
+    if (typeof navigator === "undefined") return false;
+    return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  }, []);
+
+  const [isPortrait, setIsPortrait] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const compute = () => setIsPortrait(window.innerHeight > window.innerWidth);
+    compute();
+    window.addEventListener("resize", compute);
+    window.addEventListener("orientationchange", compute);
+    return () => {
+      window.removeEventListener("resize", compute);
+      window.removeEventListener("orientationchange", compute);
+    };
   }, []);
 
   const tips = useMemo(() => {
@@ -45,29 +91,28 @@ export default function StartLoader({ onStart }) {
       desktop: [
         "Clique sur « Entrer » puis clique dans la scène pour activer la vue FPS.",
         "ZQSD : se déplacer • Souris : regarder • Échap : sortir du contrôle.",
-        "Explore les bibliothèques, les cadres de diplômes, le panneau “À propos” et la carte du monde en cliquant dessus pour ouvrir leurs contenus.",
       ],
       mobileLandscape: [
-        "Passe en paysage pour une meilleure expérience.",
-        "Joystick : déplacement • Glisser à droite : caméra.",
-        "Explore les bibliothèques, les cadres, le panneau “À propos” et la carte du monde en les touchant pour découvrir chaque section.",
+        "Joystick : déplacement • Glisser : caméra.",
+        "Tape sur les éléments pour ouvrir leurs contenus.",
       ],
       mobilePortrait: [
-        "Mode portrait : interface réduite.",
-        "Passe en paysage pour activer la navigation complète (recommandé).",
+        "Passe en paysage pour une meilleure expérience.",
       ],
     };
-  }, []);
-
-  const isMobile = useMemo(() => {
-    if (typeof navigator === "undefined") return false;
-    return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   }, []);
 
   const tipList = useMemo(() => {
     if (!isMobile) return tips.desktop;
     return isPortrait ? tips.mobilePortrait : tips.mobileLandscape;
   }, [isMobile, isPortrait, tips]);
+
+  const handleStart = useCallback(() => {
+    if (!canEnter) return;
+    onStart?.();
+  }, [canEnter, onStart]);
+
+  if (!visible) return null;
 
   return (
     <div style={styles.backdrop}>
@@ -76,9 +121,9 @@ export default function StartLoader({ onStart }) {
           <img
             src="/textures/logo/portfolio-thomas-256.webp"
             alt="Logo Portfolio Thomas"
-            fetchPriority="high"
-            loading="eager"
+            loading="lazy"
             decoding="async"
+            fetchPriority="low"
             style={styles.logo}
             draggable={false}
           />
@@ -86,8 +131,7 @@ export default function StartLoader({ onStart }) {
             <div style={styles.kicker}>Bienvenue sur le portfolio 3D de</div>
             <div style={styles.title}>Thomas</div>
             <div style={styles.sub}>
-              Explore la bibliothèque, les diplômes, la carte des voyages et les murs
-              thématiques.
+              Explore la bibliothèque, les diplômes et la carte du monde.
             </div>
           </div>
         </div>
@@ -110,7 +154,9 @@ export default function StartLoader({ onStart }) {
             <div style={styles.progressText}>
               {canEnter ? "Prêt ✅" : `Chargement… ${Math.round(progress)}%`}
             </div>
-            <div style={styles.progressMeta}>{total > 0 ? `${loaded}/${total}` : ""}</div>
+            <div style={styles.progressMeta}>
+              {total > 0 ? `${loaded}/${total}` : ""}
+            </div>
           </div>
 
           <div style={styles.barOuter} aria-label="progress">
@@ -130,19 +176,18 @@ export default function StartLoader({ onStart }) {
         <div style={styles.footer}>
           <button
             type="button"
-            onClick={() => canEnter && onStart?.()}
+            onClick={handleStart}
             disabled={!canEnter}
             style={{
               ...styles.btn,
               ...(canEnter ? styles.btnOn : styles.btnOff),
-              ...(canEnter ? styles.btnPulse : null),
             }}
           >
-            OK, j’ai compris — Entrer
+            OK — Entrer
           </button>
 
           <div style={styles.note}>
-            Astuce : si l’écran est trop sombre, attends la fin du chargement puis entre.
+            Astuce : sur mobile, passe en paysage pour une meilleure navigation.
           </div>
         </div>
       </div>
@@ -248,9 +293,6 @@ const styles = {
     background: "rgba(255,255,255,0.08)",
     color: "rgba(255,255,255,0.55)",
     cursor: "not-allowed",
-  },
-  btnPulse: {
-    filter: "drop-shadow(0 10px 18px rgba(255,210,0,0.10))",
   },
   note: { fontSize: 12, opacity: 0.7, textAlign: "center" },
 };

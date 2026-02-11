@@ -46,7 +46,6 @@ export default function MobileJoystick({
   );
 
   const reset = useCallback(() => {
-  
     setActive(false);
     setKnob({ x: 0, y: 0 });
     pointerIdRef.current = null;
@@ -57,15 +56,11 @@ export default function MobileJoystick({
     onMoveRef.current?.({ x: 0, y: 0 });
   }, []);
 
-
   useEffect(() => {
     if (!enabled) reset();
   }, [enabled, reset]);
 
- 
-  useEffect(() => {
-    return () => reset();
-  }, [reset]);
+  useEffect(() => () => reset(), [reset]);
 
   const clampToCircle = useCallback(
     (dx, dy) => {
@@ -112,7 +107,7 @@ export default function MobileJoystick({
         left: "50%",
         top: "50%",
         transform: `translate(calc(-50% + ${knob.x}px), calc(-50% + ${knob.y}px))`,
-        transition: active ? "none" : "transform 120ms ease-out",
+        transition: active ? "none" : "transform 140ms ease-out",
         background: active ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.14)",
         border: "1px solid rgba(255,255,255,0.18)",
         boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
@@ -196,6 +191,10 @@ export default function MobileJoystick({
       reset();
     };
 
+    const onLost = () => {
+      if (pointerIdRef.current != null) reset();
+    };
+
     const onContextMenu = (e) => {
       e.preventDefault?.();
       e.stopPropagation?.();
@@ -205,7 +204,7 @@ export default function MobileJoystick({
     base.addEventListener("pointermove", onPointerMove, { passive: false });
     base.addEventListener("pointerup", onPointerUp, { passive: false });
     base.addEventListener("pointercancel", onPointerCancel, { passive: false });
-    base.addEventListener("lostpointercapture", reset, { passive: true });
+    base.addEventListener("lostpointercapture", onLost, { passive: true });
     base.addEventListener("contextmenu", onContextMenu);
 
     return () => {
@@ -213,7 +212,7 @@ export default function MobileJoystick({
       base.removeEventListener("pointermove", onPointerMove);
       base.removeEventListener("pointerup", onPointerUp);
       base.removeEventListener("pointercancel", onPointerCancel);
-      base.removeEventListener("lostpointercapture", reset);
+      base.removeEventListener("lostpointercapture", onLost);
       base.removeEventListener("contextmenu", onContextMenu);
     };
   }, [enabled, clampToCircle, emit, reset]);
