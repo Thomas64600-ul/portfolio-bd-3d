@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useProgress } from "@react-three/drei";
 
 export default function StartLoader({ onStart }) {
-  const { progress, loaded, total, active } = useProgress();
+  
+  const { progress, loaded, total } = useProgress();
 
   const [visible, setVisible] = useState(false);
   useEffect(() => {
@@ -28,31 +29,6 @@ export default function StartLoader({ onStart }) {
     };
   }, []);
 
-  const [forceReady, setForceReady] = useState(false);
-  const didStartForceRef = useRef(false);
-
-  useEffect(() => {
-    if (didStartForceRef.current) return;
-
-    const t = setTimeout(() => {
-      const p = Number(progress) || 0;
-      const looksStuck = p < 1 && (total === 0 || !active);
-      if (looksStuck) {
-        didStartForceRef.current = true;
-        setForceReady(true);
-      }
-    }, 900);
-
-    return () => clearTimeout(t);
-  }, [progress, total, active]);
-
-  const canEnter = useMemo(() => {
-    if (forceReady) return true;
-    const p = Number(progress) || 0;
-    const doneByCount = total > 0 && loaded >= total;
-    return p >= 99 || doneByCount;
-  }, [progress, loaded, total, forceReady]);
-
   const tipList = useMemo(() => {
     if (!isMobile) {
       return [
@@ -69,18 +45,24 @@ export default function StartLoader({ onStart }) {
     ];
   }, [isMobile, isPortrait]);
 
+  const [starting, setStarting] = useState(false);
+
   const handleStart = useCallback(() => {
-    if (!canEnter) return;
+    if (starting) return;
+    setStarting(true);
     onStart?.();
-  }, [canEnter, onStart]);
+  }, [starting, onStart]);
 
   if (!visible) return null;
 
-  const noteText = canEnter
-    ? "Astuce : sur mobile, passe en paysage pour une meilleure navigation."
-    : total > 0
-    ? `Préparation des ressources… (${loaded}/${total})`
-    : "Préparation des ressources…";
+  const canEnter = !starting;
+
+  const noteText = starting
+    ? "Chargement de la scène 3D…"
+    : "Astuce : sur mobile, passe en paysage pour une meilleure navigation.";
+
+  const metaText =
+    !starting && total > 0 ? `Ressources (info) : ${loaded}/${total} • ${Math.round(Number(progress) || 0)}%` : "";
 
   return (
     <div style={styles.backdrop}>
@@ -128,10 +110,13 @@ export default function StartLoader({ onStart }) {
               ...(canEnter ? styles.btnOn : styles.btnOff),
             }}
           >
-            {canEnter ? "OK — Entrer" : "Chargement…"}
+            {starting ? "Chargement…" : "OK — Entrer"}
           </button>
 
-          <div style={styles.note}>{noteText}</div>
+          <div style={styles.note}>
+            {noteText}
+            {metaText ? <div style={styles.meta}>{metaText}</div> : null}
+          </div>
         </div>
       </div>
     </div>
@@ -205,4 +190,5 @@ const styles = {
     cursor: "not-allowed",
   },
   note: { fontSize: 12, opacity: 0.7, textAlign: "center" },
+  meta: { marginTop: 6, fontSize: 11, opacity: 0.6 },
 };
