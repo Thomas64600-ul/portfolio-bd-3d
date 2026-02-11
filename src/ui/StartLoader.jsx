@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useProgress } from "@react-three/drei";
 
 export default function StartLoader({ onStart }) {
-  const { progress, loaded, total } = useProgress();
+  const { progress, loaded, total, active } = useProgress();
 
   const [visible, setVisible] = useState(false);
   useEffect(() => {
@@ -28,11 +28,30 @@ export default function StartLoader({ onStart }) {
     };
   }, []);
 
+  const [forceReady, setForceReady] = useState(false);
+  const didStartForceRef = useRef(false);
+
+  useEffect(() => {
+    if (didStartForceRef.current) return;
+
+    const t = setTimeout(() => {
+      const p = Number(progress) || 0;
+      const looksStuck = p < 1 && (total === 0 || !active);
+      if (looksStuck) {
+        didStartForceRef.current = true;
+        setForceReady(true);
+      }
+    }, 900);
+
+    return () => clearTimeout(t);
+  }, [progress, total, active]);
+
   const canEnter = useMemo(() => {
+    if (forceReady) return true;
     const p = Number(progress) || 0;
     const doneByCount = total > 0 && loaded >= total;
     return p >= 99 || doneByCount;
-  }, [progress, loaded, total]);
+  }, [progress, loaded, total, forceReady]);
 
   const tipList = useMemo(() => {
     if (!isMobile) {
@@ -44,7 +63,10 @@ export default function StartLoader({ onStart }) {
     if (isPortrait) {
       return ["Passe en paysage pour une meilleure expérience."];
     }
-    return ["Joystick : déplacement • Glisser : caméra.", "Tape sur les éléments pour ouvrir leurs contenus."];
+    return [
+      "Joystick : déplacement • Glisser : caméra.",
+      "Tape sur les éléments pour ouvrir leurs contenus.",
+    ];
   }, [isMobile, isPortrait]);
 
   const handleStart = useCallback(() => {
@@ -54,26 +76,34 @@ export default function StartLoader({ onStart }) {
 
   if (!visible) return null;
 
+  const noteText = canEnter
+    ? "Astuce : sur mobile, passe en paysage pour une meilleure navigation."
+    : total > 0
+    ? `Préparation des ressources… (${loaded}/${total})`
+    : "Préparation des ressources…";
+
   return (
     <div style={styles.backdrop}>
       <div style={styles.card}>
         <div style={styles.header}>
           <img
-  src="/textures/logo/portfolio-thomas-96.webp"
-  srcSet="/textures/logo/portfolio-thomas-96.webp 1x, /textures/logo/portfolio-thomas-128.webp 2x"
-  alt="Logo Portfolio Thomas"
-  width="86"
-  height="86"
-  decoding="async"
-  fetchPriority="high"
-  draggable={false}
-  style={styles.logo}
-/>
+            src="/textures/logo/portfolio-thomas-96.webp"
+            srcSet="/textures/logo/portfolio-thomas-96.webp 1x, /textures/logo/portfolio-thomas-128.webp 2x"
+            alt="Logo Portfolio Thomas"
+            width="86"
+            height="86"
+            decoding="async"
+            fetchPriority="high"
+            draggable={false}
+            style={styles.logo}
+          />
 
           <div style={styles.titleWrap}>
             <div style={styles.kicker}>Bienvenue sur le portfolio 3D de</div>
             <div style={styles.title}>Thomas</div>
-            <div style={styles.sub}>Explore la bibliothèque, les diplômes et la carte du monde.</div>
+            <div style={styles.sub}>
+              Explore la bibliothèque, les diplômes et la carte du monde.
+            </div>
           </div>
         </div>
 
@@ -101,13 +131,7 @@ export default function StartLoader({ onStart }) {
             {canEnter ? "OK — Entrer" : "Chargement…"}
           </button>
 
-          <div style={styles.note}>
-            {canEnter
-              ? "Astuce : sur mobile, passe en paysage pour une meilleure navigation."
-              : total > 0
-              ? `Préparation des ressources… (${loaded}/${total})`
-              : "Préparation des ressources…"}
-          </div>
+          <div style={styles.note}>{noteText}</div>
         </div>
       </div>
     </div>
@@ -182,4 +206,3 @@ const styles = {
   },
   note: { fontSize: 12, opacity: 0.7, textAlign: "center" },
 };
-
