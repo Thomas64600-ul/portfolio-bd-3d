@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useCallback } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { easing } from "maath";
@@ -41,12 +41,22 @@ export default function FrameInteractive({
     easing.damp3(ref.current.scale, [s, s, 1], 0.18, dt);
   });
 
+ 
+  const handlePick = useCallback(
+    (e) => {
+      if (typeof window !== "undefined" && window.__JOYSTICK_ACTIVE__) return;
+      onPick?.(id, e);
+    },
+    [id, onPick]
+  );
+
   return (
     <group ref={ref} position={position} rotation={rotation}>
       <InteractiveItem
         disabled={disabled}
-        allowWhenUIActive
-        onPick={() => onPick?.(id)}
+       
+        allowWhenUIActive={true}
+        onPick={handlePick}
       >
         <group>
           {enableHitbox && (

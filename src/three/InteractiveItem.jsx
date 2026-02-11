@@ -5,7 +5,7 @@ export default function InteractiveItem({
   children,
   onPick,
   disabled = false,
-  allowWhenUIActive = false, 
+  allowWhenUIActive = false,
 }) {
   const [hovered, setHovered] = useState(false);
 
@@ -24,9 +24,7 @@ export default function InteractiveItem({
   const isJoystickOrUIActive = () => {
     if (typeof window === "undefined") return false;
 
-    
     if (allowWhenUIActive) return !!window.__JOYSTICK_ACTIVE__;
-
     return !!window.__JOYSTICK_ACTIVE__ || !!window.__UI_ACTIVE__;
   };
 
@@ -48,19 +46,9 @@ export default function InteractiveItem({
 
   function handleDown(e) {
     e.stopPropagation();
-    if (e.preventDefault) e.preventDefault();
     if (!canPickNow()) return;
 
     didPickRef.current = false;
-
-    const target = e.currentTarget;
-    if (target && typeof target.setPointerCapture === "function" && e.pointerId != null) {
-      try {
-        target.setPointerCapture(e.pointerId);
-      } catch {
-        // ignore
-      }
-    }
 
     down.current = {
       x: e.clientX ?? 0,

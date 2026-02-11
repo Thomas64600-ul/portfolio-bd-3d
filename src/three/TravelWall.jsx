@@ -23,11 +23,6 @@ const PINS = [
   { label: "Pays de Galles", itemIndex: 7, uv: [0.4436, 0.3327] },
 ];
 
-function setGlobalFlag(key, value) {
-  if (typeof window === "undefined") return;
-  window[key] = !!value;
-}
-
 function setGlobalNumber(key, value) {
   if (typeof window === "undefined") return;
   window[key] = Number(value) || 0;
@@ -54,17 +49,12 @@ export default function TravelWall({
   const mapRef = useRef(null);
 
   const raycasterRef = useRef(new THREE.Raycaster());
-
   const centerRayRef = useRef(new THREE.Raycaster());
   const camDirRef = useRef(new THREE.Vector3());
-
-  
-  const mapRaycastRef = useRef(null);
 
   const mapTex = useLoader(THREE.TextureLoader, mapUrl);
   const { camera, gl, size } = useThree();
 
-  
   const items = SECTIONS?.travels?.items || [];
 
   useEffect(() => {
@@ -101,10 +91,8 @@ export default function TravelWall({
 
   const mapScale = useMemo(() => {
     if (!isPortrait) return 1;
-
     const screenAspect = size.width / size.height;
-    const s = THREE.MathUtils.clamp(screenAspect / 0.60, 0.62, 0.85);
-    return s;
+    return THREE.MathUtils.clamp(screenAspect / 0.60, 0.62, 0.85);
   }, [isPortrait, size.width, size.height]);
 
   const mapYOffset = useMemo(() => (isPortrait ? 0.12 : 0), [isPortrait]);
@@ -139,26 +127,10 @@ export default function TravelWall({
     return dist <= EXIT_DIST;
   }, [camera]);
 
-  
-  useEffect(() => {
-    const mesh = mapRef.current;
-    if (!mesh) return;
-    if (!mapRaycastRef.current) mapRaycastRef.current = mesh.raycast;
-  }, []);
-
   useFrame(() => {
     const ok = computeInMapZone();
-
     if (ok !== isInMapZoneRef.current) {
       isInMapZoneRef.current = ok;
-      setGlobalFlag("__MAP_MODE__", ok);
-
-    
-      const mesh = mapRef.current;
-      if (mesh && mapRaycastRef.current) {
-        mesh.raycast = ok ? mapRaycastRef.current : () => null;
-      }
-
       if (ok) setGlobalNumber("__MAP_INTERACT_UNTIL__", Date.now() + 220);
       else setGlobalNumber("__MAP_INTERACT_UNTIL__", Date.now() + 80);
     }
@@ -175,7 +147,6 @@ export default function TravelWall({
       if (!native) return;
 
       const rect = gl.domElement.getBoundingClientRect();
-
       const ndc = new THREE.Vector2(
         ((native.clientX - rect.left) / rect.width) * 2 - 1,
         -(((native.clientY - rect.top) / rect.height) * 2 - 1)
@@ -209,12 +180,10 @@ export default function TravelWall({
   const pickWall = useCallback(
     (e) => {
       if (DEBUG_PINS) return;
-
       e?.stopPropagation?.();
 
       if (isTouchEvent(e)) {
         if (isBlockedForMapTouch()) return;
-
         setGlobalNumber("__MAP_INTERACT_UNTIL__", Date.now() + 320);
         onPickWall?.();
         return;
@@ -231,7 +200,6 @@ export default function TravelWall({
 
       if (isTouchEvent(e)) {
         if (isBlockedForMapTouch()) return;
-
         setGlobalNumber("__MAP_INTERACT_UNTIL__", Date.now() + 360);
         onPickPin?.(itemIndex);
         return;
@@ -247,8 +215,10 @@ export default function TravelWall({
   return (
     <group position={position} rotation={rotation}>
       <group scale={[mapScale, mapScale, 1]} position={[0, mapYOffset, 0]}>
+       
         <InteractiveItem
           disabled={false}
+          allowWhenUIActive={true}
           onPick={(e) => {
             if (DEBUG_PINS) handlePickDebugUV(e);
             else pickWall(e);
@@ -266,7 +236,11 @@ export default function TravelWall({
 
             return (
               <group key={`${p.label}-${p.itemIndex}`} position={[x, y, PIN_Z]}>
-                <InteractiveItem onPick={(e) => pickPin(p.itemIndex, e)}>
+               
+                <InteractiveItem
+                  allowWhenUIActive={true}
+                  onPick={(e) => pickPin(p.itemIndex, e)}
+                >
                   <group>
                     <mesh>
                       <sphereGeometry args={[PIN_SIZE, 20, 20]} />

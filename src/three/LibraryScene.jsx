@@ -51,7 +51,6 @@ function usePBRMaps(basePath, repeat = [1, 1]) {
       tex.minFilter = THREE.LinearMipmapLinearFilter;
       tex.magFilter = THREE.LinearFilter;
       tex.generateMipmaps = true;
-
       tex.needsUpdate = true;
     };
 
@@ -151,7 +150,8 @@ function BookcaseUnit({
     return ["#78d6ff", "#ff7a9a", "#e9d36b", "#7CFF8D"];
   }, [theme]);
 
-  const label = theme === "comics" ? "COMICS" : theme === "manga" ? "MANGA" : "BD";
+  const label =
+    theme === "comics" ? "COMICS" : theme === "manga" ? "MANGA" : "BD";
   const labelAccent =
     theme === "comics" ? "#ef476f" : theme === "manga" ? "#f4f4f4" : "#ff7a9a";
 
@@ -275,11 +275,22 @@ function BookcaseUnit({
 
     return (
       <InteractiveItem onPick={handlePick}>
-        <group position={[x + xNudge, y + yNudge, bookZ + zNudge]} rotation={[0, 0, tilt]}>
+        <group
+          position={[x + xNudge, y + yNudge, bookZ + zNudge]}
+          rotation={[0, 0, tilt]}
+        >
           <mesh castShadow receiveShadow>
             <boxGeometry args={[w, h, 0.07]} />
             <meshStandardMaterial
-              color={isManga ? "#eaeaea" : isComics ? "#101010" : isBD ? "#e8e1d8" : c}
+              color={
+                isManga
+                  ? "#eaeaea"
+                  : isComics
+                  ? "#101010"
+                  : isBD
+                  ? "#e8e1d8"
+                  : c
+              }
               roughness={isComics ? 0.9 : isBD ? 0.85 : 0.72}
               metalness={isComics ? 0.04 : 0.02}
             />
@@ -287,7 +298,9 @@ function BookcaseUnit({
 
           {hasSpine && (
             <mesh castShadow receiveShadow position={[0, 0, isBD ? 0.043 : 0.041]}>
-              <planeGeometry args={[w * (isBD ? 0.96 : 0.92), h * (isBD ? 0.96 : 0.92)]} />
+              <planeGeometry
+                args={[w * (isBD ? 0.96 : 0.92), h * (isBD ? 0.96 : 0.92)]}
+              />
               {isComics ? (
                 <meshPhysicalMaterial
                   map={spineTex}
@@ -336,7 +349,14 @@ function BookcaseUnit({
     const usable = W - leftPad - rightPad;
     const step = usable / count;
 
-    const pickSlice = (baseTex, iInBlock, displayBlockCount, realCount, uStart = 0, uEnd = 1) => {
+    const pickSlice = (
+      baseTex,
+      iInBlock,
+      displayBlockCount,
+      realCount,
+      uStart = 0,
+      uEnd = 1
+    ) => {
       const localIndex = Math.floor((iInBlock * realCount) / displayBlockCount);
       return sliceTexture(baseTex, localIndex, realCount, uStart, uEnd);
     };
@@ -349,10 +369,18 @@ function BookcaseUnit({
 
           const h = theme === "manga" ? 0.545 : theme === "comics" ? 0.59 : 0.62;
           const w =
-            theme === "manga" ? step * 0.9 : theme === "comics" ? step * 0.86 : step * 0.88;
+            theme === "manga"
+              ? step * 0.9
+              : theme === "comics"
+              ? step * 0.86
+              : step * 0.88;
 
           const baseColor =
-            theme === "manga" ? (i % 2 === 0 ? "#f2f2f2" : "#dcdcdc") : palette[i % palette.length];
+            theme === "manga"
+              ? i % 2 === 0
+                ? "#f2f2f2"
+                : "#dcdcdc"
+              : palette[i % palette.length];
 
           const tilt =
             theme === "comics"
@@ -367,8 +395,10 @@ function BookcaseUnit({
 
           let spineTex = null;
 
+         
           if (theme === "manga") {
             const SERIES = { db: 34, aot: 11, sommet: 5, lastman: 12, gunnm: 9 };
+
             if (rowIndex === 2) spineTex = pickSlice(mangaTextures[0], i, count, SERIES.db);
 
             if (rowIndex === 1) {
@@ -390,8 +420,10 @@ function BookcaseUnit({
             }
           }
 
+        
           if (theme === "comics") {
             const SERIES = { t300: 1, dc: 10, preacher: 4, sincity: 7, walkingdead: 16 };
+
             if (rowIndex === 2) spineTex = pickSlice(comicsTextures[4], i, count, SERIES.walkingdead);
             if (rowIndex === 1) spineTex = pickSlice(comicsTextures[1], i, count, SERIES.dc);
 
@@ -412,6 +444,7 @@ function BookcaseUnit({
             }
           }
 
+         
           if (theme === "bd") {
             const SERIES = {
               signe: 32,
@@ -439,7 +472,8 @@ function BookcaseUnit({
 
               if (i < largoBlock)
                 spineTex = pickSlice(bdTextures[3], i, largoBlock, SERIES.largo, ...TRIM.largo);
-              else spineTex = pickSlice(bdTextures[0], i - largoBlock, signeBlock, SERIES.signe, ...TRIM.signe);
+              else
+                spineTex = pickSlice(bdTextures[0], i - largoBlock, signeBlock, SERIES.signe, ...TRIM.signe);
             }
 
             if (rowIndex === 1) {
@@ -449,7 +483,8 @@ function BookcaseUnit({
 
               if (i < murenaBlock)
                 spineTex = pickSlice(bdTextures[6], i, murenaBlock, SERIES.murena, ...TRIM.murena);
-              else spineTex = pickSlice(bdTextures[4], i - murenaBlock, aiglesBlock, SERIES.aigles, ...TRIM.aigles);
+              else
+                spineTex = pickSlice(bdTextures[4], i - murenaBlock, aiglesBlock, SERIES.aigles, ...TRIM.aigles);
             }
 
             if (rowIndex === 0) {
@@ -577,6 +612,7 @@ function SceneInner({
   isPortrait,
   mobileForwardRef,
   mobileBackRef,
+  mobileStrafeRef,
   onOpenSection,
   focus,
   setFocus,
@@ -585,28 +621,22 @@ function SceneInner({
   mapEditMode,
   setMapEditMode,
 }) {
-  
   const light = useMemo(
-  () => ({
-    exposure: 0.28,
-    envIntensity: 0.04,
-
-    ambient: 0.04,
-
-    spotIntensity: 0.25,
-    spotAngle: 0.48,
-    spotPenumbra: 0.92,
-    spotDistance: 28,
-
-    dirA: 0.16,
-    dirB: 0.10,
-
-    point: 0.03,
-    pointDistance: 22,
-  }),
-  []
-);
-
+    () => ({
+      exposure: 0.28,
+      envIntensity: 0.04,
+      ambient: 0.04,
+      spotIntensity: 0.25,
+      spotAngle: 0.48,
+      spotPenumbra: 0.92,
+      spotDistance: 28,
+      dirA: 0.16,
+      dirB: 0.10,
+      point: 0.03,
+      pointDistance: 22,
+    }),
+    []
+  );
 
   const fpsEnabled = controlsEnabled && !focus?.active && !mapEditMode;
   const touchEnabled = isMobile && !focus?.active && !mapEditMode;
@@ -711,45 +741,65 @@ function SceneInner({
   });
 
   const pick = useCallback(
-    (sectionId, pos, look, itemId = null) => {
-      unlockPointer();
-      setMapEditMode(false);
+  (sectionId, pos, look, itemId = null) => {
+    unlockPointer();
+    setMapEditMode(false);
 
-      if (mobileForwardRef?.current !== undefined) mobileForwardRef.current = false;
-      if (mobileBackRef?.current !== undefined) mobileBackRef.current = false;
+    if (mobileForwardRef?.current !== undefined) mobileForwardRef.current = false;
+    if (mobileBackRef?.current !== undefined) mobileBackRef.current = false;
+    if (mobileStrafeRef?.current !== undefined) mobileStrafeRef.current = 0;
 
-      let finalPos = pos;
-      let finalLook = look;
+    let finalPos = pos;
+    let finalLook = look;
 
-      if (isMobile && isPortrait && sectionId === "travels") {
-        const dx = pos[0] - look[0];
-        const dy = pos[1] - look[1];
-        const dz = pos[2] - look[2];
+    if (isMobile && isPortrait && sectionId === "travels") {
+      const dx = pos[0] - look[0];
+      const dy = pos[1] - look[1];
+      const dz = pos[2] - look[2];
 
-        const k = 1.45;
-        finalPos = [look[0] + dx * k, look[1] + dy * k, look[2] + dz * k];
-        finalLook = [look[0], look[1], look[2]];
-        fovTarget.current = 82;
-      } else if (isMobile && isPortrait && sectionId === "about") {
-        const dx = pos[0] - look[0];
-        const dy = pos[1] - look[1];
-        const dz = pos[2] - look[2];
+      const k = 2.15;
+      finalPos = [look[0] + dx * k, look[1] + dy * k + 0.12, look[2] + dz * k];
+      finalLook = [look[0], look[1] + 0.02, look[2]];
+      fovTarget.current = 96;
+    } else if (isMobile && isPortrait && sectionId === "about") {
+      const dx = pos[0] - look[0];
+      const dy = pos[1] - look[1];
+      const dz = pos[2] - look[2];
 
-        const k = 1.55;
-        finalPos = [look[0] + dx * k, look[1] + dy * k + 0.1, look[2] + dz * k];
-        finalLook = [look[0], look[1] + 0.06, look[2]];
-        fovTarget.current = 58;
-      }
+      const k = 1.55;
+      finalPos = [look[0] + dx * k, look[1] + dy * k + 0.1, look[2] + dz * k];
+      finalLook = [look[0], look[1] + 0.06, look[2]];
+      fovTarget.current = 58;
+    } else {
+  
+      fovTarget.current = 65;
+    }
 
-      setFocus({ active: true, opened: false, sectionId, itemId, pos: finalPos, look: finalLook });
-    },
-    [unlockPointer, setMapEditMode, setFocus, mobileForwardRef, mobileBackRef, isMobile, isPortrait]
-  );
+    setFocus({
+      active: true,
+      opened: false,
+      sectionId,
+      itemId,
+      pos: finalPos,
+      look: finalLook,
+    });
+  },
+  [
+    unlockPointer,
+    setMapEditMode,
+    setFocus,
+    mobileForwardRef,
+    mobileBackRef,
+    mobileStrafeRef,
+    isMobile,
+    isPortrait,
+  ]
+);
+
 
   return (
     <>
       <ToneMapping exposure={light.exposure} />
-
       <fog attach="fog" args={["#07070a", 10, 28]} />
 
       <ambientLight intensity={light.ambient} />
@@ -771,26 +821,26 @@ function SceneInner({
       <pointLight position={[-7, 4.2, 0]} intensity={light.point} distance={light.pointDistance} />
       <pointLight position={[7, 4.2, 0]} intensity={light.point} distance={light.pointDistance} />
 
-      <Environment
-        files="/hdri/studio_small_03_2k.hdr"
-        background={false}
-        intensity={light.envIntensity}
-      />
+      <Environment files="/hdri/studio_small_03_2k.hdr" background={false} intensity={light.envIntensity} />
 
-      {fpsEnabled && <FPSController enabled={true} onLockChange={setIsLocked} bounds={ROOM_BOUNDS} />}
+      {fpsEnabled && (
+        <FPSController enabled={true} onLockChange={setIsLocked} bounds={ROOM_BOUNDS} />
+      )}
 
       {touchEnabled && (
         <TouchController
           enabled={true}
           forwardRef={mobileForwardRef}
           backRef={mobileBackRef}
+          strafeRef={mobileStrafeRef}
           speed={3.6}
+          strafeSpeed={3.6}
           lookSpeed={0.0042}
           bounds={ROOM_BOUNDS}
-          shelfZ={SHELF_Z}
         />
       )}
 
+   
       <PBRBox
         receiveShadow={!isMobile}
         position={[0, 0, 0]}
@@ -802,6 +852,7 @@ function SceneInner({
         normalScale={0.9}
       />
 
+    
       <PBRPlane
         position={[0, 2.3, -7.85]}
         receiveShadow={!isMobile}
@@ -828,6 +879,7 @@ function SceneInner({
 
       <MovieWall position={[0, 2.35, 7.78]} />
 
+    
       <PBRPlane
         position={[-10.98, 2.3, 0]}
         rotation={[0, Math.PI / 2, 0]}
@@ -853,6 +905,7 @@ function SceneInner({
         doubleSide
       />
 
+    
       <mesh position={[-10.92, 0.65, 0]} rotation={[0, Math.PI / 2, 0]} receiveShadow={!isMobile}>
         <boxGeometry args={[18, 1.3, 0.08]} />
         <primitive object={walnutMat} attach="material" />
@@ -864,6 +917,7 @@ function SceneInner({
 
       <StylizedCeiling y={4.6} width={22} depth={18} beamCount={6} />
 
+    
       <AboutPanel
         enabled={true}
         isMobile={isMobile}
@@ -880,7 +934,9 @@ function SceneInner({
         mapUrl="/textures/world_map.webp"
         activeIndex={focus?.sectionId === "travels" ? focus?.itemId : null}
         onPickWall={() => pick("travels", [7.8, 2.35, 3.3], [10.5, 2.55, 3.3])}
-        onPickPin={(itemIndex) => pick("travels", [7.8, 2.35, 3.3], [10.5, 2.55, 3.3], itemIndex)}
+        onPickPin={(itemIndex) =>
+          pick("travels", [7.8, 2.35, 3.3], [10.5, 2.55, 3.3], itemIndex)
+        }
       />
 
       <DiplomaWall
@@ -892,6 +948,7 @@ function SceneInner({
         }}
       />
 
+     
       <group position={[-6.2, 0.0, SHELF_Z]}>
         <BookcaseUnit
           theme="comics"
@@ -954,6 +1011,7 @@ export default function LibraryScene({
   setFocus,
   mobileForwardRef,
   mobileBackRef,
+  mobileStrafeRef,
 }) {
   const [mapEditMode, setMapEditMode] = useState(false);
 
@@ -965,7 +1023,6 @@ export default function LibraryScene({
       camera={{ position: [0, 1.6, 4], fov: 65 }}
       gl={{ antialias: !isMobile, powerPreference: "high-performance" }}
       onCreated={({ gl }) => {
-      
         gl.outputColorSpace = THREE.SRGBColorSpace;
       }}
     >
@@ -974,6 +1031,7 @@ export default function LibraryScene({
         isPortrait={isPortrait}
         mobileForwardRef={mobileForwardRef}
         mobileBackRef={mobileBackRef}
+        mobileStrafeRef={mobileStrafeRef}
         controlsEnabled={controlsEnabled && !paused}
         setIsLocked={setIsLocked}
         onOpenSection={onOpenSection}

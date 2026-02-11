@@ -6,11 +6,9 @@ import StartLoader from "./ui/StartLoader";
 
 function detectMobile() {
   if (typeof window === "undefined") return false;
-
   const coarse = window.matchMedia?.("(pointer: coarse)")?.matches ?? false;
   const ua = navigator.userAgent || "";
   const uaMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(ua);
-
   return coarse || uaMobile || window.innerWidth < 768;
 }
 
@@ -24,7 +22,7 @@ function setGlobalFlag(key, value) {
   window[key] = !!value;
 }
 
-const OVERLAY_SECTIONS = ["projects", "stack", "career"];
+const OVERLAY_SECTIONS = ["projects", "stack", "career", "about", "diplomas"];
 
 export default function App() {
   const [hasStarted, setHasStarted] = useState(false);
@@ -33,37 +31,38 @@ export default function App() {
   const [controlsEnabled, setControlsEnabled] = useState(true);
   const [openSectionId, setOpenSectionId] = useState(null);
 
-  const isMobile = useMemo(() => detectMobile(), []);
+  const [isMobile, setIsMobile] = useState(() => detectMobile());
   const [isPortrait, setIsPortrait] = useState(() =>
-    isMobile ? detectPortrait() : false
+    detectMobile() ? detectPortrait() : false
   );
 
   useEffect(() => {
-    if (!isMobile) {
-      setIsPortrait(false);
-      setGlobalFlag("__IS_PORTRAIT__", false);
-      return;
-    }
-
     const update = () => {
-      const p = detectPortrait();
-      setIsPortrait(p);
-      setGlobalFlag("__IS_PORTRAIT__", p);
+      const m = detectMobile();
+      setIsMobile(m);
+
+      if (!m) {
+        setIsPortrait(false);
+        setGlobalFlag("__IS_PORTRAIT__", false);
+      } else {
+        const p = detectPortrait();
+        setIsPortrait(p);
+        setGlobalFlag("__IS_PORTRAIT__", p);
+      }
     };
 
     update();
-
     window.addEventListener("resize", update);
     window.addEventListener("orientationchange", update);
-
     return () => {
       window.removeEventListener("resize", update);
       window.removeEventListener("orientationchange", update);
     };
-  }, [isMobile]);
+  }, []);
 
   const mobileForwardRef = useRef(false);
   const mobileBackRef = useRef(false);
+  const mobileStrafeRef = useRef(0);
 
   const [focus, setFocus] = useState({
     active: false,
@@ -77,9 +76,15 @@ export default function App() {
   const stopMobileMove = useCallback(() => {
     mobileForwardRef.current = false;
     mobileBackRef.current = false;
+    mobileStrafeRef.current = 0;
 
     setGlobalFlag("__TOUCH_LOOKING__", false);
     setGlobalFlag("__JOYSTICK_ACTIVE__", false);
+
+    if (typeof window !== "undefined") {
+      window.__JOY_X__ = 0;
+      window.__JOY_Y__ = 0;
+    }
   }, []);
 
   const resetUI = useCallback(() => {
@@ -98,97 +103,81 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const onChange = () => {
-      setIsLocked(Boolean(document.pointerLockElement));
-    };
-
+    const onChange = () => setIsLocked(Boolean(document.pointerLockElement));
     document.addEventListener("pointerlockchange", onChange);
     onChange();
-
     return () => document.removeEventListener("pointerlockchange", onChange);
   }, []);
 
   const requestLock = useCallback(() => {
     setControlsEnabled(true);
-
     const canvas = document.querySelector("canvas");
-    if (canvas && !document.pointerLockElement) {
-      canvas.requestPointerLock?.();
-    }
+    if (canvas && !document.pointerLockElement) canvas.requestPointerLock?.();
   }, []);
 
   const releaseLock = useCallback(() => {
-    if (document.pointerLockElement) {
-      document.exitPointerLock?.();
-    }
-
+    if (document.pointerLockElement) document.exitPointerLock?.();
     setControlsEnabled(false);
     resetUI();
   }, [resetUI]);
 
   const closePanel = useCallback(() => {
     setOpenSectionId(null);
-
     cancelFocus();
     setControlsEnabled(true);
     resetUI();
   }, [cancelFocus, resetUI]);
 
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key !== "Escape") return;
+
+      if (focus?.active || openSectionId) {
+        e.preventDefault?.();
+        closePanel();
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [focus?.active, openSectionId, closePanel]);
+
   const closeTravelCard = useCallback(() => {
-    setFocus((f) => ({
-      ...f,
-      itemId: null,
-    }));
+    setFocus((f) => ({ ...f, itemId: null }));
   }, []);
 
   const handleOpenSection = useCallback(
     (id, itemId = null) => {
       resetUI();
-
       setOpenSectionId(id);
       setControlsEnabled(false);
 
-      if (document.pointerLockElement) {
-        document.exitPointerLock?.();
-      }
+      if (document.pointerLockElement) document.exitPointerLock?.();
 
       setGlobalFlag("__UI_ACTIVE__", true);
 
-      setFocus((f) => ({
-        ...f,
-        sectionId: id,
-        itemId: itemId ?? null,
-      }));
+      setFocus((f) => ({ ...f, sectionId: id, itemId: itemId ?? null }));
     },
     [resetUI]
   );
 
   useEffect(() => {
-    const onKeyDown = (e) => {
-      if (e.key !== "Escape") return;
-
-      if (focus.active || openSectionId) {
-        closePanel();
-        return;
-      }
-
-      releaseLock();
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [focus.active, openSectionId, closePanel, releaseLock]);
+    setGlobalFlag("__MAP_MODE__", openSectionId === "travels");
+  }, [openSectionId]);
 
   const overlaySectionId = useMemo(() => {
+    if (openSectionId === "travels") return null;
     return OVERLAY_SECTIONS.includes(openSectionId) ? openSectionId : null;
   }, [openSectionId]);
 
-  const showWallTopbar = Boolean(openSectionId) && !overlaySectionId;
+  const showTravelTopbar = openSectionId === "travels";
+
+  const anyOpen = Boolean(openSectionId) || Boolean(focus?.active);
 
   return (
     <>
       <LibraryScene
-        paused={!hasStarted} 
+        paused={!hasStarted}
         isMobile={isMobile}
         isPortrait={isPortrait}
         controlsEnabled={controlsEnabled && hasStarted}
@@ -198,16 +187,10 @@ export default function App() {
         onOpenSection={handleOpenSection}
         mobileForwardRef={mobileForwardRef}
         mobileBackRef={mobileBackRef}
+        mobileStrafeRef={mobileStrafeRef}
       />
 
-      {!hasStarted && (
-        <StartLoader
-          onStart={() => {
-            setHasStarted(true);
-           
-          }}
-        />
-      )}
+      {!hasStarted && <StartLoader onStart={() => setHasStarted(true)} />}
 
       <Overlay
         isMobile={isMobile}
@@ -218,27 +201,18 @@ export default function App() {
         openSectionId={overlaySectionId}
         openItemId={focus?.itemId ?? null}
         onClosePanel={closePanel}
-        onMobileForwardDown={() => (mobileForwardRef.current = true)}
-        onMobileForwardUp={() => (mobileForwardRef.current = false)}
-        onMobileBackDown={() => (mobileBackRef.current = true)}
-        onMobileBackUp={() => (mobileBackRef.current = false)}
-        anyOpen={Boolean(openSectionId)}
+        anyOpen={anyOpen}
+        mobileForwardRef={mobileForwardRef}
+        mobileBackRef={mobileBackRef}
+        mobileStrafeRef={mobileStrafeRef}
       />
 
-      {showWallTopbar && (
+      {showTravelTopbar && (
         <div className="hud" style={{ pointerEvents: "none" }}>
           <div className="topbar" style={{ pointerEvents: "auto" }}>
             <button className="btn" onClick={closePanel}>
-              ⎋ Quitter
+              ⎋ Quitter la carte
             </button>
-
-            <button
-              className="btn"
-              onClick={() => window.open("/cv/Thomas-DeTraversay-CV.pdf")}
-            >
-              📄 Voir le CV
-            </button>
-
             <button className="btn" onClick={closePanel}>
               ✖ Fermer
             </button>
@@ -252,4 +226,3 @@ export default function App() {
     </>
   );
 }
-

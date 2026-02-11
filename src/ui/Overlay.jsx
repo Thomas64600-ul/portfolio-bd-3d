@@ -18,16 +18,6 @@ function openCV() {
   window.open("/cv/Thomas-DeTraversay-CV.pdf", "_blank", "noopener,noreferrer");
 }
 
-function getDiplomaImageByIndex(idx) {
-  const map = {
-    0: "/textures/diplomas/diplome-rncp.webp",
-    1: "/textures/diplomas/certif-ia.webp",
-    2: "/textures/diplomas/diplome-bts.webp",
-    3: "/textures/diplomas/bac.webp", 
-  };
-  return map[idx] || null;
-}
-
 export default function Overlay({
   isMobile,
   isPortrait: isPortraitProp,
@@ -37,13 +27,10 @@ export default function Overlay({
   openSectionId,
   openItemId = null,
   onClosePanel,
-
-  onMobileForwardDown,
-  onMobileForwardUp,
-  onMobileBackDown,
-  onMobileBackUp,
-
   anyOpen = false,
+  mobileForwardRef,
+  mobileBackRef,
+  mobileStrafeRef,
 }) {
   const section = openSectionId ? SECTIONS[openSectionId] : null;
   const panelOpen = Boolean(openSectionId);
@@ -53,8 +40,18 @@ export default function Overlay({
     typeof isPortraitProp === "boolean" ? isPortraitProp : isPortraitLocal;
 
   const [dismissRotateHint, setDismissRotateHint] = useState(false);
+
   const [isMapMode, setIsMapMode] = useState(false);
   const prevMapRef = useRef(false);
+
+
+  const forwardFallback = useRef(false);
+  const backFallback = useRef(false);
+  const strafeFallback = useRef(0);
+
+  const forwardRef = mobileForwardRef ?? forwardFallback;
+  const backRef = mobileBackRef ?? backFallback;
+  const strafeRef = mobileStrafeRef ?? strafeFallback;
 
   useEffect(() => setDismissRotateHint(false), [isMobile]);
 
@@ -63,7 +60,8 @@ export default function Overlay({
     if (typeof window === "undefined") return;
     if (typeof isPortraitProp === "boolean") return;
 
-    const compute = () => setIsPortraitLocal(window.innerHeight > window.innerWidth);
+    const compute = () =>
+      setIsPortraitLocal(window.innerHeight > window.innerWidth);
     compute();
 
     window.addEventListener("resize", compute);
@@ -74,6 +72,12 @@ export default function Overlay({
     };
   }, [isMobile, isPortraitProp]);
 
+  const resetMoveRefs = useCallback(() => {
+    forwardRef.current = false;
+    backRef.current = false;
+    strafeRef.current = 0;
+  }, [forwardRef, backRef, strafeRef]);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -83,8 +87,7 @@ export default function Overlay({
 
       if (map && !prevMapRef.current) {
         resetGlobalControls();
-        onMobileForwardUp?.();
-        onMobileBackUp?.();
+        resetMoveRefs();
       }
 
       prevMapRef.current = map;
@@ -93,14 +96,13 @@ export default function Overlay({
     tick();
     const id = window.setInterval(tick, 120);
     return () => window.clearInterval(id);
-  }, [onMobileForwardUp, onMobileBackUp]);
+  }, [resetMoveRefs]);
 
   useEffect(() => {
     if (!anyOpen) return;
     resetGlobalControls();
-    onMobileForwardUp?.();
-    onMobileBackUp?.();
-  }, [anyOpen, onMobileForwardUp, onMobileBackUp]);
+    resetMoveRefs();
+  }, [anyOpen, resetMoveRefs]);
 
   const handleRequestLock = useCallback(() => {
     onRequestLock?.();
@@ -111,34 +113,38 @@ export default function Overlay({
 
   const handleCloseEverything = useCallback(() => {
     resetGlobalControls();
-    onMobileForwardUp?.();
-    onMobileBackUp?.();
-
+    resetMoveRefs();
     onReleaseLock?.();
     onClosePanel?.();
-  }, [onClosePanel, onReleaseLock, onMobileForwardUp, onMobileBackUp]);
+  }, [onClosePanel, onReleaseLock, resetMoveRefs]);
 
   const setMobileMove = useCallback(
-    ({ forward, back }) => {
-      const active = forward || back;
+    ({ x = 0, y = 0 }) => {
+      const dx = Math.abs(x) < 0.18 ? 0 : x;
+      const dy = Math.abs(y) < 0.18 ? 0 : y;
+
+      const forward = dy < 0;
+      const back = dy > 0;
+
+      const active = dx !== 0 || dy !== 0;
+
       setGlobalFlag("__UI_ACTIVE__", active);
+      setGlobalFlag("__JOYSTICK_ACTIVE__", active);
 
-      if (forward) onMobileForwardDown?.();
-      else onMobileForwardUp?.();
-
-      if (back) onMobileBackDown?.();
-      else onMobileBackUp?.();
+      forwardRef.current = forward;
+      backRef.current = back;
+      strafeRef.current = dx; 
     },
-    [onMobileForwardDown, onMobileForwardUp, onMobileBackDown, onMobileBackUp]
+    [forwardRef, backRef, strafeRef]
   );
 
   const stopMobileMove = useCallback(() => {
     resetGlobalControls();
-    onMobileForwardUp?.();
-    onMobileBackUp?.();
-  }, [onMobileForwardUp, onMobileBackUp]);
+    resetMoveRefs();
+  }, [resetMoveRefs]);
 
-  const showRotateHint = isMobile && isPortrait && !anyOpen && !dismissRotateHint;
+  const showRotateHint =
+    isMobile && isPortrait && !anyOpen && !dismissRotateHint;
 
   const panelContent = useMemo(() => {
     if (!section) return null;
@@ -150,17 +156,32 @@ export default function Overlay({
 
     const isAbout = openSectionId === "about";
     const isDiplomas = openSectionId === "diplomas";
-    const hasActiveItem = openItemId !== null && openItemId !== undefined && !Number.isNaN(Number(openItemId));
+    const hasActiveItem =
+      openItemId !== null &&
+      openItemId !== undefined &&
+      !Number.isNaN(Number(openItemId));
     const activeIdx = hasActiveItem ? Number(openItemId) : null;
 
     if (isAbout) {
       return (
         <>
-          <div style={{ padding: 14, borderBottom: "1px solid rgba(255,255,255,0.10)" }}>
+          <div
+            style={{
+              padding: 14,
+              borderBottom: "1px solid rgba(255,255,255,0.10)",
+            }}
+          >
             <div style={{ fontWeight: 900, fontSize: 16 }}>{title}</div>
 
             {tags.length > 0 && (
-              <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 8 }}>
+              <div
+                style={{
+                  marginTop: 8,
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 8,
+                }}
+              >
                 {tags.map((t) => (
                   <span
                     key={t}
@@ -193,11 +214,13 @@ export default function Overlay({
           </div>
 
           <div style={{ padding: 14, overflow: "auto" }}>
-            <div style={{ display: "grid", gap: 10 }}>
-              <button className="btn" onClick={openCV} style={{ width: "fit-content" }}>
-                📄 Voir le CV
-              </button>
-            </div>
+            <button
+              className="btn"
+              onClick={openCV}
+              style={{ width: "fit-content" }}
+            >
+              📄 Voir le CV
+            </button>
           </div>
         </>
       );
@@ -205,15 +228,27 @@ export default function Overlay({
 
     if (isDiplomas && activeIdx !== null) {
       const it = items[activeIdx];
-      const img = getDiplomaImageByIndex(activeIdx);
+      const img = it?.image || null; 
 
       return (
         <>
-          <div style={{ padding: 14, borderBottom: "1px solid rgba(255,255,255,0.10)" }}>
+          <div
+            style={{
+              padding: 14,
+              borderBottom: "1px solid rgba(255,255,255,0.10)",
+            }}
+          >
             <div style={{ fontWeight: 900, fontSize: 16 }}>{title}</div>
 
             {tags.length > 0 && (
-              <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 8 }}>
+              <div
+                style={{
+                  marginTop: 8,
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 8,
+                }}
+              >
                 {tags.map((t) => (
                   <span
                     key={t}
@@ -251,7 +286,7 @@ export default function Overlay({
                       display: "block",
                       width: "100%",
                       height: "auto",
-                      maxHeight: isMobile ? (isPortrait ? 320 : 220) : 420,
+                      maxHeight: isMobile ? (isPortrait ? 360 : 240) : 420,
                       objectFit: "contain",
                       background: "rgba(0,0,0,0.25)",
                     }}
@@ -268,14 +303,28 @@ export default function Overlay({
                   background: "rgba(255,255,255,0.03)",
                 }}
               >
-                <div style={{ fontWeight: 900 }}>{it?.name || it?.title || `Diplôme ${activeIdx + 1}`}</div>
+                <div style={{ fontWeight: 900 }}>
+                  {it?.name || it?.title || `Diplôme ${activeIdx + 1}`}
+                </div>
+
                 {(it?.year || it?.period || it?.location) && (
                   <div style={{ marginTop: 6, fontSize: 12, opacity: 0.75 }}>
-                    {[it?.year, it?.period, it?.location].filter(Boolean).join(" • ")}
+                    {[it?.year, it?.period, it?.location]
+                      .filter(Boolean)
+                      .join(" • ")}
                   </div>
                 )}
+
                 {it?.desc && (
-                  <div style={{ marginTop: 8, fontSize: 13, opacity: 0.88, lineHeight: 1.45, whiteSpace: "pre-line" }}>
+                  <div
+                    style={{
+                      marginTop: 8,
+                      fontSize: 13,
+                      opacity: 0.88,
+                      lineHeight: 1.45,
+                      whiteSpace: "pre-line",
+                    }}
+                  >
                     {it.desc}
                   </div>
                 )}
@@ -289,11 +338,23 @@ export default function Overlay({
     if (Array.isArray(section.rows)) {
       return (
         <>
-          <div style={{ padding: 14, borderBottom: "1px solid rgba(255,255,255,0.10)" }}>
+          <div
+            style={{
+              padding: 14,
+              borderBottom: "1px solid rgba(255,255,255,0.10)",
+            }}
+          >
             <div style={{ fontWeight: 900, fontSize: 16 }}>{title}</div>
 
             {tags.length > 0 && (
-              <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 8 }}>
+              <div
+                style={{
+                  marginTop: 8,
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 8,
+                }}
+              >
                 {tags.map((t) => (
                   <span
                     key={t}
@@ -313,7 +374,15 @@ export default function Overlay({
             )}
 
             {description && (
-              <div style={{ marginTop: 10, fontSize: 13, opacity: 0.85, lineHeight: 1.45, whiteSpace: "pre-line" }}>
+              <div
+                style={{
+                  marginTop: 10,
+                  fontSize: 13,
+                  opacity: 0.85,
+                  lineHeight: 1.45,
+                  whiteSpace: "pre-line",
+                }}
+              >
                 {description}
               </div>
             )}
@@ -322,8 +391,13 @@ export default function Overlay({
           <div style={{ padding: 14, overflow: "auto" }}>
             <div style={{ display: "grid", gap: 14 }}>
               {section.rows.map((row, rIdx) => (
-                <div key={row.title ?? rIdx} style={{ display: "grid", gap: 10 }}>
-                  <div style={{ fontWeight: 800, opacity: 0.92 }}>{row.title ?? `Rangée ${rIdx + 1}`}</div>
+                <div
+                  key={row.title ?? rIdx}
+                  style={{ display: "grid", gap: 10 }}
+                >
+                  <div style={{ fontWeight: 800, opacity: 0.92 }}>
+                    {row.title ?? `Rangée ${rIdx + 1}`}
+                  </div>
 
                   <div style={{ display: "grid", gap: 10 }}>
                     {(row.items ?? []).map((it, iIdx) => (
@@ -336,23 +410,51 @@ export default function Overlay({
                           background: "rgba(255,255,255,0.03)",
                         }}
                       >
-                        <div style={{ fontWeight: 900 }}>{it.name ?? `Item ${iIdx + 1}`}</div>
+                        <div style={{ fontWeight: 900 }}>
+                          {it.name ?? `Item ${iIdx + 1}`}
+                        </div>
 
                         {it.desc && (
-                          <div style={{ marginTop: 6, fontSize: 13, opacity: 0.85, lineHeight: 1.4 }}>
+                          <div
+                            style={{
+                              marginTop: 6,
+                              fontSize: 13,
+                              opacity: 0.85,
+                              lineHeight: 1.4,
+                            }}
+                          >
                             {it.desc}
                           </div>
                         )}
 
                         {(it.href || it.github) && (
-                          <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                          <div
+                            style={{
+                              marginTop: 10,
+                              display: "flex",
+                              gap: 10,
+                              flexWrap: "wrap",
+                            }}
+                          >
                             {it.href && (
-                              <a className="btn" href={it.href} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
+                              <a
+                                className="btn"
+                                href={it.href}
+                                target="_blank"
+                                rel="noreferrer"
+                                style={{ textDecoration: "none" }}
+                              >
                                 🔗 Voir le site
                               </a>
                             )}
                             {it.github && (
-                              <a className="btn" href={it.github} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
+                              <a
+                                className="btn"
+                                href={it.github}
+                                target="_blank"
+                                rel="noreferrer"
+                                style={{ textDecoration: "none" }}
+                              >
                                 ⭐ GitHub
                               </a>
                             )}
@@ -371,11 +473,23 @@ export default function Overlay({
 
     return (
       <>
-        <div style={{ padding: 14, borderBottom: "1px solid rgba(255,255,255,0.10)" }}>
+        <div
+          style={{
+            padding: 14,
+            borderBottom: "1px solid rgba(255,255,255,0.10)",
+          }}
+        >
           <div style={{ fontWeight: 900, fontSize: 16 }}>{title}</div>
 
           {tags.length > 0 && (
-            <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 8 }}>
+            <div
+              style={{
+                marginTop: 8,
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 8,
+              }}
+            >
               {tags.map((t) => (
                 <span
                   key={t}
@@ -395,7 +509,15 @@ export default function Overlay({
           )}
 
           {description && (
-            <div style={{ marginTop: 10, fontSize: 13, opacity: 0.85, lineHeight: 1.45, whiteSpace: "pre-line" }}>
+            <div
+              style={{
+                marginTop: 10,
+                fontSize: 13,
+                opacity: 0.85,
+                lineHeight: 1.45,
+                whiteSpace: "pre-line",
+              }}
+            >
               {description}
             </div>
           )}
@@ -403,7 +525,9 @@ export default function Overlay({
 
         <div style={{ padding: 14, overflow: "auto" }}>
           {items.length === 0 ? (
-            <div style={{ opacity: 0.85, fontSize: 14 }}>Aucun élément pour cette section.</div>
+            <div style={{ opacity: 0.85, fontSize: 14 }}>
+              Aucun élément pour cette section.
+            </div>
           ) : (
             <div style={{ display: "grid", gap: 10 }}>
               {items.map((it, idx) => {
@@ -411,7 +535,11 @@ export default function Overlay({
                 const title2 =
                   it.title ??
                   it.name ??
-                  `${it.company ? `${it.name} — ${it.company}` : `Item ${idx + 1}`}`;
+                  `${
+                    it.company
+                      ? `${it.name} — ${it.company}`
+                      : `Item ${idx + 1}`
+                  }`;
                 const desc2 = it.description ?? it.desc ?? "";
 
                 return (
@@ -420,26 +548,46 @@ export default function Overlay({
                     style={{
                       padding: 12,
                       borderRadius: 14,
-                      border: isActive ? "1px solid rgba(255,255,255,0.35)" : "1px solid rgba(255,255,255,0.12)",
-                      background: isActive ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.03)",
+                      border: isActive
+                        ? "1px solid rgba(255,255,255,0.35)"
+                        : "1px solid rgba(255,255,255,0.12)",
+                      background: isActive
+                        ? "rgba(255,255,255,0.06)"
+                        : "rgba(255,255,255,0.03)",
                     }}
                   >
                     <div style={{ fontWeight: 900 }}>{title2}</div>
 
                     {(it.year || it.period || it.location) && (
                       <div style={{ marginTop: 6, fontSize: 12, opacity: 0.75 }}>
-                        {[it.year, it.period, it.location].filter(Boolean).join(" • ")}
+                        {[it.year, it.period, it.location]
+                          .filter(Boolean)
+                          .join(" • ")}
                       </div>
                     )}
 
                     {desc2 && (
-                      <div style={{ marginTop: 8, fontSize: 13, opacity: 0.85, lineHeight: 1.4, whiteSpace: "pre-line" }}>
+                      <div
+                        style={{
+                          marginTop: 8,
+                          fontSize: 13,
+                          opacity: 0.85,
+                          lineHeight: 1.4,
+                          whiteSpace: "pre-line",
+                        }}
+                      >
                         {desc2}
                       </div>
                     )}
 
                     {Array.isArray(it.bullets) && it.bullets.length > 0 && (
-                      <ul style={{ marginTop: 10, paddingLeft: 18, opacity: 0.85 }}>
+                      <ul
+                        style={{
+                          marginTop: 10,
+                          paddingLeft: 18,
+                          opacity: 0.85,
+                        }}
+                      >
                         {it.bullets.map((b, i) => (
                           <li key={i} style={{ marginBottom: 4, fontSize: 13 }}>
                             {b}
@@ -460,29 +608,62 @@ export default function Overlay({
   const showCVInTopbar = !panelOpen && !anyOpen;
 
   return (
-    <div className="hud" data-rotatehint={showRotateHint ? "1" : "0"} data-panelopen={panelOpen ? "1" : "0"}>
+    <div
+      className="hud"
+      data-rotatehint={showRotateHint ? "1" : "0"}
+      data-panelopen={panelOpen ? "1" : "0"}
+    >
       <div className="topbar">
         {panelOpen ? (
           <>
-            <button className="btn" onClick={handleCloseEverything}>⎋ Quitter</button>
-            <button className="btn" onClick={onClosePanel}>✖ Fermer</button>
+            <button className="btn" onClick={handleCloseEverything}>
+              ⎋ Quitter
+            </button>
+            <button className="btn" onClick={onClosePanel}>
+              ✖ Fermer
+            </button>
+          </>
+        ) : anyOpen ? (
+         
+          <>
+            <button className="btn" onClick={onClosePanel}>
+              ✖ Fermer
+            </button>
           </>
         ) : !isLocked ? (
           !isMobile ? (
             <>
-              {showCVInTopbar && <button className="btn" onClick={openCV}>📄 Voir le CV</button>}
-              <button className="btn btn-lock" onClick={handleRequestLock}>🎮 Entrer</button>
+              {showCVInTopbar && (
+                <button className="btn" onClick={openCV}>
+                  📄 Voir le CV
+                </button>
+              )}
+              <button className="btn btn-lock" onClick={handleRequestLock}>
+                🎮 Entrer
+              </button>
             </>
           ) : (
             <>
-              {showCVInTopbar && <button className="btn" onClick={openCV}>📄 Voir le CV</button>}
-              <button className="btn" disabled>📱 Mode mobile</button>
+              {showCVInTopbar && (
+                <button className="btn" onClick={openCV}>
+                  📄 Voir le CV
+                </button>
+              )}
+              <button className="btn" disabled>
+                📱 Mode mobile
+              </button>
             </>
           )
         ) : (
           <>
-            {showCVInTopbar && <button className="btn" onClick={openCV}>📄 Voir le CV</button>}
-            <button className="btn" onClick={onReleaseLock}>⎋ Libérer souris</button>
+            {showCVInTopbar && (
+              <button className="btn" onClick={openCV}>
+                📄 Voir le CV
+              </button>
+            )}
+            <button className="btn" onClick={onReleaseLock}>
+              ⎋ Libérer souris
+            </button>
           </>
         )}
       </div>
@@ -510,14 +691,10 @@ export default function Overlay({
         </div>
       )}
 
-      {isMobile && !anyOpen && (
+      {isMobile && !anyOpen && !isMapMode && (
         <MobileJoystick
           enabled
-          onMove={({ y }) => {
-            const forward = y < -0.18;
-            const back = y > 0.18;
-            setMobileMove({ forward, back });
-          }}
+          onMove={({ x, y }) => setMobileMove({ x, y })}
           onEnd={stopMobileMove}
         />
       )}
@@ -537,9 +714,15 @@ export default function Overlay({
           }}
         >
           <div style={{ fontWeight: 800 }}>📱 Passe en paysage</div>
-          <div style={{ fontSize: 13, opacity: 0.85 }}>Pour une meilleure navigation.</div>
+          <div style={{ fontSize: 13, opacity: 0.85 }}>
+            Pour une meilleure navigation.
+          </div>
 
-          <button className="btn" style={{ marginTop: 10 }} onClick={() => setDismissRotateHint(true)}>
+          <button
+            className="btn"
+            style={{ marginTop: 10 }}
+            onClick={() => setDismissRotateHint(true)}
+          >
             Continuer
           </button>
         </div>
@@ -553,3 +736,4 @@ export default function Overlay({
     </div>
   );
 }
+

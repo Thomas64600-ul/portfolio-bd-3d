@@ -21,16 +21,13 @@ function DiplomaFrameContent({ size = SIZE, textureUrl }) {
   useEffect(() => {
     if (!diplomaTex) return;
 
-    
     diplomaTex.colorSpace = THREE.SRGBColorSpace;
 
-   
     diplomaTex.anisotropy = 12;
     diplomaTex.minFilter = THREE.LinearMipmapLinearFilter;
     diplomaTex.magFilter = THREE.LinearFilter;
     diplomaTex.generateMipmaps = true;
 
-   
     diplomaTex.wrapS = THREE.ClampToEdgeWrapping;
     diplomaTex.wrapT = THREE.ClampToEdgeWrapping;
 
@@ -64,9 +61,9 @@ function DiplomaFrameContent({ size = SIZE, textureUrl }) {
         roughness: 0.82,
         metalness: 0.0,
         toneMapped: true,
-        
+
         color: new THREE.Color("#e2e2e2"),
-      
+
         emissive: new THREE.Color("#ffffff"),
         emissiveIntensity: 0.05,
       }),
@@ -107,21 +104,31 @@ export default function DiplomaWall({ onPickDiplomas, activeIndex }) {
 
   return (
     <group>
-      {Z_LIST.map((z, i) => (
-        <FrameInteractive
-          key={i}
-          id={`diploma-${i}`}
-          selectedId={selectedId}
-          onPick={() => onPickDiplomas?.(i)}
-          position={[X, Y, z]}
-          rotation={[0, Math.PI / 2, 0]}
-          pop={0.55}
-          hitbox={[SIZE[0] + 0.35, SIZE[1] + 0.35, 0.35]}
-          hitboxZ={0.12}
-        >
-          <DiplomaFrameContent size={SIZE} textureUrl={DIPLOMA_TEXTURES[i]} />
-        </FrameInteractive>
-      ))}
+      {Z_LIST.map((z, i) => {
+       
+        const baseHitbox = [SIZE[0] + 0.35, SIZE[1] + 0.35, 0.35];
+        const baseHitboxZ = 0.16;
+
+        
+        const hitboxArgs = i === 3 ? [SIZE[0] + 0.55, SIZE[1] + 0.50, 0.45] : baseHitbox;
+        const hitboxZ = i === 3 ? 0.20 : baseHitboxZ;
+
+        return (
+          <FrameInteractive
+            key={i}
+            id={`diploma-${i}`}
+            selectedId={selectedId}
+            onPick={() => onPickDiplomas?.(i)}
+            position={[X, Y, z]}
+            rotation={[0, Math.PI / 2, 0]}
+            pop={0.55}
+            hitbox={hitboxArgs}
+            hitboxZ={hitboxZ}
+          >
+            <DiplomaFrameContent size={SIZE} textureUrl={DIPLOMA_TEXTURES[i]} />
+          </FrameInteractive>
+        );
+      })}
 
       {separators.map((zMid, idx) => (
         <mesh
@@ -137,4 +144,3 @@ export default function DiplomaWall({ onPickDiplomas, activeIndex }) {
     </group>
   );
 }
-
