@@ -854,6 +854,7 @@ function SceneInner({
           strafeSpeed={3.6}
           lookSpeed={0.0042}
           bounds={ROOM_BOUNDS}
+          dragThresholdPx={26}
         />
       )}
 

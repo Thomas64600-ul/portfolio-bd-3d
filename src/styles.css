@@ -328,3 +328,59 @@ canvas {
     max-width: calc(100% - 24px - var(--safe-left) - var(--safe-right));
   }
 }
+
+@media (max-width: 920px) and (orientation: landscape) {
+ 
+  .topbar {
+    top: calc(10px + var(--safe-top));
+    left: calc(10px + var(--safe-left));
+    gap: 8px;
+  }
+
+  .btn {
+    padding: 8px 10px;
+    border-radius: 10px;
+    font-size: 12px;
+  }
+
+  .hud[data-panelopen="1"] .panel {
+    left: 10px !important;
+    right: 10px !important;
+    top: calc(46px + var(--safe-top)) !important;
+    bottom: calc(10px + var(--safe-bottom)) !important;
+    border-radius: 14px !important;
+  }
+
+  .hud[data-panelopen="1"] .panel > div {
+    padding: 10px !important; 
+  }
+
+  .hud[data-panelopen="1"] .panel div[style*="gap: 14"] {
+    gap: 10px !important;
+  }
+  .hud[data-panelopen="1"] .panel div[style*="gap: 12"] {
+    gap: 10px !important;
+  }
+  .hud[data-panelopen="1"] .panel div[style*="gap: 10"] {
+    gap: 8px !important;
+  }
+
+  .hud[data-panelopen="1"] .panel div[style*="padding: 12"] {
+    padding: 10px !important;
+    border-radius: 12px !important;
+  }
+
+  .hud[data-panelopen="1"] .panel div[style*="font-size: 16"] {
+    font-size: 14px !important;
+  }
+
+  .hud[data-panelopen="1"] .panel div[style*="font-size: 13"] {
+    font-size: 12px !important;
+    line-height: 1.25 !important;
+  }
+
+  .badge {
+    padding: 5px 8px;
+    font-size: 11px;
+  }
+}

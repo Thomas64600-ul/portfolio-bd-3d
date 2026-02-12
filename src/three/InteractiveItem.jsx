@@ -6,13 +6,23 @@ export default function InteractiveItem({
   onPick,
   disabled = false,
   allowWhenUIActive = false,
+  allowWhileJoystickActive = false,
 }) {
   const [hovered, setHovered] = useState(false);
 
-  const down = useRef({ x: 0, y: 0, id: null, moved: false });
+  const down = useRef({
+    x: 0,
+    y: 0,
+    id: null,
+    moved: false,
+    pointerType: null,
+    captured: false,
+  });
+
   const didPickRef = useRef(false);
 
-  const DRAG_PX = 10;
+  const DRAG_PX_MOUSE = 10;
+  const DRAG_PX_TOUCH = 22;
 
   useCursor(hovered && !disabled);
 
@@ -24,14 +34,43 @@ export default function InteractiveItem({
   const isJoystickOrUIActive = () => {
     if (typeof window === "undefined") return false;
 
-    if (allowWhenUIActive) return !!window.__JOYSTICK_ACTIVE__;
-    return !!window.__JOYSTICK_ACTIVE__ || !!window.__UI_ACTIVE__;
+    const joy = !!window.__JOYSTICK_ACTIVE__;
+    const ui = !!window.__UI_ACTIVE__;
+
+    if (allowWhileJoystickActive) {
+      return allowWhenUIActive ? false : ui; 
+    }
+    if (allowWhenUIActive) {
+      return joy; 
+    }
+    return joy || ui;
   };
 
-  const canPickNow = () => !disabled && !isTouchLooking() && !isJoystickOrUIActive();
+  const markInteracting = (pid) => {
+    if (typeof window === "undefined") return;
+    window.__INTERACTING__ = true;
+    window.__INTERACTING_PID__ = pid ?? null;
+    window.__INTERACTING_TS__ = Date.now();
+  };
+
+  const clearInteracting = () => {
+    if (typeof window === "undefined") return;
+    window.__INTERACTING__ = false;
+    window.__INTERACTING_PID__ = null;
+  };
+
+  const canPickNow = () =>
+    !disabled && !isTouchLooking() && !isJoystickOrUIActive();
 
   const resetDown = () => {
-    down.current = { x: 0, y: 0, id: null, moved: false };
+    down.current = {
+      x: 0,
+      y: 0,
+      id: null,
+      moved: false,
+      pointerType: null,
+      captured: false,
+    };
   };
 
   function handleOver(e) {
@@ -48,14 +87,30 @@ export default function InteractiveItem({
     e.stopPropagation();
     if (!canPickNow()) return;
 
+    
+    markInteracting(e.pointerId);
+
     didPickRef.current = false;
+
+    const pointerType = e.pointerType || "mouse";
 
     down.current = {
       x: e.clientX ?? 0,
       y: e.clientY ?? 0,
       id: e.pointerId ?? null,
       moved: false,
+      pointerType,
+      captured: false,
     };
+
+    try {
+      if (e.pointerId != null && e.target?.setPointerCapture) {
+        e.target.setPointerCapture(e.pointerId);
+        down.current.captured = true;
+      }
+    } catch {
+      // ignore
+    }
   }
 
   function handleMove(e) {
@@ -64,7 +119,11 @@ export default function InteractiveItem({
 
     const dx = Math.abs((e.clientX ?? 0) - down.current.x);
     const dy = Math.abs((e.clientY ?? 0) - down.current.y);
-    if (dx + dy > DRAG_PX) down.current.moved = true;
+
+    const thr =
+      down.current.pointerType === "touch" ? DRAG_PX_TOUCH : DRAG_PX_MOUSE;
+
+    if (dx + dy > thr) down.current.moved = true;
   }
 
   function tryPick(e) {
@@ -83,11 +142,43 @@ export default function InteractiveItem({
   function handleUp(e) {
     e.stopPropagation();
     tryPick(e);
+
+    
+    clearInteracting();
+
+    try {
+      if (
+        down.current.captured &&
+        e.pointerId != null &&
+        e.target?.releasePointerCapture
+      ) {
+        e.target.releasePointerCapture(e.pointerId);
+      }
+    } catch {
+      // ignore
+    }
+
     resetDown();
   }
 
   function handleCancel(e) {
     e?.stopPropagation?.();
+
+    
+    clearInteracting();
+
+    try {
+      if (
+        down.current.captured &&
+        down.current.id != null &&
+        e?.target?.releasePointerCapture
+      ) {
+        e.target.releasePointerCapture(down.current.id);
+      }
+    } catch {
+      // ignore
+    }
+
     resetDown();
     didPickRef.current = false;
   }
@@ -100,6 +191,8 @@ export default function InteractiveItem({
 
     didPickRef.current = true;
     onPick?.(e);
+
+    clearInteracting();
     resetDown();
   }
 
@@ -118,3 +211,4 @@ export default function InteractiveItem({
     </group>
   );
 }
+

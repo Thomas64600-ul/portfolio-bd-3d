@@ -56,6 +56,11 @@ export default function MobileJoystick({
     onMoveRef.current?.({ x: 0, y: 0 });
   }, []);
 
+  const hardReset = useCallback(() => {
+    if (typeof window !== "undefined") window.__JOYSTICK_ACTIVE__ = false;
+    reset();
+  }, [reset]);
+
   useEffect(() => {
     if (!enabled) reset();
   }, [enabled, reset]);
@@ -108,7 +113,9 @@ export default function MobileJoystick({
         top: "50%",
         transform: `translate(calc(-50% + ${knob.x}px), calc(-50% + ${knob.y}px))`,
         transition: active ? "none" : "transform 140ms ease-out",
-        background: active ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.14)",
+        background: active
+          ? "rgba(255,255,255,0.18)"
+          : "rgba(255,255,255,0.14)",
         border: "1px solid rgba(255,255,255,0.18)",
         boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
         pointerEvents: "none",
@@ -193,6 +200,11 @@ export default function MobileJoystick({
 
     const onLost = () => {
       if (pointerIdRef.current != null) reset();
+      if (typeof window !== "undefined") {
+  window.__JOY_X__ = 0;
+  window.__JOY_Y__ = 0;
+}
+
     };
 
     const onContextMenu = (e) => {
@@ -216,6 +228,36 @@ export default function MobileJoystick({
       base.removeEventListener("contextmenu", onContextMenu);
     };
   }, [enabled, clampToCircle, emit, reset]);
+
+  useEffect(() => {
+    if (!enabled) return;
+
+    const onWinUp = () => {
+      if (pointerIdRef.current != null) hardReset();
+    };
+
+    const onBlur = () => {
+      if (pointerIdRef.current != null) hardReset();
+    };
+
+    const onVis = () => {
+      if (document.visibilityState !== "visible" && pointerIdRef.current != null) {
+        hardReset();
+      }
+    };
+
+    window.addEventListener("pointerup", onWinUp, { passive: true });
+    window.addEventListener("pointercancel", onWinUp, { passive: true });
+    window.addEventListener("blur", onBlur);
+    document.addEventListener("visibilitychange", onVis);
+
+    return () => {
+      window.removeEventListener("pointerup", onWinUp);
+      window.removeEventListener("pointercancel", onWinUp);
+      window.removeEventListener("blur", onBlur);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [enabled, hardReset]);
 
   return (
     <div style={styles.wrap}>

@@ -44,7 +44,6 @@ export default function Overlay({
   const [isMapMode, setIsMapMode] = useState(false);
   const prevMapRef = useRef(false);
 
-
   const forwardFallback = useRef(false);
   const backFallback = useRef(false);
   const strafeFallback = useRef(0);
@@ -133,7 +132,7 @@ export default function Overlay({
 
       forwardRef.current = forward;
       backRef.current = back;
-      strafeRef.current = dx; 
+      strafeRef.current = dx;
     },
     [forwardRef, backRef, strafeRef]
   );
@@ -163,72 +162,85 @@ export default function Overlay({
     const activeIdx = hasActiveItem ? Number(openItemId) : null;
 
     if (isAbout) {
-      return (
-        <>
+  return (
+    <>
+      {/* Header fixe */}
+      <div
+        style={{
+          padding: 14,
+          borderBottom: "1px solid rgba(255,255,255,0.10)",
+        }}
+      >
+        <div style={{ fontWeight: 900, fontSize: 16 }}>{title}</div>
+
+        {tags.length > 0 && (
           <div
             style={{
-              padding: 14,
-              borderBottom: "1px solid rgba(255,255,255,0.10)",
+              marginTop: 8,
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 8,
             }}
           >
-            <div style={{ fontWeight: 900, fontSize: 16 }}>{title}</div>
-
-            {tags.length > 0 && (
-              <div
+            {tags.map((t) => (
+              <span
+                key={t}
                 style={{
-                  marginTop: 8,
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: 8,
+                  fontSize: 12,
+                  padding: "4px 8px",
+                  borderRadius: 999,
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  background: "rgba(255,255,255,0.03)",
+                  opacity: 0.9,
                 }}
               >
-                {tags.map((t) => (
-                  <span
-                    key={t}
-                    style={{
-                      fontSize: 12,
-                      padding: "4px 8px",
-                      borderRadius: 999,
-                      border: "1px solid rgba(255,255,255,0.12)",
-                      background: "rgba(255,255,255,0.03)",
-                      opacity: 0.9,
-                    }}
-                  >
-                    {t}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            <div
-              style={{
-                marginTop: 10,
-                fontSize: 13,
-                opacity: 0.88,
-                lineHeight: 1.55,
-                whiteSpace: "pre-line",
-              }}
-            >
-              {description || " "}
-            </div>
+                {t}
+              </span>
+            ))}
           </div>
+        )}
+      </div>
 
-          <div style={{ padding: 14, overflow: "auto" }}>
-            <button
-              className="btn"
-              onClick={openCV}
-              style={{ width: "fit-content" }}
-            >
-              📄 Voir le CV
-            </button>
-          </div>
-        </>
-      );
-    }
+      <div
+        style={{
+          padding: 14,
+          overflow: "auto",
+          flex: 1,
+          minHeight: 0,
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
+        }}
+      >
+        <div
+          style={{
+            fontSize: 13,
+            opacity: 0.88,
+            lineHeight: 1.55,
+            whiteSpace: "pre-line",
+          }}
+        >
+          {description || " "}
+        </div>
+
+        <div>
+          <button
+            className="btn"
+            onClick={openCV}
+            style={{ width: "fit-content" }}
+          >
+            📄 Voir le CV
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
 
     if (isDiplomas && activeIdx !== null) {
       const it = items[activeIdx];
-      const img = it?.image || null; 
+      const img = it?.image || null;
 
       return (
         <>
@@ -268,7 +280,7 @@ export default function Overlay({
             )}
           </div>
 
-          <div style={{ padding: 14, overflow: "auto" }}>
+          <div style={{ padding: 14, overflow: "auto", flex: 1, minHeight: 0 }}>
             <div style={{ display: "grid", gap: 12 }}>
               {img && (
                 <div
@@ -388,7 +400,7 @@ export default function Overlay({
             )}
           </div>
 
-          <div style={{ padding: 14, overflow: "auto" }}>
+          <div style={{ padding: 14, overflow: "auto", flex: 1, minHeight: 0 }}>
             <div style={{ display: "grid", gap: 14 }}>
               {section.rows.map((row, rIdx) => (
                 <div
@@ -523,7 +535,7 @@ export default function Overlay({
           )}
         </div>
 
-        <div style={{ padding: 14, overflow: "auto" }}>
+        <div style={{ padding: 14, overflow: "auto", flex: 1, minHeight: 0 }}>
           {items.length === 0 ? (
             <div style={{ opacity: 0.85, fontSize: 14 }}>
               Aucun élément pour cette section.
@@ -624,7 +636,6 @@ export default function Overlay({
             </button>
           </>
         ) : anyOpen ? (
-         
           <>
             <button className="btn" onClick={onClosePanel}>
               ✖ Fermer
@@ -730,10 +741,13 @@ export default function Overlay({
 
       {!anyOpen && (
         <div className="hint">
-          {!isMobile ? <div>WASD / Souris / Clic</div> : <div>Joystick + Tap</div>}
+          {!isMobile ? (
+            <div>WASD / Souris / Clic</div>
+          ) : (
+            <div>Joystick + Tap</div>
+          )}
         </div>
       )}
     </div>
   );
 }
-

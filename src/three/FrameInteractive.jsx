@@ -41,10 +41,9 @@ export default function FrameInteractive({
     easing.damp3(ref.current.scale, [s, s, 1], 0.18, dt);
   });
 
- 
   const handlePick = useCallback(
     (e) => {
-      if (typeof window !== "undefined" && window.__JOYSTICK_ACTIVE__) return;
+     
       onPick?.(id, e);
     },
     [id, onPick]
@@ -54,8 +53,8 @@ export default function FrameInteractive({
     <group ref={ref} position={position} rotation={rotation}>
       <InteractiveItem
         disabled={disabled}
-       
         allowWhenUIActive={true}
+        allowWhileJoystickActive={true}
         onPick={handlePick}
       >
         <group>

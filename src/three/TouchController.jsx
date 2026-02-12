@@ -13,7 +13,7 @@ export default function TouchController({
   lookSpeed = 0.0045,
 
   bounds = { minX: -8, maxX: 8, minZ: -10, maxZ: 6 },
-  dragThresholdPx = 10,
+  dragThresholdPx = 22,
   enableShelfCollision = true,
 }) {
   const { camera, gl } = useThree();
@@ -51,6 +51,18 @@ export default function TouchController({
     return !!window.__MAP_MODE__;
   };
 
+  const isInteractingFresh = (pid) => {
+    if (typeof window === "undefined") return false;
+    if (!window.__INTERACTING__) return false;
+
+    const ts = Number(window.__INTERACTING_TS__ ?? 0);
+    if (ts && Date.now() - ts > 220) return false;
+
+    const ipid = window.__INTERACTING_PID__;
+    if (ipid == null) return true;
+    return pid != null ? ipid === pid : true;
+  };
+
   useEffect(() => {
     const e = new THREE.Euler().setFromQuaternion(camera.quaternion, "YXZ");
     yaw.current = e.y;
@@ -84,6 +96,7 @@ export default function TouchController({
       if (!enabled) return;
       if (e.pointerType !== "touch") return;
 
+      
       if (isMapMode()) {
         hardStop();
         return;
@@ -106,7 +119,11 @@ export default function TouchController({
       if (!enabled) return;
       if (e.pointerType !== "touch") return;
       if (!pointerDown.current) return;
-      if (activePointerId.current != null && e.pointerId !== activePointerId.current) return;
+      if (
+        activePointerId.current != null &&
+        e.pointerId !== activePointerId.current
+      )
+        return;
 
       if (isMapMode()) {
         hardStop();
@@ -117,6 +134,11 @@ export default function TouchController({
       const dyT = e.clientY - start.current.y;
 
       if (!dragging.current) {
+     
+        if (isInteractingFresh(e.pointerId)) {
+          return;
+        }
+
         if (Math.hypot(dxT, dyT) >= dragThresholdPx) {
           dragging.current = true;
           setGlobalLooking(true);
@@ -139,7 +161,11 @@ export default function TouchController({
     };
 
     const onPointerEnd = (e) => {
-      if (activePointerId.current != null && e?.pointerId !== activePointerId.current) return;
+      if (
+        activePointerId.current != null &&
+        e?.pointerId !== activePointerId.current
+      )
+        return;
 
       pointerDown.current = false;
       activePointerId.current = null;
@@ -190,7 +216,6 @@ export default function TouchController({
 
   const mapFovLatchRef = useRef(false);
 
-  
   const clampAxis = (v) => Math.max(-1, Math.min(1, v));
 
   useFrame((_, dt) => {
@@ -200,7 +225,6 @@ export default function TouchController({
     const isPortrait = hasWindow ? window.innerHeight > window.innerWidth : false;
     const isMap = hasWindow ? !!window.__MAP_MODE__ : false;
 
-  
     if (camera?.isPerspectiveCamera) {
       const baseFov = baseFovRef.current || 65;
       const mapFov = 90;
@@ -214,18 +238,16 @@ export default function TouchController({
       camera.updateProjectionMatrix();
     }
 
-   
     camera.rotation.order = "YXZ";
     camera.rotation.y = yaw.current;
     camera.rotation.x = pitch.current;
 
     const b = isPortrait ? portraitBounds : bounds;
 
-    
     const fwd = !!forwardRef?.current;
     const back = !!backRef?.current;
-    const forwardAxis = (fwd ? 1 : 0) + (back ? -1 : 0); 
-   
+    const forwardAxis = (fwd ? 1 : 0) + (back ? -1 : 0);
+
     let sx = Number(strafeRef?.current ?? 0);
     if (!Number.isFinite(sx)) sx = 0;
 
@@ -236,7 +258,6 @@ export default function TouchController({
     const strafeAxis = clampAxis(sx);
 
     if (isMap) return;
-
     if (forwardAxis === 0 && strafeAxis === 0) return;
 
     camera.getWorldDirection(forwardDir.current);
@@ -248,10 +269,16 @@ export default function TouchController({
     moveVec.current.set(0, 0, 0);
 
     if (forwardAxis !== 0) {
-      moveVec.current.addScaledVector(forwardDir.current, forwardAxis * speed * dt);
+      moveVec.current.addScaledVector(
+        forwardDir.current,
+        forwardAxis * speed * dt
+      );
     }
     if (strafeAxis !== 0) {
-      moveVec.current.addScaledVector(rightDir.current, strafeAxis * strafeSpeed * dt);
+      moveVec.current.addScaledVector(
+        rightDir.current,
+        strafeAxis * strafeSpeed * dt
+      );
     }
 
     camera.position.add(moveVec.current);
@@ -268,7 +295,8 @@ export default function TouchController({
 
       if (camera.position.z < stopZ) {
         const inside = centers.some(
-          (cx) => camera.position.x > cx - halfW && camera.position.x < cx + halfW
+          (cx) =>
+            camera.position.x > cx - halfW && camera.position.x < cx + halfW
         );
         if (inside) camera.position.z = stopZ;
       }
