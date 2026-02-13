@@ -5,7 +5,7 @@ import FrameInteractive from "./FrameInteractive";
 
 const SIZE = [1.8, 1.25];
 const X = -10.75;
-const Y = 2.85;
+const Y = 2.34;
 const Z_LIST = [3.8, 1.1, -1.6, -4.3];
 
 const DIPLOMA_TEXTURES = [
