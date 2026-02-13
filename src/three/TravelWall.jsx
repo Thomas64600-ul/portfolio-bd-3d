@@ -45,6 +45,7 @@ export default function TravelWall({
   activeIndex = null,
   onPickPin,
   onPickWall,
+  scale = 1, 
 }) {
   const mapRef = useRef(null);
 
@@ -214,7 +215,8 @@ export default function TravelWall({
 
   return (
     <group position={position} rotation={rotation}>
-      <group scale={[mapScale, mapScale, 1]} position={[0, mapYOffset, 0]}>
+  <group scale={[mapScale * scale, mapScale * scale, 1]} position={[0, mapYOffset, 0]}>
+
        
         <InteractiveItem
           disabled={false}
