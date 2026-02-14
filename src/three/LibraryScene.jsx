@@ -10,7 +10,6 @@ import DiplomaSection from "./DiplomaSection";
 import MovieWall from "./MovieWall";
 import StylizedCeiling from "./StylizedCeiling";
 
-
 import AboutTravelSection from "./AboutTravelSection";
 import BookcaseWall from "./BookcaseWall";
 
@@ -28,12 +27,19 @@ function ensureUv2(geo) {
 function usePBRMaps(basePath, repeat = [1, 1], opts = {}) {
   const { isMobile = false, disableNormalOnMobile = true } = opts;
 
-  const maps = useTexture({
-    map: `${basePath}/diff.webp`,
-    aoMap: `${basePath}/ao.webp`,
-    normalMap: `${basePath}/normal.webp`,
-    roughnessMap: `${basePath}/rough.webp`,
-  });
+  const maps = useTexture(
+    isMobile
+      ? {
+          map: `${basePath}/diff.webp`,
+          roughnessMap: `${basePath}/rough.webp`,
+        }
+      : {
+          map: `${basePath}/diff.webp`,
+          aoMap: `${basePath}/ao.webp`,
+          normalMap: `${basePath}/normal.webp`,
+          roughnessMap: `${basePath}/rough.webp`,
+        }
+  );
 
   const { gl } = useThree();
 
@@ -42,7 +48,7 @@ function usePBRMaps(basePath, repeat = [1, 1], opts = {}) {
       ? gl.capabilities.getMaxAnisotropy()
       : 8;
 
-    const aniso = isMobile ? 4 : Math.min(16, maxAniso);
+    const aniso = isMobile ? 1 : Math.min(16, maxAniso);
 
     const apply = (tex, isColor) => {
       if (!tex) return;
@@ -66,8 +72,10 @@ function usePBRMaps(basePath, repeat = [1, 1], opts = {}) {
   }, [maps, repeat, gl, isMobile]);
 
   const effective = useMemo(() => {
+  
     if (!isMobile || !disableNormalOnMobile) return maps;
-    return { ...maps, normalMap: null };
+    
+    return { ...maps, normalMap: null, aoMap: null };
   }, [maps, isMobile, disableNormalOnMobile]);
 
   return effective;
@@ -345,7 +353,7 @@ function SceneInner({
     ]
   );
 
-  const hdriFile = isMobile ? "/hdri/studio_small_03_1k.hdr" : "/hdri/studio_small_03_2k.hdr";
+  const hdriFile = "/hdri/studio_small_03_1k.hdr";
 
   return (
     <>
@@ -508,11 +516,15 @@ export default function LibraryScene({
 }) {
   const [mapEditMode, setMapEditMode] = useState(false);
 
+  const enableShadows = !isMobile;
+
   return (
     <Canvas
+     
       frameloop={paused ? "never" : "always"}
-      shadows={!isMobile}
-      dpr={isMobile ? 1 : [1, 2]}
+      shadows={enableShadows}
+      
+      dpr={isMobile ? 1 : [1, 1.5]}
       camera={{ position: [0, 1.6, 4], fov: 65 }}
       gl={{
         antialias: !isMobile,
