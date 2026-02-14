@@ -72,9 +72,7 @@ function usePBRMaps(basePath, repeat = [1, 1], opts = {}) {
   }, [maps, repeat, gl, isMobile]);
 
   const effective = useMemo(() => {
-  
     if (!isMobile || !disableNormalOnMobile) return maps;
-    
     return { ...maps, normalMap: null, aoMap: null };
   }, [maps, isMobile, disableNormalOnMobile]);
 
@@ -287,7 +285,8 @@ function SceneInner({
 
     easing.damp3(state.camera.position, cameraTarget.current, 0.25, dt);
 
-    if (!state.camera.userData._look) state.camera.userData._look = new THREE.Vector3();
+    if (!state.camera.userData._look)
+      state.camera.userData._look = new THREE.Vector3();
     easing.damp3(state.camera.userData._look, lookTarget.current, 0.25, dt);
     state.camera.lookAt(state.camera.userData._look);
 
@@ -303,9 +302,11 @@ function SceneInner({
       unlockPointer();
       setMapEditMode(false);
 
-      if (mobileForwardRef?.current !== undefined) mobileForwardRef.current = false;
+      if (mobileForwardRef?.current !== undefined)
+        mobileForwardRef.current = false;
       if (mobileBackRef?.current !== undefined) mobileBackRef.current = false;
-      if (mobileStrafeRef?.current !== undefined) mobileStrafeRef.current = 0;
+      if (mobileStrafeRef?.current !== undefined)
+        mobileStrafeRef.current = 0;
 
       let finalPos = pos;
       let finalLook = look;
@@ -316,7 +317,11 @@ function SceneInner({
         const dz = pos[2] - look[2];
 
         const k = 2.15;
-        finalPos = [look[0] + dx * k, look[1] + dy * k + 0.12, look[2] + dz * k];
+        finalPos = [
+          look[0] + dx * k,
+          look[1] + dy * k + 0.12,
+          look[2] + dz * k,
+        ];
         finalLook = [look[0], look[1] + 0.02, look[2]];
         fovTarget.current = 96;
       } else if (isMobile && isPortrait && sectionId === "about") {
@@ -325,7 +330,11 @@ function SceneInner({
         const dz = pos[2] - look[2];
 
         const k = 1.55;
-        finalPos = [look[0] + dx * k, look[1] + dy * k + 0.1, look[2] + dz * k];
+        finalPos = [
+          look[0] + dx * k,
+          look[1] + dy * k + 0.1,
+          look[2] + dz * k,
+        ];
         finalLook = [look[0], look[1] + 0.06, look[2]];
         fovTarget.current = 58;
       } else {
@@ -362,26 +371,48 @@ function SceneInner({
 
       <ambientLight intensity={light.ambient} />
 
-      <spotLight
-        position={[0, 6.6, -1.5]}
-        angle={light.spotAngle}
-        penumbra={light.spotPenumbra}
-        intensity={light.spotIntensity}
-        distance={light.spotDistance}
-        castShadow={!isMobile}
-        shadow-mapSize-width={1024}
-        shadow-mapSize-height={1024}
-      />
+      {!isMobile && (
+        <spotLight
+          position={[0, 6.6, -1.5]}
+          angle={light.spotAngle}
+          penumbra={light.spotPenumbra}
+          intensity={light.spotIntensity}
+          distance={light.spotDistance}
+          castShadow={!isMobile}
+          shadow-mapSize-width={1024}
+          shadow-mapSize-height={1024}
+        />
+      )}
 
       <directionalLight position={[7, 9, 7]} intensity={light.dirA} />
-      <directionalLight position={[-6, 5.5, 6]} intensity={light.dirB} />
+      {!isMobile && (
+        <directionalLight position={[-6, 5.5, 6]} intensity={light.dirB} />
+      )}
 
-      <pointLight position={[-7, 4.2, 0]} intensity={light.point} distance={light.pointDistance} />
-      <pointLight position={[7, 4.2, 0]} intensity={light.point} distance={light.pointDistance} />
+      {!isMobile && (
+        <>
+          <pointLight
+            position={[-7, 4.2, 0]}
+            intensity={light.point}
+            distance={light.pointDistance}
+          />
+          <pointLight
+            position={[7, 4.2, 0]}
+            intensity={light.point}
+            distance={light.pointDistance}
+          />
+        </>
+      )}
 
       <Environment files={hdriFile} background={false} intensity={light.envIntensity} />
 
-      {fpsEnabled && <FPSController enabled={true} onLockChange={setIsLocked} bounds={ROOM_BOUNDS} />}
+      {fpsEnabled && (
+        <FPSController
+          enabled={true}
+          onLockChange={setIsLocked}
+          bounds={ROOM_BOUNDS}
+        />
+      )}
 
       {touchEnabled && (
         <TouchController
@@ -460,11 +491,19 @@ function SceneInner({
         doubleSide
       />
 
-      <mesh position={[-10.92, 0.65, 0]} rotation={[0, Math.PI / 2, 0]} receiveShadow={!isMobile}>
+      <mesh
+        position={[-10.92, 0.65, 0]}
+        rotation={[0, Math.PI / 2, 0]}
+        receiveShadow={!isMobile}
+      >
         <boxGeometry args={[18, 1.3, 0.08]} />
         <primitive object={walnutMat} attach="material" />
       </mesh>
-      <mesh position={[10.92, 0.65, 0]} rotation={[0, -Math.PI / 2, 0]} receiveShadow={!isMobile}>
+      <mesh
+        position={[10.92, 0.65, 0]}
+        rotation={[0, -Math.PI / 2, 0]}
+        receiveShadow={!isMobile}
+      >
         <boxGeometry args={[18, 1.3, 0.08]} />
         <primitive object={walnutMat} attach="material" />
       </mesh>
@@ -520,10 +559,8 @@ export default function LibraryScene({
 
   return (
     <Canvas
-     
       frameloop={paused ? "never" : "always"}
       shadows={enableShadows}
-      
       dpr={isMobile ? 1 : [1, 1.5]}
       camera={{ position: [0, 1.6, 4], fov: 65 }}
       gl={{
