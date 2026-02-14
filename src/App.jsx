@@ -242,4 +242,26 @@ export default function App() {
     </>
   );
 }
+{typeof window !== "undefined" && (
+  <div
+    style={{
+      position: "fixed",
+      bottom: 10,
+      left: 10,
+      zIndex: 9999,
+      background: "rgba(0,0,0,0.8)",
+      color: "lime",
+      fontSize: 12,
+      padding: "6px 8px",
+      borderRadius: 6,
+      fontFamily: "monospace",
+    }}
+  >
+    <div>LOOK: {String(window.__TOUCH_LOOKING__)}</div>
+    <div>COOLDOWN: {String(window.__TOUCH_LOOKING_COOLDOWN__)}</div>
+    <div>UI: {String(window.__UI_ACTIVE__)}</div>
+    <div>JOY: {String(window.__JOYSTICK_ACTIVE__)}</div>
+    <div>MAP: {String(window.__MAP_MODE__)}</div>
+  </div>
+)}
 
