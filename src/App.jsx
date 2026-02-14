@@ -1,4 +1,3 @@
-// src/App.jsx
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import LibraryScene from "./three/LibraryScene";
 import Overlay from "./ui/Overlay";
@@ -111,7 +110,7 @@ export default function App() {
   }, []);
 
   const requestLock = useCallback(() => {
-    if (!hasStarted) return;
+    if (!hasStarted) return; 
     setControlsEnabled(true);
     const canvas = document.querySelector("canvas");
     if (canvas && !document.pointerLockElement) canvas.requestPointerLock?.();
@@ -164,6 +163,7 @@ export default function App() {
   );
 
   useEffect(() => {
+   
     setGlobalFlag("__MAP_MODE__", hasStarted && openSectionId === "travels");
   }, [openSectionId, hasStarted]);
 
@@ -175,62 +175,13 @@ export default function App() {
   const showTravelTopbar = openSectionId === "travels";
   const anyOpen = Boolean(openSectionId) || Boolean(focus?.active);
 
-  // ✅ DEBUG FLAGS (mise à jour toutes les 200ms)
-  const [debugFlags, setDebugFlags] = useState({
-    LOOK: false,
-    COOLDOWN: false,
-    UI: false,
-    JOY: false,
-    MAP: false,
-  });
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const id = setInterval(() => {
-      setDebugFlags({
-        LOOK: !!window.__TOUCH_LOOKING__,
-        COOLDOWN: !!window.__TOUCH_LOOKING_COOLDOWN__,
-        UI: !!window.__UI_ACTIVE__,
-        JOY: !!window.__JOYSTICK_ACTIVE__,
-        MAP: !!window.__MAP_MODE__,
-      });
-    }, 200);
-
-    return () => clearInterval(id);
-  }, []);
-
   return (
     <>
-      {/* ✅ DEBUG PANEL (visible sur Samsung + ne casse pas les clics) */}
-      {hasStarted && (
-        <div
-          style={{
-            position: "fixed",
-            top: 10,
-            left: 10,
-            zIndex: 999999,
-            background: "rgba(0,0,0,0.85)",
-            color: "lime",
-            fontSize: 12,
-            padding: "8px 10px",
-            borderRadius: 8,
-            fontFamily: "monospace",
-            pointerEvents: "none",
-          }}
-        >
-          <div>LOOK: {String(debugFlags.LOOK)}</div>
-          <div>COOLDOWN: {String(debugFlags.COOLDOWN)}</div>
-          <div>UI: {String(debugFlags.UI)}</div>
-          <div>JOY: {String(debugFlags.JOY)}</div>
-          <div>MAP: {String(debugFlags.MAP)}</div>
-        </div>
-      )}
-
+     
       {hasStarted && (
         <>
           <LibraryScene
-            paused={anyOpen}
+            paused={false}
             isMobile={isMobile}
             isPortrait={isPortrait}
             controlsEnabled={controlsEnabled}
@@ -272,10 +223,7 @@ export default function App() {
           )}
 
           {openSectionId === "travels" && (
-            <TravelCard
-              itemId={focus?.itemId ?? null}
-              onClose={closeTravelCard}
-            />
+            <TravelCard itemId={focus?.itemId ?? null} onClose={closeTravelCard} />
           )}
         </>
       )}
@@ -293,5 +241,5 @@ export default function App() {
       )}
     </>
   );
-
 }
+

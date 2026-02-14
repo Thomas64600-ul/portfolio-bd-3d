@@ -1,4 +1,3 @@
-// src/three/LibraryScene.jsx
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Environment, useTexture } from "@react-three/drei";
 import * as THREE from "three";
@@ -10,6 +9,7 @@ import TouchController from "./TouchController";
 import DiplomaSection from "./DiplomaSection";
 import MovieWall from "./MovieWall";
 import StylizedCeiling from "./StylizedCeiling";
+
 
 import AboutTravelSection from "./AboutTravelSection";
 import BookcaseWall from "./BookcaseWall";
@@ -83,10 +83,7 @@ function PBRBox({
   ...props
 }) {
   const geoRef = useRef();
-  const ns = useMemo(
-    () => new THREE.Vector2(normalScale, normalScale),
-    [normalScale]
-  );
+  const ns = useMemo(() => new THREE.Vector2(normalScale, normalScale), [normalScale]);
 
   useEffect(() => {
     if (geoRef.current) ensureUv2(geoRef.current);
@@ -120,10 +117,7 @@ function PBRPlane({
   ...props
 }) {
   const geoRef = useRef();
-  const ns = useMemo(
-    () => new THREE.Vector2(normalScale, normalScale),
-    [normalScale]
-  );
+  const ns = useMemo(() => new THREE.Vector2(normalScale, normalScale), [normalScale]);
 
   useEffect(() => {
     if (geoRef.current) ensureUv2(geoRef.current);
@@ -158,7 +152,6 @@ function ToneMapping({ exposure }) {
 }
 
 function SceneInner({
-  paused = false, // ✅ ajouté
   isMobile,
   isPortrait,
   mobileForwardRef,
@@ -189,9 +182,8 @@ function SceneInner({
     []
   );
 
-  // ✅ Si paused, on coupe les contrôles aussi
-  const fpsEnabled = !paused && controlsEnabled && !focus?.active && !mapEditMode;
-  const touchEnabled = !paused && isMobile && !focus?.active && !mapEditMode;
+  const fpsEnabled = controlsEnabled && !focus?.active && !mapEditMode;
+  const touchEnabled = isMobile && !focus?.active && !mapEditMode;
 
   const ROOM_BOUNDS = useMemo(
     () => ({ minX: -10.75, maxX: 10.85, minZ: -7.55, maxZ: 7.55 }),
@@ -274,44 +266,36 @@ function SceneInner({
   );
 
   useFrame((state, dt) => {
-  const baseFov = 65;
-  const desiredFov = isMobile && isPortrait ? fovTarget.current : baseFov;
+    const baseFov = 65;
+    const desiredFov = isMobile && isPortrait ? fovTarget.current : baseFov;
 
-  easing.damp(state.camera, "fov", desiredFov, 0.22, dt);
-  state.camera.updateProjectionMatrix();
+    easing.damp(state.camera, "fov", desiredFov, 0.22, dt);
+    state.camera.updateProjectionMatrix();
 
-  // 🔥 Si un panel est déjà ouvert, on arrête ici
-  if (focus?.opened) return;
+    if (!focus?.active) return;
 
-  if (!focus?.active) return;
+    cameraTarget.current.set(focus.pos[0], focus.pos[1], focus.pos[2]);
+    lookTarget.current.set(focus.look[0], focus.look[1], focus.look[2]);
 
-  cameraTarget.current.set(focus.pos[0], focus.pos[1], focus.pos[2]);
-  lookTarget.current.set(focus.look[0], focus.look[1], focus.look[2]);
+    easing.damp3(state.camera.position, cameraTarget.current, 0.25, dt);
 
-  easing.damp3(state.camera.position, cameraTarget.current, 0.25, dt);
+    if (!state.camera.userData._look) state.camera.userData._look = new THREE.Vector3();
+    easing.damp3(state.camera.userData._look, lookTarget.current, 0.25, dt);
+    state.camera.lookAt(state.camera.userData._look);
 
-  if (!state.camera.userData._look)
-    state.camera.userData._look = new THREE.Vector3();
-
-  easing.damp3(state.camera.userData._look, lookTarget.current, 0.25, dt);
-  state.camera.lookAt(state.camera.userData._look);
-
-  const dist = state.camera.position.distanceTo(cameraTarget.current);
-
-  if (dist < 0.08 && !focus.opened) {
-    setFocus((f) => ({ ...f, opened: true }));
-    onOpenSection?.(focus.sectionId, focus.itemId);
-  }
-});
-
+    const dist = state.camera.position.distanceTo(cameraTarget.current);
+    if (dist < 0.08 && !focus.opened) {
+      setFocus((f) => ({ ...f, opened: true }));
+      onOpenSection?.(focus.sectionId, focus.itemId);
+    }
+  });
 
   const pick = useCallback(
     (sectionId, pos, look, itemId = null) => {
       unlockPointer();
       setMapEditMode(false);
 
-      if (mobileForwardRef?.current !== undefined)
-        mobileForwardRef.current = false;
+      if (mobileForwardRef?.current !== undefined) mobileForwardRef.current = false;
       if (mobileBackRef?.current !== undefined) mobileBackRef.current = false;
       if (mobileStrafeRef?.current !== undefined) mobileStrafeRef.current = 0;
 
@@ -361,9 +345,7 @@ function SceneInner({
     ]
   );
 
-  const hdriFile = isMobile
-    ? "/hdri/studio_small_03_1k.hdr"
-    : "/hdri/studio_small_03_2k.hdr";
+  const hdriFile = isMobile ? "/hdri/studio_small_03_1k.hdr" : "/hdri/studio_small_03_2k.hdr";
 
   return (
     <>
@@ -386,30 +368,12 @@ function SceneInner({
       <directionalLight position={[7, 9, 7]} intensity={light.dirA} />
       <directionalLight position={[-6, 5.5, 6]} intensity={light.dirB} />
 
-      <pointLight
-        position={[-7, 4.2, 0]}
-        intensity={light.point}
-        distance={light.pointDistance}
-      />
-      <pointLight
-        position={[7, 4.2, 0]}
-        intensity={light.point}
-        distance={light.pointDistance}
-      />
+      <pointLight position={[-7, 4.2, 0]} intensity={light.point} distance={light.pointDistance} />
+      <pointLight position={[7, 4.2, 0]} intensity={light.point} distance={light.pointDistance} />
 
-      <Environment
-        files={hdriFile}
-        background={false}
-        intensity={light.envIntensity}
-      />
+      <Environment files={hdriFile} background={false} intensity={light.envIntensity} />
 
-      {fpsEnabled && (
-        <FPSController
-          enabled={true}
-          onLockChange={setIsLocked}
-          bounds={ROOM_BOUNDS}
-        />
-      )}
+      {fpsEnabled && <FPSController enabled={true} onLockChange={setIsLocked} bounds={ROOM_BOUNDS} />}
 
       {touchEnabled && (
         <TouchController
@@ -488,19 +452,11 @@ function SceneInner({
         doubleSide
       />
 
-      <mesh
-        position={[-10.92, 0.65, 0]}
-        rotation={[0, Math.PI / 2, 0]}
-        receiveShadow={!isMobile}
-      >
+      <mesh position={[-10.92, 0.65, 0]} rotation={[0, Math.PI / 2, 0]} receiveShadow={!isMobile}>
         <boxGeometry args={[18, 1.3, 0.08]} />
         <primitive object={walnutMat} attach="material" />
       </mesh>
-      <mesh
-        position={[10.92, 0.65, 0]}
-        rotation={[0, -Math.PI / 2, 0]}
-        receiveShadow={!isMobile}
-      >
+      <mesh position={[10.92, 0.65, 0]} rotation={[0, -Math.PI / 2, 0]} receiveShadow={!isMobile}>
         <boxGeometry args={[18, 1.3, 0.08]} />
         <primitive object={walnutMat} attach="material" />
       </mesh>
@@ -554,7 +510,7 @@ export default function LibraryScene({
 
   return (
     <Canvas
-      frameloop="always"
+      frameloop={paused ? "never" : "always"}
       shadows={!isMobile}
       dpr={isMobile ? 1 : [1, 2]}
       camera={{ position: [0, 1.6, 4], fov: 65 }}
@@ -570,7 +526,6 @@ export default function LibraryScene({
       }}
     >
       <SceneInner
-        paused={paused} // ✅ IMPORTANT : on passe paused ici
         isMobile={isMobile}
         isPortrait={isPortrait}
         mobileForwardRef={mobileForwardRef}

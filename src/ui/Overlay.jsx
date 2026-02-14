@@ -681,34 +681,25 @@ export default function Overlay({
 
       {panelOpen && section && (
         <div
-  className="panel"
-  style={{
-    position: "absolute",
-    left: 14,
-    right: 14,
-    top: `calc(56px + var(--safe-top))`,
-    bottom: `calc(14px + var(--safe-bottom))`,
-    zIndex: 30,
-    borderRadius: 18,
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: "rgba(10, 10, 14, 0.92)",
-
-    // ✅ le fix principal
-    backdropFilter: isMobile ? "none" : "blur(10px)",
-    WebkitBackdropFilter: isMobile ? "none" : "blur(10px)",
-
-    overflow: "hidden",
-    display: "flex",
-    flexDirection: "column",
-
-    // ✅ bonus perf (safe)
-    transform: "translateZ(0)",
-    willChange: "transform, opacity",
-  }}
->
-  {panelContent}
-</div>
-
+          className="panel"
+          style={{
+            position: "absolute",
+            left: 14,
+            right: 14,
+            top: `calc(56px + var(--safe-top))`,
+            bottom: `calc(14px + var(--safe-bottom))`,
+            zIndex: 30,
+            borderRadius: 18,
+            border: "1px solid rgba(255,255,255,0.12)",
+            background: "rgba(10, 10, 14, 0.88)",
+            backdropFilter: "blur(10px)",
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          {panelContent}
+        </div>
       )}
 
       {isMobile && !anyOpen && !isMapMode && (
