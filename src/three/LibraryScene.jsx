@@ -274,32 +274,36 @@ function SceneInner({
   );
 
   useFrame((state, dt) => {
-    if (paused) return; // ✅ le guard
+  const baseFov = 65;
+  const desiredFov = isMobile && isPortrait ? fovTarget.current : baseFov;
 
-    const baseFov = 65;
-    const desiredFov = isMobile && isPortrait ? fovTarget.current : baseFov;
+  easing.damp(state.camera, "fov", desiredFov, 0.22, dt);
+  state.camera.updateProjectionMatrix();
 
-    easing.damp(state.camera, "fov", desiredFov, 0.22, dt);
-    state.camera.updateProjectionMatrix();
+  // 🔥 Si un panel est déjà ouvert, on arrête ici
+  if (focus?.opened) return;
 
-    if (!focus?.active) return;
+  if (!focus?.active) return;
 
-    cameraTarget.current.set(focus.pos[0], focus.pos[1], focus.pos[2]);
-    lookTarget.current.set(focus.look[0], focus.look[1], focus.look[2]);
+  cameraTarget.current.set(focus.pos[0], focus.pos[1], focus.pos[2]);
+  lookTarget.current.set(focus.look[0], focus.look[1], focus.look[2]);
 
-    easing.damp3(state.camera.position, cameraTarget.current, 0.25, dt);
+  easing.damp3(state.camera.position, cameraTarget.current, 0.25, dt);
 
-    if (!state.camera.userData._look)
-      state.camera.userData._look = new THREE.Vector3();
-    easing.damp3(state.camera.userData._look, lookTarget.current, 0.25, dt);
-    state.camera.lookAt(state.camera.userData._look);
+  if (!state.camera.userData._look)
+    state.camera.userData._look = new THREE.Vector3();
 
-    const dist = state.camera.position.distanceTo(cameraTarget.current);
-    if (dist < 0.08 && !focus.opened) {
-      setFocus((f) => ({ ...f, opened: true }));
-      onOpenSection?.(focus.sectionId, focus.itemId);
-    }
-  });
+  easing.damp3(state.camera.userData._look, lookTarget.current, 0.25, dt);
+  state.camera.lookAt(state.camera.userData._look);
+
+  const dist = state.camera.position.distanceTo(cameraTarget.current);
+
+  if (dist < 0.08 && !focus.opened) {
+    setFocus((f) => ({ ...f, opened: true }));
+    onOpenSection?.(focus.sectionId, focus.itemId);
+  }
+});
+
 
   const pick = useCallback(
     (sectionId, pos, look, itemId = null) => {
@@ -550,7 +554,7 @@ export default function LibraryScene({
 
   return (
     <Canvas
-      frameloop={paused ? "never" : "always"}
+      frameloop="always"
       shadows={!isMobile}
       dpr={isMobile ? 1 : [1, 2]}
       camera={{ position: [0, 1.6, 4], fov: 65 }}
