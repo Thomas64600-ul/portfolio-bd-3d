@@ -230,7 +230,7 @@ export default function App() {
       {hasStarted && (
         <>
           <LibraryScene
-            paused={false}
+            paused={anyOpen}
             isMobile={isMobile}
             isPortrait={isPortrait}
             controlsEnabled={controlsEnabled}
@@ -293,4 +293,5 @@ export default function App() {
       )}
     </>
   );
+
 }
