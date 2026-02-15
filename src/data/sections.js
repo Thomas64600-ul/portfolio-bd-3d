@@ -114,8 +114,14 @@ Au-delà des paysages, ce projet m’a permis d’aller à la rencontre des habi
 Dans ce cadre, j’ai réalisé le portrait audiovisuel de Bagha, une habitante d’Auroville, mettant en lumière son parcours, sa vision du monde et son engagement au sein de la communauté.
 
 Ce voyage a été une expérience fondatrice, mêlant création artistique, adaptation, autonomie et ouverture culturelle, et a profondément enrichi ma manière d’aborder les projets humains et créatifs.`,
-        mapZoom: "/travels/inde/map.png",
-        photos: [],
+        mapZoom: "/travels/inde/map.webp",
+        photos: [
+  "/travels/inde/01.webp",
+  "/travels/inde/02.webp",
+  "/travels/inde/03.webp",
+  "/travels/inde/04.webp",
+   "/travels/inde/05.webp",
+],
       },
       {
         title: "Vietnam",
@@ -130,8 +136,15 @@ Au total, j’ai parcouru près de 3 500 kilomètres à travers le Vietnam, en p
 Ce voyage, d’une durée d’un mois et demi, a été une véritable école de l’autonomie, de la gestion des imprévus et de l’adaptation. Il m’a permis de renforcer ma confiance, mon sens de l’organisation et ma capacité à mener un projet personnel sur la durée.
 
 À la fin du parcours, j’ai revendu mon scooter à Ho Chi Minh-Ville pour 300 $, bouclant ainsi une aventure humaine et logistique aussi enrichissante qu’inoubliable.`,
-        mapZoom: "/travels/vietnam/map.png",
-        photos: [],
+        mapZoom: "/travels/vietnam/map.webp",
+        photos: [
+  "/travels/vietnam/01.webp",
+  "/travels/vietnam/02.webp",
+  "/travels/vietnam/03.webp",
+  "/travels/vietnam/04.webp",
+  "/travels/vietnam/05.webp",
+],
+
       },
       {
         title: "Cambodge",
@@ -146,8 +159,15 @@ Le voyage s’est poursuivi à Kampot, un petit village paisible et agréable, o
 Au fil de ce parcours, j’ai également découvert l’héritage du protectorat français, encore visible à travers certains bâtiments, inscriptions et influences architecturales. Cette dimension historique apporte une singularité particulière au pays.
 
 Ce séjour m’a surtout marqué par la bienveillance, la gentillesse et la sérénité des Cambodgiens, toujours accueillants et souriants, malgré un passé difficile. Une expérience humaine forte, mêlant mémoire, respect et ouverture culturelle.`,
-        mapZoom: "/travels/cambodge/map.png",
-        photos: [],
+        mapZoom: "/travels/cambodge/map.webp",
+        photos: [
+  "/travels/cambodge/01.webp",
+  "/travels/cambodge/02.webp",
+  "/travels/cambodge/03.webp",
+  "/travels/cambodge/04.webp",
+  "/travels/cambodge/05.webp",
+],
+
       },
       {
         title: "Nouvelle-Calédonie",
@@ -162,8 +182,15 @@ Progressivement, j’ai trouvé plusieurs emplois qui m’ont permis de m’inst
 Durant ce séjour, j’ai également réalisé de nombreux campings sur la Grande Terre et sur différents îlots, profitant pleinement de la nature préservée du territoire. Je me suis intéressé aux traditions kanak, à leur rapport à la terre et à la communauté, et j’ai découvert la gastronomie locale, notamment les brochettes de cerf, une spécialité que je n’avais jamais goûtée auparavant.
 
 La Nouvelle-Calédonie a été pour moi une expérience particulièrement marquante, à la fois humaine, culturelle et professionnelle. J’y ai découvert des lieux exceptionnels, rencontré des personnes formidables et vécu une période très enrichissante, qui a contribué à mon développement personnel et à ma maturité professionnelle.`,
-        mapZoom: "/travels/nouvelle-caledonie/map.png",
-        photos: [],
+        mapZoom: "/travels/nouvelle-caledonie/map.webp",
+        photos: [
+  "/travels/nouvelle-caledonie/01.webp",
+  "/travels/nouvelle-caledonie/02.webp",
+  "/travels/nouvelle-caledonie/03.webp",
+  "/travels/nouvelle-caledonie/04.webp",
+  "/travels/nouvelle-caledonie/05.webp",
+],
+
       },
       {
         title: "Portugal (Algarve)",
@@ -176,8 +203,15 @@ Entre deux balades, nous avons profité des magnifiques plages et criques de l�
 Ce voyage a également été l’occasion de découvrir la gastronomie locale à travers de nombreux restaurants, ainsi que de visiter des villages typiques, riches en charme et en authenticité.
 
 Cette escapade a été un moment privilégié, mêlant nature, partage et douceur de vivre, renforçant encore davantage le plaisir de voyager à deux.`,
-        mapZoom: "/travels/portugal/map.png",
-        photos: [],
+        mapZoom: "/travels/portugal/map.webp",
+        photos: [
+  "/travels/portugal/01.webp",
+  "/travels/portugal/02.webp",
+  "/travels/portugal/03.webp",
+  "/travels/portugal/04.webp",
+  "/travels/portugal/05.webp",
+],
+
       },
       {
         title: "Tenerife",
@@ -190,8 +224,15 @@ Entre ces moments de découverte, nous avons profité de nombreuses baignades su
 Ce voyage a également été marqué par la découverte de la gastronomie locale, à travers des restaurants typiques et des spécialités régionales, notamment les vins de Tenerife, réputés pour leur caractère unique.
 
 Cette semaine ensoleillée a été une parenthèse idéale mêlant nature, détente et partage, parfaite pour terminer l’année et commencer la suivante dans une atmosphère positive.`,
-        mapZoom: "/travels/tenerife/map.png",
-        photos: [],
+        mapZoom: "/travels/tenerife/map.webp",
+        photos: [
+  "/travels/tenerife/01.webp",
+  "/travels/tenerife/02.webp",
+  "/travels/tenerife/03.webp",
+  "/travels/tenerife/04.webp",
+  "/travels/tenerife/05.webp",
+],
+
       },
       {
         title: "Minorque",
@@ -204,8 +245,15 @@ Nous avons également découvert Ciutadella, une ville au charme authentique, ri
 Les nombreuses criques de l’île nous ont offert des moments de baignade paisibles, dans un cadre exceptionnel, même si l’eau restait parfois un peu fraîche. Ces instants, vécus dans le calme et la simplicité, ont renforcé le sentiment d’évasion.
 
 Ce voyage a aussi été l’occasion de savourer la gastronomie locale dans des restaurants typiques, et de partager une semaine en amoureux, placée sous le signe de la détente, de la nature et de la complicité.`,
-        mapZoom: "/travels/minorque/map.png",
-        photos: [],
+        mapZoom: "/travels/minorque/map.webp",
+        photos: [
+  "/travels/minorque/01.webp",
+  "/travels/minorque/02.webp",
+  "/travels/minorque/03.webp",
+  "/travels/minorque/04.webp",
+  "/travels/minorque/05.webp",
+],
+
       },
       {
         title: "Pays de Galles",
@@ -220,8 +268,12 @@ Malgré cette immersion à l’étranger, le rythme intense du travail m’a lai
 Cependant, cette expérience m’a profondément marqué sur le plan humain. Elle m’a appris la rigueur, la persévérance, le respect du travail et la capacité à tenir dans la durée face à des conditions exigeantes. Elle a renforcé mon sens de l’effort, mon humilité et ma solidité personnelle.
 
 Ce séjour constitue aujourd’hui une étape importante de mon parcours, illustrant ma capacité à m’engager pleinement dans un environnement difficile et à en tirer des enseignements durables.`,
-        mapZoom: "/travels/pays-de-galles/map.png",
-        photos: [],
+        mapZoom: "/travels/pays-de-galles/map.webp",
+        photos: [
+  "/travels/pays-de-galles/01.webp",
+  "/travels/pays-de-galles/02.webp",
+],
+
       },
     ],
   },
