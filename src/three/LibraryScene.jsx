@@ -298,69 +298,79 @@ function SceneInner({
   });
 
   const pick = useCallback(
-    (sectionId, pos, look, itemId = null) => {
-      unlockPointer();
-      setMapEditMode(false);
+  (sectionId, pos, look, itemId = null) => {
+    unlockPointer();
+    setMapEditMode(false);
 
-      if (mobileForwardRef?.current !== undefined)
-        mobileForwardRef.current = false;
-      if (mobileBackRef?.current !== undefined) mobileBackRef.current = false;
-      if (mobileStrafeRef?.current !== undefined)
-        mobileStrafeRef.current = 0;
+    if (mobileForwardRef?.current !== undefined) mobileForwardRef.current = false;
+    if (mobileBackRef?.current !== undefined) mobileBackRef.current = false;
+    if (mobileStrafeRef?.current !== undefined) mobileStrafeRef.current = 0;
 
-      let finalPos = pos;
-      let finalLook = look;
+    let finalPos = pos;
+    let finalLook = look;
 
-      if (isMobile && isPortrait && sectionId === "travels") {
-        const dx = pos[0] - look[0];
-        const dy = pos[1] - look[1];
-        const dz = pos[2] - look[2];
+    if (sectionId === "travels") {
+      const dx = pos[0] - look[0];
+      const dy = pos[1] - look[1];
+      const dz = pos[2] - look[2];
 
-        const k = 2.15;
-        finalPos = [
-          look[0] + dx * k,
-          look[1] + dy * k + 0.12,
-          look[2] + dz * k,
-        ];
-        finalLook = [look[0], look[1] + 0.02, look[2]];
-        fovTarget.current = 96;
-      } else if (isMobile && isPortrait && sectionId === "about") {
-        const dx = pos[0] - look[0];
-        const dy = pos[1] - look[1];
-        const dz = pos[2] - look[2];
+      const len = Math.hypot(dx, dy, dz) || 1;
+      const ux = dx / len;
+      const uy = dy / len;
+      const uz = dz / len;
 
-        const k = 1.55;
-        finalPos = [
-          look[0] + dx * k,
-          look[1] + dy * k + 0.1,
-          look[2] + dz * k,
-        ];
-        finalLook = [look[0], look[1] + 0.06, look[2]];
-        fovTarget.current = 58;
-      } else {
-        fovTarget.current = 65;
-      }
+      const desiredDist = isMobile ? (isPortrait ? 2.05 : 2.25) : 2.45;
 
-      setFocus({
-        active: true,
-        opened: false,
-        sectionId,
-        itemId,
-        pos: finalPos,
-        look: finalLook,
-      });
-    },
-    [
-      unlockPointer,
-      setMapEditMode,
-      setFocus,
-      mobileForwardRef,
-      mobileBackRef,
-      mobileStrafeRef,
-      isMobile,
-      isPortrait,
-    ]
-  );
+      const yBoost = isMobile ? (isPortrait ? 0.10 : 0.06) : 0.0;
+
+      finalPos = [
+        look[0] + ux * desiredDist,
+        look[1] + uy * desiredDist + yBoost,
+        look[2] + uz * desiredDist,
+      ];
+
+      finalLook = [look[0], look[1] + (isMobile ? 0.02 : 0.0), look[2]];
+
+      fovTarget.current = isMobile ? (isPortrait ? 92 : 78) : 65;
+    }
+   
+    else if (isMobile && isPortrait && sectionId === "about") {
+      const dx = pos[0] - look[0];
+      const dy = pos[1] - look[1];
+      const dz = pos[2] - look[2];
+
+      const k = 1.55;
+      finalPos = [
+        look[0] + dx * k,
+        look[1] + dy * k + 0.1,
+        look[2] + dz * k,
+      ];
+      finalLook = [look[0], look[1] + 0.06, look[2]];
+      fovTarget.current = 58;
+    } else {
+      fovTarget.current = 65;
+    }
+
+    setFocus({
+      active: true,
+      opened: false,
+      sectionId,
+      itemId,
+      pos: finalPos,
+      look: finalLook,
+    });
+  },
+  [
+    unlockPointer,
+    setMapEditMode,
+    setFocus,
+    mobileForwardRef,
+    mobileBackRef,
+    mobileStrafeRef,
+    isMobile,
+    isPortrait,
+  ]
+);
 
   const hdriFile = "/hdri/studio_small_03_1k.hdr";
 

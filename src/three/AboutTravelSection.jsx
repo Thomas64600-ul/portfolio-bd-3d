@@ -17,7 +17,6 @@ export default function AboutTravelSection({
   mapUrl = "/textures/world_map.webp",
   signText = "À PROPOS & VOYAGES",
 }) {
-  
   const zMid = useMemo(
     () => (aboutPos[2] + travelPos[2]) / 2,
     [aboutPos, travelPos]
@@ -35,12 +34,11 @@ export default function AboutTravelSection({
 
   const LOOK_Y = 2.25;
 
-  const MAP_SCALE = 0.78;  
-  const MAP_FRONT_X = 0.14; 
+  const MAP_SCALE = 0.78;
+  const MAP_FRONT_X = 0.14;
 
   return (
     <>
-    
       <WallWoodSign
         position={signPos}
         rotation={signRot}
@@ -74,14 +72,14 @@ export default function AboutTravelSection({
           onPickWall={() =>
             pick(
               "travels",
-              [7.8, travelPos[1], travelPos[2]],
+              [8.6, travelPos[1], travelPos[2]],
               [10.5, LOOK_Y, travelPos[2]]
             )
           }
           onPickPin={(itemIndex) =>
             pick(
               "travels",
-              [7.8, travelPos[1], travelPos[2]],
+              [8.6, travelPos[1], travelPos[2]],
               [10.5, LOOK_Y, travelPos[2]],
               itemIndex
             )
