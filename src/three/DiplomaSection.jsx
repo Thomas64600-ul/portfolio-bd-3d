@@ -18,7 +18,8 @@ export default function DiplomaSection({
 }) {
  
   const signPos = useMemo(() => [wallX + 0.06, 3.95, wallZMid], [wallX, wallZMid]);
-  const signRot = useMemo(() => [0, Math.PI / 2, 0.01], []);
+  const signRot = useMemo(() => [0, Math.PI / 2, 0], []);
+
 
   const floorY = 0.105;
 
