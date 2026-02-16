@@ -4,7 +4,7 @@ import * as THREE from "three";
 
 export function WallWoodSign({
   position = [0, 3.55, -7.78],
-  rotation = [0, 0, 0.01],
+  rotation = [0, 0, 0.00],
   text = "P A R C O U R S  &  E X P E R I E N C E S",
   walnutMat,
   isMobile = false,
