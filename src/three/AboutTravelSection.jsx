@@ -91,13 +91,13 @@ export default function AboutTravelSection({
 
       <group position={[floorX, 0, aboutFloorZ]} rotation={floorRot}>
         <FloorLabel position={[0, floorY, 1.02]} text="pour me connaître" fontSize={0.34} />
-        <FloorLabel position={[0, floorY, 0.70]} text="Clique sur le tableau" fontSize={0.34} />
+        <FloorLabel position={[0, floorY, 0.70]} text="Cliquez sur le tableau" fontSize={0.34} />
         <FloorArrow position={[0, floorY, 0.26]} direction="towardsShelf" fontSize={0.95} />
       </group>
 
       <group position={[floorX, 0, travelFloorZ]} rotation={floorRot}>
         <FloorLabel position={[0, floorY, 1.02]} text="et sur les pins" fontSize={0.34} />
-        <FloorLabel position={[0, floorY, 0.70]} text="Clique sur la carte" fontSize={0.34} />
+        <FloorLabel position={[0, floorY, 0.70]} text="Cliquez sur la carte" fontSize={0.34} />
         <FloorArrow position={[0, floorY, 0.26]} direction="towardsShelf" fontSize={0.95} />
       </group>
     </>

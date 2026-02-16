@@ -116,7 +116,7 @@ export function FloorLabel({
   rotation = [-Math.PI / 2, 0, 0],
   text = "LABEL",
   fontSize = 0.44,
-  color = "#111111",
+  color = "#ffd400",
   opacity = 0.95,
   letterSpacing = 0.06,
 }) {
@@ -126,7 +126,7 @@ export function FloorLabel({
       <Text
         position={[0, 0, -0.002]}
         fontSize={fontSize}
-        color={"#000000"}
+        color={"#ffd400"}
         anchorX="center"
         anchorY="middle"
         fillOpacity={0.4}
@@ -158,7 +158,7 @@ export function FloorLabel({
       <Text
         position={[-0.01, 0.01, 0.0022]}
         fontSize={fontSize}
-        color={"#ffffff"}
+        color={"#ffd400"}
         anchorX="center"
         anchorY="middle"
         fillOpacity={0.14}
@@ -179,7 +179,7 @@ export function FloorArrow({
   rotation = [-Math.PI / 2, 0, 0],
   direction = "towardsShelf", 
   fontSize = 0.62,
-  color = "#111111",
+  color = "#ffd400",
   opacity = 0.92,
 }) {
   const rotY = direction === "towardsShelf" ? Math.PI : 0;
@@ -190,7 +190,7 @@ export function FloorArrow({
       <Text
         position={[0, 0, -0.002]}
         fontSize={fontSize}
-        color={"#000000"}
+        color={"#ffd400"}
         anchorX="center"
         anchorY="middle"
         fillOpacity={0.35}
@@ -220,7 +220,7 @@ export function FloorArrow({
       <Text
         position={[-0.01, 0.01, 0.0022]}
         fontSize={fontSize}
-        color={"#ffffff"}
+        color={"#ffd400"}
         anchorX="center"
         anchorY="middle"
         fillOpacity={0.12}

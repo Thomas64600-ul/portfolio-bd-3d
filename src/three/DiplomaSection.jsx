@@ -48,7 +48,7 @@ export default function DiplomaSection({
         />
         <FloorLabel
           position={[0, floorY, 0.72]}
-          text="Clique sur le cadre"
+          text="Cliquez sur le cadre"
           fontSize={0.34}
         />
 
