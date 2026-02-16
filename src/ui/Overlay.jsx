@@ -103,6 +103,35 @@ export default function Overlay({
     resetMoveRefs();
   }, [anyOpen, resetMoveRefs]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (typeof document === "undefined") return;
+
+    const root = document.documentElement;
+
+    const apply = () => {
+      const vv = window.visualViewport;
+      const h = vv?.height ?? window.innerHeight;
+      root.style.setProperty("--vvh", `${h}px`);
+    };
+
+    apply();
+
+    const vv = window.visualViewport;
+
+    window.addEventListener("resize", apply);
+    window.addEventListener("orientationchange", apply);
+    vv?.addEventListener("resize", apply);
+    vv?.addEventListener("scroll", apply);
+
+    return () => {
+      window.removeEventListener("resize", apply);
+      window.removeEventListener("orientationchange", apply);
+      vv?.removeEventListener("resize", apply);
+      vv?.removeEventListener("scroll", apply);
+    };
+  }, []);
+
   const handleRequestLock = useCallback(() => {
     onRequestLock?.();
     if (typeof document === "undefined") return;
@@ -162,81 +191,80 @@ export default function Overlay({
     const activeIdx = hasActiveItem ? Number(openItemId) : null;
 
     if (isAbout) {
-  return (
-    <>
-      {/* Header fixe */}
-      <div
-        style={{
-          padding: 14,
-          borderBottom: "1px solid rgba(255,255,255,0.10)",
-        }}
-      >
-        <div style={{ fontWeight: 900, fontSize: 16 }}>{title}</div>
-
-        {tags.length > 0 && (
+      return (
+        <>
+         
           <div
             style={{
-              marginTop: 8,
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 8,
+              padding: 14,
+              borderBottom: "1px solid rgba(255,255,255,0.10)",
             }}
           >
-            {tags.map((t) => (
-              <span
-                key={t}
+            <div style={{ fontWeight: 900, fontSize: 16 }}>{title}</div>
+
+            {tags.length > 0 && (
+              <div
                 style={{
-                  fontSize: 12,
-                  padding: "4px 8px",
-                  borderRadius: 999,
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  background: "rgba(255,255,255,0.03)",
-                  opacity: 0.9,
+                  marginTop: 8,
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 8,
                 }}
               >
-                {t}
-              </span>
-            ))}
+                {tags.map((t) => (
+                  <span
+                    key={t}
+                    style={{
+                      fontSize: 12,
+                      padding: "4px 8px",
+                      borderRadius: 999,
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      background: "rgba(255,255,255,0.03)",
+                      opacity: 0.9,
+                    }}
+                  >
+                    {t}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
-        )}
-      </div>
 
-      <div
-        style={{
-          padding: 14,
-          overflow: "auto",
-          flex: 1,
-          minHeight: 0,
-          display: "flex",
-          flexDirection: "column",
-          gap: 12,
-        }}
-      >
-        <div
-          style={{
-            fontSize: 13,
-            opacity: 0.88,
-            lineHeight: 1.55,
-            whiteSpace: "pre-line",
-          }}
-        >
-          {description || " "}
-        </div>
-
-        <div>
-          <button
-            className="btn"
-            onClick={openCV}
-            style={{ width: "fit-content" }}
+          <div
+            style={{
+              padding: 14,
+              overflow: "auto",
+              flex: 1,
+              minHeight: 0,
+              display: "flex",
+              flexDirection: "column",
+              gap: 12,
+            }}
           >
-            📄 Voir le CV
-          </button>
-        </div>
-      </div>
-    </>
-  );
-}
+            <div
+              style={{
+                fontSize: 13,
+                opacity: 0.88,
+                lineHeight: 1.55,
+                whiteSpace: "pre-line",
+              }}
+            >
+              {description || " "}
+            </div>
 
+            <div>
+              <button
+                className="btn"
+                onClick={openCV}
+                style={{ width: "fit-content" }}
+              >
+                📄 Voir le CV
+              </button>
+            </div>
+          </div>
+        </>
+      );
+    }
 
     if (isDiplomas && activeIdx !== null) {
       const it = items[activeIdx];
@@ -741,11 +769,7 @@ export default function Overlay({
 
       {!anyOpen && (
         <div className="hint">
-          {!isMobile ? (
-            <div>WASD / Souris / Clic</div>
-          ) : (
-            <div>Joystick + Tap</div>
-          )}
+          {!isMobile ? <div>WASD / Souris / Clic</div> : <div>Joystick + Tap</div>}
         </div>
       )}
     </div>

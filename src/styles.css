@@ -12,6 +12,8 @@
   --safe-left: env(safe-area-inset-left, 0px);
 
   --joy-safe: 190px;
+
+  --vvh: 100vh;
 }
 
 html,
@@ -51,6 +53,9 @@ canvas {
 .hud {
   position: fixed;
   inset: 0;
+
+  height: var(--vvh);
+
   pointer-events: none;
   -webkit-user-select: none;
   user-select: none;
@@ -292,14 +297,13 @@ canvas {
   }
 }
 
+
 .panel,
 .travelCard {
   touch-action: pan-y;
 }
 
 .topbar,
-.panel,
-.travelCard,
 .hint {
   touch-action: manipulation;
 }
@@ -330,7 +334,6 @@ canvas {
 }
 
 @media (max-width: 920px) and (orientation: landscape) {
- 
   .topbar {
     top: calc(10px + var(--safe-top));
     left: calc(10px + var(--safe-left));
@@ -352,7 +355,7 @@ canvas {
   }
 
   .hud[data-panelopen="1"] .panel > div {
-    padding: 10px !important; 
+    padding: 10px !important;
   }
 
   .hud[data-panelopen="1"] .panel div[style*="gap: 14"] {
