@@ -319,19 +319,24 @@ function SceneInner({
       const uy = dy / len;
       const uz = dz / len;
 
-      const desiredDist = isMobile ? (isPortrait ? 2.05 : 2.25) : 2.45;
+ const desiredDist = isMobile ? (isPortrait ? 3.75 : 2.25) : 2.45;
+const yBoost = isMobile ? (isPortrait ? 0.02 : 0.06) : 0.0;
 
-      const yBoost = isMobile ? (isPortrait ? 0.10 : 0.06) : 0.0;
+finalPos = [
+  look[0] + ux * desiredDist,
+  look[1] + uy * desiredDist + yBoost,
+  look[2] + uz * desiredDist,
+];
 
-      finalPos = [
-        look[0] + ux * desiredDist,
-        look[1] + uy * desiredDist + yBoost,
-        look[2] + uz * desiredDist,
-      ];
+finalLook = [
+  look[0] + (isPortrait ? 0.75 : 0.0), 
+  look[1] - (isPortrait ? 0.62 : 0.0), 
+  look[2],
+];
 
-      finalLook = [look[0], look[1] + (isMobile ? 0.02 : 0.0), look[2]];
+fovTarget.current = isMobile ? (isPortrait ? 100 : 78) : 65;
 
-      fovTarget.current = isMobile ? (isPortrait ? 92 : 78) : 65;
+
     }
    
     else if (isMobile && isPortrait && sectionId === "about") {

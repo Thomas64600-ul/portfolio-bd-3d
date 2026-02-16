@@ -34,7 +34,8 @@ export default function AboutTravelSection({
 
   const LOOK_Y = 2.25;
 
-  const MAP_SCALE = 0.78;
+  const MAP_SCALE = isMobile && isPortrait ? 0.95 : 0.78;
+
   const MAP_FRONT_X = 0.14;
 
   return (
