@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { useProgress } from "@react-three/drei";
 
 export default function StartLoader({ onStart }) {
-  
   const { progress, loaded, total } = useProgress();
 
   const [visible, setVisible] = useState(false);
@@ -32,16 +31,26 @@ export default function StartLoader({ onStart }) {
   const tipList = useMemo(() => {
     if (!isMobile) {
       return [
-        "Clique sur « Entrer », puis clique dans la scène pour activer la vue FPS.",
-        "ZQSD : se déplacer • Souris : regarder • Échap : sortir.",
+        "Cliquez sur « OK — Entrer », puis cliquez dans la scène pour activer la vue FPS.",
+        "Déplacement : ZQSD ou WASD ou flèches directionnelles.",
+        "Regarder : souris • Sortir : Échap.",
+        "Astuce : approchez-vous d’un élément avant de cliquer pour faciliter la sélection.",
       ];
     }
+
     if (isPortrait) {
-      return ["Passe en paysage pour une meilleure expérience."];
+      return [
+        "Passez votre téléphone en mode paysage : l’expérience est plus fluide et la carte est entièrement visible.",
+        "Déplacement : joystick à l’écran • Regarder : glisser le doigt.",
+        "Touchez les éléments (bibliothèques, diplômes, carte, pins) pour ouvrir les contenus.",
+      ];
     }
+
     return [
-      "Joystick : déplacement • Glisser : caméra.",
-      "Tape sur les éléments pour ouvrir leurs contenus.",
+      "Mode paysage recommandé : navigation plus confortable.",
+      "Déplacement : joystick à l’écran • Regarder : glisser le doigt.",
+      "Touchez les éléments (bibliothèques, diplômes, carte, pins) pour ouvrir les contenus.",
+      "Boutons « Fermer » / « Quitter la carte » : revenir à la visite.",
     ];
   }, [isMobile, isPortrait]);
 
@@ -59,10 +68,14 @@ export default function StartLoader({ onStart }) {
 
   const noteText = starting
     ? "Chargement de la scène 3D…"
-    : "Astuce : sur mobile, passe en paysage pour une meilleure navigation.";
+    : isMobile
+    ? "Astuce : sur mobile, passez en paysage pour une meilleure navigation."
+    : "Astuce : vous pouvez utiliser ZQSD, WASD ou les flèches directionnelles.";
 
   const metaText =
-    !starting && total > 0 ? `Ressources (info) : ${loaded}/${total} • ${Math.round(Number(progress) || 0)}%` : "";
+    !starting && total > 0
+      ? `Ressources (info) : ${loaded}/${total} • ${Math.round(Number(progress) || 0)}%`
+      : "";
 
   return (
     <div style={styles.backdrop}>
@@ -166,7 +179,12 @@ const styles = {
   sub: { marginTop: 6, fontSize: 13, opacity: 0.8, lineHeight: 1.35 },
 
   section: { marginTop: 12 },
-  sectionTitle: { fontSize: 13, fontWeight: 700, marginBottom: 8, opacity: 0.95 },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: 700,
+    marginBottom: 8,
+    opacity: 0.95,
+  },
   list: { margin: 0, paddingLeft: 18 },
   li: { marginBottom: 6, fontSize: 13, opacity: 0.9, lineHeight: 1.35 },
 
