@@ -13,15 +13,29 @@
 
   --joy-safe: 190px;
 
-  --vvh: 100vh;
+  --vvh: 100dvh;
+}
+
+@supports not (height: 100dvh) {
+  :root {
+    --vvh: 100vh;
+  }
 }
 
 html,
 body,
 #root {
-  height: 100%;
+  
+  height: var(--vvh);
   margin: 0;
   background: var(--bg);
+}
+
+body {
+  padding-top: var(--safe-top);
+  padding-right: var(--safe-right);
+  padding-bottom: var(--safe-bottom);
+  padding-left: var(--safe-left);
 }
 
 html,
@@ -122,7 +136,9 @@ canvas {
   right: calc(16px + var(--safe-right));
   top: calc(16px + var(--safe-top));
   width: min(420px, calc(100% - 32px - var(--safe-left) - var(--safe-right)));
-  max-height: calc(100% - 32px - var(--safe-top) - var(--safe-bottom));
+
+  max-height: calc(var(--vvh) - 32px - var(--safe-top) - var(--safe-bottom));
+
   overflow: auto;
   pointer-events: auto;
   background: var(--panel);
@@ -199,7 +215,9 @@ canvas {
   top: calc(16px + var(--safe-top));
   transform: translateX(-50%);
   width: min(720px, calc(100% - 32px - var(--safe-left) - var(--safe-right)));
-  max-height: calc(100% - 32px - var(--safe-top) - var(--safe-bottom));
+
+  max-height: calc(var(--vvh) - 32px - var(--safe-top) - var(--safe-bottom));
+
   overflow: auto;
   background: rgba(10, 10, 14, 0.92);
   border: 1px solid var(--border);
@@ -296,7 +314,6 @@ canvas {
     border-radius: 12px;
   }
 }
-
 
 .panel,
 .travelCard {

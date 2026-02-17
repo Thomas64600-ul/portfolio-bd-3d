@@ -37,6 +37,42 @@ export default function App() {
   );
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const root = document.documentElement;
+
+    const setVVH = () => {
+     
+      const h = window.visualViewport?.height ?? window.innerHeight ?? 0;
+      if (!h) return;
+
+      const px = Math.round(h);
+
+      root.style.setProperty("--vvh", `${px}px`);
+    };
+
+    setVVH();
+
+    window.addEventListener("resize", setVVH);
+    window.addEventListener("orientationchange", setVVH);
+
+    const vv = window.visualViewport;
+    if (vv) {
+      vv.addEventListener("resize", setVVH);
+      vv.addEventListener("scroll", setVVH);
+    }
+
+    return () => {
+      window.removeEventListener("resize", setVVH);
+      window.removeEventListener("orientationchange", setVVH);
+      if (vv) {
+        vv.removeEventListener("resize", setVVH);
+        vv.removeEventListener("scroll", setVVH);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     const update = () => {
       const m = detectMobile();
       setIsMobile(m);
@@ -110,7 +146,7 @@ export default function App() {
   }, []);
 
   const requestLock = useCallback(() => {
-    if (!hasStarted) return; 
+    if (!hasStarted) return;
     setControlsEnabled(true);
     const canvas = document.querySelector("canvas");
     if (canvas && !document.pointerLockElement) canvas.requestPointerLock?.();
@@ -163,7 +199,6 @@ export default function App() {
   );
 
   useEffect(() => {
-   
     setGlobalFlag("__MAP_MODE__", hasStarted && openSectionId === "travels");
   }, [openSectionId, hasStarted]);
 
@@ -177,7 +212,6 @@ export default function App() {
 
   return (
     <>
-     
       {hasStarted && (
         <>
           <LibraryScene
@@ -223,7 +257,10 @@ export default function App() {
           )}
 
           {openSectionId === "travels" && (
-            <TravelCard itemId={focus?.itemId ?? null} onClose={closeTravelCard} />
+            <TravelCard
+              itemId={focus?.itemId ?? null}
+              onClose={closeTravelCard}
+            />
           )}
         </>
       )}

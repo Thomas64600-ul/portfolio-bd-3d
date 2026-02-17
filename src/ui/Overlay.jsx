@@ -103,34 +103,7 @@ export default function Overlay({
     resetMoveRefs();
   }, [anyOpen, resetMoveRefs]);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (typeof document === "undefined") return;
-
-    const root = document.documentElement;
-
-    const apply = () => {
-      const vv = window.visualViewport;
-      const h = vv?.height ?? window.innerHeight;
-      root.style.setProperty("--vvh", `${h}px`);
-    };
-
-    apply();
-
-    const vv = window.visualViewport;
-
-    window.addEventListener("resize", apply);
-    window.addEventListener("orientationchange", apply);
-    vv?.addEventListener("resize", apply);
-    vv?.addEventListener("scroll", apply);
-
-    return () => {
-      window.removeEventListener("resize", apply);
-      window.removeEventListener("orientationchange", apply);
-      vv?.removeEventListener("resize", apply);
-      vv?.removeEventListener("scroll", apply);
-    };
-  }, []);
+ 
 
   const handleRequestLock = useCallback(() => {
     onRequestLock?.();
