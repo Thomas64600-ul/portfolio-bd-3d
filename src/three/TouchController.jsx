@@ -8,9 +8,9 @@ export default function TouchController({
   backRef,
   strafeRef,
 
-  speed = 4.2,
-  strafeSpeed = 4.2,
-  lookSpeed = 0.0045,
+  speed = 6.0,
+  strafeSpeed = 6.0,
+  lookSpeed = 0.007,
 
   bounds = { minX: -8, maxX: 8, minZ: -10, maxZ: 6 },
   dragThresholdPx = 22,
