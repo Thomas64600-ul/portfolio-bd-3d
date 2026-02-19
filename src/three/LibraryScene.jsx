@@ -435,9 +435,9 @@ fovTarget.current = isMobile ? (isPortrait ? 100 : 78) : 65;
           forwardRef={mobileForwardRef}
           backRef={mobileBackRef}
           strafeRef={mobileStrafeRef}
-          speed={3.6}
-          strafeSpeed={3.6}
-          lookSpeed={0.0042}
+          speed={7.2}
+          strafeSpeed={7.2}
+          lookSpeed={0.009}
           bounds={ROOM_BOUNDS}
           dragThresholdPx={26}
         />

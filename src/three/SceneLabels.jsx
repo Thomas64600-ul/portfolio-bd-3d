@@ -116,29 +116,12 @@ export function FloorLabel({
   rotation = [-Math.PI / 2, 0, 0],
   text = "LABEL",
   fontSize = 0.44,
-  color = "#ffd400",
-  opacity = 0.95,
+  color = "#F5F5F5",      
+  opacity = 1,
   letterSpacing = 0.06,
 }) {
   return (
     <group position={position} rotation={rotation}>
-     
-      <Text
-        position={[0, 0, -0.002]}
-        fontSize={fontSize}
-        color={"#ffd400"}
-        anchorX="center"
-        anchorY="middle"
-        fillOpacity={0.4}
-        letterSpacing={letterSpacing}
-        renderOrder={1}
-        toneMapped={false}
-        depthTest={false}
-        depthWrite={false}
-      >
-        {text}
-      </Text>
-
       <Text
         position={[0, 0, 0.0015]}
         fontSize={fontSize}
@@ -147,23 +130,26 @@ export function FloorLabel({
         anchorY="middle"
         fillOpacity={opacity}
         letterSpacing={letterSpacing}
-        renderOrder={3}
+        renderOrder={50}
         toneMapped={false}
         depthTest={false}
         depthWrite={false}
+        outlineWidth={0.035}      
+        outlineColor="#0B0B0B"    
+        outlineOpacity={0.85}
       >
         {text}
       </Text>
 
       <Text
-        position={[-0.01, 0.01, 0.0022]}
+        position={[0.008, -0.008, 0.0010]}
         fontSize={fontSize}
-        color={"#ffd400"}
+        color="#000000"
         anchorX="center"
         anchorY="middle"
-        fillOpacity={0.14}
+        fillOpacity={0.18}
         letterSpacing={letterSpacing}
-        renderOrder={4}
+        renderOrder={49}
         toneMapped={false}
         depthTest={false}
         depthWrite={false}
@@ -174,34 +160,19 @@ export function FloorLabel({
   );
 }
 
+
 export function FloorArrow({
   position = [0, 0.102, 0],
   rotation = [-Math.PI / 2, 0, 0],
-  direction = "towardsShelf", 
+  direction = "towardsShelf",
   fontSize = 0.62,
-  color = "#ffd400",
-  opacity = 0.92,
+  color = "#F5F5F5",
+  opacity = 1,
 }) {
   const rotY = direction === "towardsShelf" ? Math.PI : 0;
 
   return (
     <group position={position} rotation={[rotation[0], rotation[1] + rotY, rotation[2]]}>
-     
-      <Text
-        position={[0, 0, -0.002]}
-        fontSize={fontSize}
-        color={"#ffd400"}
-        anchorX="center"
-        anchorY="middle"
-        fillOpacity={0.35}
-        renderOrder={1}
-        toneMapped={false}
-        depthTest={false}
-        depthWrite={false}
-      >
-        {"▲"}
-      </Text>
-
       <Text
         position={[0, 0, 0.0015]}
         fontSize={fontSize}
@@ -209,22 +180,25 @@ export function FloorArrow({
         anchorX="center"
         anchorY="middle"
         fillOpacity={opacity}
-        renderOrder={3}
+        renderOrder={50}
         toneMapped={false}
         depthTest={false}
         depthWrite={false}
+        outlineWidth={0.04}
+        outlineColor="#0B0B0B"
+        outlineOpacity={0.85}
       >
         {"▲"}
       </Text>
 
       <Text
-        position={[-0.01, 0.01, 0.0022]}
+        position={[0.01, -0.01, 0.0010]}
         fontSize={fontSize}
-        color={"#ffd400"}
+        color="#000000"
         anchorX="center"
         anchorY="middle"
-        fillOpacity={0.12}
-        renderOrder={4}
+        fillOpacity={0.16}
+        renderOrder={49}
         toneMapped={false}
         depthTest={false}
         depthWrite={false}
